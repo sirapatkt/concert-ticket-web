@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link"; 
 import Hero from "@/components/Hero";
 import EventCard from "@/components/EventCard";
 import CategoryIcons from "@/components/CategoryIcons";
@@ -60,18 +61,11 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0B0F14] relative overflow-hidden selection:bg-pink-500/30 selection:text-white">
       
-      {/* 🌟 Background Ambient Light (คงเดิมตามโค้ดที่คุณส่งมา) */}
+      {/* 🌟 Background Ambient Light */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-         {/* แสงสีฟ้าด้านซ้ายบน */}
          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse"></div>
-         
-         {/* แสงสีม่วงด้านขวากลาง */}
          <div className="absolute top-[30%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[100px] animate-pulse delay-1000"></div>
-         
-         {/* แสงสีชมพูด้านซ้ายล่าง */}
          <div className="absolute bottom-[-10%] left-[10%] w-[40%] h-[40%] bg-pink-600/10 rounded-full blur-[150px] animate-pulse delay-2000"></div>
-
-         {/* แสงสีส้มจางๆ ตรงกลาง */}
          <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-orange-500/5 rounded-full blur-[180px]"></div>
       </div>
 
@@ -90,27 +84,30 @@ export default function Home() {
                 {language === 'th' && "(Popular Events)"}
               </span>
             </h2>
-            <button className="px-4 py-2 border border-white/20 rounded-full text-sm text-gray-300 hover:text-white hover:border-white transition-all backdrop-blur-sm">
+            
+            <Link 
+              href="/explore" 
+              className="px-4 py-2 border border-white/20 rounded-full text-sm text-gray-300 hover:text-white hover:border-white transition-all backdrop-blur-sm block"
+            >
               {t.see_all} &rarr;
-            </button>
+            </Link>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {events.map((event) => (
-              <EventCard 
-                key={event.id}
-                {...event}
-              />
+              // ✅ แก้ไข: ลบ Link ตัวนอกออก (เพราะใน EventCard มี Link อยู่แล้ว) 
+              // ใส่ key ไว้ที่ EventCard แทน
+              <EventCard key={event.id} {...event} />
             ))}
           </div>
 
-          {/* ⚡️ แก้ไขจุดที่ 1: ลดระยะห่างเส้นคั่นลง (จาก my-16 เหลือ my-8) */}
+          {/* ⚡️ ลดระยะห่างเส้นคั่น */}
           <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-8"></div>
 
           {/* === ส่วนที่ 2: Components ด้านล่าง === */}
           <UpcomingScroll />
           
-          {/* ⚡️ แก้ไขจุดที่ 2: ลดระยะห่างหมวดหมู่ลง (จาก mt-16 เหลือ mt-8) */}
+          {/* ⚡️ ลดระยะห่างหมวดหมู่ */}
           <div className="mt-2">
             <CategoryIcons />
           </div>

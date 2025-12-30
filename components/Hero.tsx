@@ -106,10 +106,12 @@ export default function Hero() {
           </div>
 
           <div className="pt-4">
-            {/* Button: เปลี่ยนเป็น Gradient ฟ้า->ม่วง */}
-            <button className="px-10 py-3.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold rounded-full transition-all shadow-[0_0_20px_rgba(124,58,237,0.4)] hover:shadow-[0_0_30px_rgba(124,58,237,0.6)] transform hover:-translate-y-1">
-              {language === "th" ? "ซื้อบัตรเลย" : "Buy Ticket"}
-            </button>
+            {/* ✅ แก้ไข: เพิ่ม Link ครอบปุ่มเพื่อให้กดแล้วไปหน้า Event ตาม ID */}
+            <Link href={`/event/${slides[current].id}`}>
+                <button className="px-10 py-3.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold rounded-full transition-all shadow-[0_0_20px_rgba(124,58,237,0.4)] hover:shadow-[0_0_30px_rgba(124,58,237,0.6)] transform hover:-translate-y-1 cursor-pointer active:scale-95">
+                {language === "th" ? "ซื้อบัตรเลย" : "Buy Ticket"}
+                </button>
+            </Link>
           </div>
         </div>
       </div>
