@@ -1,13 +1,15 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation"; // ✅ 1. เพิ่ม useRouter
 import { 
   LayoutDashboard, Users, Building2, CalendarDays, 
   CreditCard, Settings, LogOut, ShieldCheck 
 } from "lucide-react";
+import Cookies from "js-cookie"; // ✅ 2. เพิ่ม js-cookie เพื่อสั่งลบ
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter(); // ✅ 3. ประกาศตัวแปร router
 
   // เมนูของ Admin
   const menuItems = [
@@ -18,6 +20,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "ธุรกรรมการเงิน", href: "/admin/finance", icon: <CreditCard size={20} /> },
     { name: "ตั้งค่าระบบ", href: "/admin/settings", icon: <Settings size={20} /> },
   ];
+
+  // ✅ 4. ฟังก์ชันออกจากระบบ
+  const handleLogout = () => {
+    // ลบบัตรผ่าน (Cookie) ทิ้ง
+    Cookies.remove("user_role");
+    // ดีดกลับไปหน้า Login
+    router.push("/login");
+  };
 
   return (
     <div className="flex min-h-screen bg-[#0B0F14] text-white font-sans">
@@ -61,7 +71,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Logout */}
         <div className="p-4 border-t border-white/5">
-          <button className="flex items-center gap-3 w-full px-4 py-3 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all text-sm font-medium">
+          {/* ✅ 5. ผูกฟังก์ชันใส่ปุ่มนี้ */}
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full px-4 py-3 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all text-sm font-medium"
+          >
             <LogOut size={20} />
             ออกจากระบบ
           </button>

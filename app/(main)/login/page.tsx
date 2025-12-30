@@ -1,33 +1,71 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Mail, Lock, Eye, EyeOff, ArrowLeft, Globe, User, Mic2, X, CheckCircle, KeyRound, ChevronRight, Sparkles } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, Globe, User, Mic2, X, CheckCircle, KeyRound, ChevronRight, Sparkles, Loader2 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import Cookies from "js-cookie";
 
 function LoginForm() {
   const { t } = useLanguage();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const roleParam = searchParams.get("role");
 
-  // กำหนดค่าเริ่มต้น: ถ้า URL มี ?role=organizer ให้เป็น organizer ทันที
+  // กำหนดค่าเริ่มต้น
   const [userType, setUserType] = useState<"member" | "organizer">(
     roleParam === "organizer" ? "organizer" : "member"
   );
 
   const [showPassword, setShowPassword] = useState(false);
+  
+  // ✅ 1. เพิ่ม State สำหรับเก็บค่า Input และสถานะการโหลด
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoginLoading, setIsLoginLoading] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false); // สถานะสำหรับโชว์ Popup
 
-  // State สำหรับ Pop-up
+  // State สำหรับ Pop-up ลืมรหัสผ่าน
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [isForgotSubmitted, setIsForgotSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // ✅ 2. แก้ไขฟังก์ชัน Login ให้มี Loading และ Popup
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoginLoading(true); // เริ่มหมุนติ้วๆ
+
+    // จำลองการเชื่อมต่อ Server (หน่วงเวลา 1.5 วินาที)
+    setTimeout(() => {
+      setIsLoginLoading(false); // หยุดหมุน
+
+      // ตรวจสอบเงื่อนไข (Mockup Logic)
+      if (userType === "organizer") {
+         // สำหรับ Organizer ต้องรหัสถูกเท่านั้น (Mock: admin/1234)
+         if (email === "admin@beatpass.com" && password === "1234") {
+            Cookies.set("user_role", "admin", { expires: 1 });
+            setLoginSuccess(true); // 🎉 แสดง Popup ความสำเร็จ
+            // รอ 2 วินาทีค่อยย้ายหน้า
+            setTimeout(() => router.push("/admin"), 2000);
+         } else {
+            alert("❌ รหัสผ่านผิด! (Organizer ใช้: admin@beatpass.com / 1234)");
+         }
+      } else {
+         // สำหรับ Member (อนุญาตให้ผ่านได้เลย เพื่อทดสอบ)
+         Cookies.set("user_role", "member", { expires: 1 });
+         setLoginSuccess(true); // 🎉 แสดง Popup ความสำเร็จ
+         // รอ 2 วินาทีค่อยย้ายหน้า
+         setTimeout(() => router.push("/"), 2000);
+      }
+    }, 1500);
+  };
+
   useEffect(() => {
-    if (showForgotPassword) document.body.style.overflow = 'hidden';
+    if (showForgotPassword || loginSuccess) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = 'unset';
     return () => { document.body.style.overflow = 'unset'; };
-  }, [showForgotPassword]);
+  }, [showForgotPassword, loginSuccess]);
 
   const handleForgotSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,19 +148,19 @@ function LoginForm() {
             <p className="text-gray-400">{userType === "member" ? t.login_subtitle : t.organizer_subtitle}</p>
           </div>
 
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={handleLogin}>
             
-            {/* ✅ แก้ไขช่อง Email (ใช้ Absolute Icon + z-10) */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-300 ml-1">{t.email_label}</label>
               <div className="relative group rounded-2xl p-[1px] bg-white/10 transition-all duration-300 focus-within:bg-gradient-to-r focus-within:from-blue-500 focus-within:via-purple-500 focus-within:to-pink-500">
-                <div className="relative bg-[#0B0F14] rounded-2xl h-[58px]"> {/* กำหนดความสูงให้คงที่ */}
-                  {/* ไอคอน (ลอยอยู่เหนือ Input) */}
+                <div className="relative bg-[#0B0F14] rounded-2xl h-[58px]"> 
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none group-focus-within:text-white transition-colors">
                     <Mail size={20} />
                   </div>
                   <input 
                     type="email" 
+                    value={email} // ✅ Bind ค่า
+                    onChange={(e) => setEmail(e.target.value)} // ✅ รับค่า
                     placeholder="name@example.com" 
                     className="w-full h-full bg-transparent text-white px-4 pl-12 focus:outline-none placeholder:text-gray-600 rounded-2xl relative z-0" 
                   />
@@ -130,7 +168,6 @@ function LoginForm() {
               </div>
             </div>
 
-            {/* ✅ แก้ไขช่อง Password (ใช้ Absolute Icon + z-10) */}
             <div className="space-y-2">
               <div className="flex justify-between items-center ml-1">
                 <label className="text-sm font-medium text-gray-300">{t.password_label}</label>
@@ -140,16 +177,16 @@ function LoginForm() {
               </div>
               <div className="relative group rounded-2xl p-[1px] bg-white/10 transition-all duration-300 focus-within:bg-gradient-to-r focus-within:from-blue-500 focus-within:via-purple-500 focus-within:to-pink-500">
                 <div className="relative bg-[#0B0F14] rounded-2xl h-[58px]">
-                  {/* ไอคอน (ลอยอยู่เหนือ Input) */}
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none group-focus-within:text-white transition-colors">
                     <Lock size={20} />
                   </div>
                   <input 
                     type={showPassword ? "text" : "password"} 
+                    value={password} // ✅ Bind ค่า
+                    onChange={(e) => setPassword(e.target.value)} // ✅ รับค่า
                     placeholder="••••••••" 
                     className="w-full h-full bg-transparent text-white px-4 pl-12 pr-12 focus:outline-none placeholder:text-gray-600 rounded-2xl relative z-0" 
                   />
-                  {/* ปุ่มดูรหัสผ่าน */}
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors z-20">
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -157,11 +194,13 @@ function LoginForm() {
               </div>
             </div>
 
-            <button className={`w-full text-white font-bold py-4 rounded-2xl shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${userType === "member" ? "bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:shadow-purple-500/30" : "bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 hover:shadow-orange-500/30"}`}>
-              {t.sign_in_btn}
+            <button type="submit" disabled={isLoginLoading} className={`w-full text-white font-bold py-4 rounded-2xl shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 ${userType === "member" ? "bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:shadow-purple-500/30" : "bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 hover:shadow-orange-500/30"}`}>
+              {/* ✅ เปลี่ยนข้อความปุ่มถ้ากำลังโหลด */}
+              {isLoginLoading ? <Loader2 size={24} className="animate-spin" /> : t.sign_in_btn}
             </button>
           </form>
 
+          {/* ... Social Login ... */}
           <div className="relative my-10">
               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
               <div className="relative flex justify-center text-sm"><span className="px-6 py-2 bg-[#0B0F14] text-gray-500 rounded-full border border-white/5">{t.or_continue}</span></div>
@@ -181,47 +220,49 @@ function LoginForm() {
         </div>
       </div>
 
-      {/* Pop-up */}
+      {/* ✅ 3. Success Popup (หน้าต่างแจ้งเตือนความสำเร็จ) */}
+      {loginSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+           <div className="bg-[#161B22] border border-green-500/20 rounded-3xl p-8 text-center max-w-sm w-full shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-emerald-600"></div>
+              
+              <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle size={40} className="text-green-500 animate-bounce" />
+              </div>
+              
+              <h2 className="text-2xl font-bold text-white mb-2">ยินดีต้อนรับกลับ! 🎉</h2>
+              <p className="text-gray-400 mb-6">เข้าสู่ระบบสำเร็จ กำลังพาคุณไป...</p>
+              
+              {/* Progress Bar Animation */}
+              <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                <div className="h-full bg-green-500 animate-[loading_2s_ease-in-out_infinite] w-1/2 rounded-full"></div>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* Forgot Password Pop-up */}
       {showForgotPassword && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-[#0B0F14]/90 backdrop-blur-md" onClick={closePopup}></div>
           <div className="relative w-full max-w-lg bg-[#161B22] border border-white/10 rounded-3xl shadow-2xl p-8 overflow-hidden animate-in zoom-in-95 duration-300">
-            
             <div className={`absolute top-0 inset-x-0 h-1.5 ${rainbowGradient}`}></div>
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[200px] bg-gradient-to-b from-purple-600/20 to-transparent blur-[60px] pointer-events-none"></div>
-
-            <button onClick={closePopup} className="absolute top-5 right-5 z-50 p-3 rounded-full text-gray-400 bg-white/5 hover:bg-white/20 hover:text-white transition-all hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-sm border border-white/5" type="button">
-              <X size={24} />
-            </button>
-
+            <button onClick={closePopup} className="absolute top-5 right-5 z-50 p-3 rounded-full text-gray-400 bg-white/5 hover:bg-white/20 hover:text-white"><X size={24} /></button>
             {!isForgotSubmitted ? (
               <div className="relative z-10 text-center sm:text-left">
-                <div className={`w-16 h-16 mx-auto sm:mx-0 ${rainbowGradient} rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-purple-500/20`}>
-                  <KeyRound size={28} />
-                </div>
                 <h2 className="text-3xl font-bold text-white mb-2">{t.forgot_title}</h2>
                 <p className="text-gray-400 mb-8">{t.forgot_subtitle}</p>
-
                 <form onSubmit={handleForgotSubmit} className="space-y-6">
-                  <div className="relative group rounded-2xl p-[1px] bg-white/10 transition-all duration-300 focus-within:bg-gradient-to-r focus-within:from-blue-500 focus-within:via-purple-500 focus-within:to-pink-500">
-                    <div className="relative flex items-center bg-[#161B22] rounded-2xl">
-                      <div className="pl-4 text-gray-500 group-focus-within:text-white transition-colors"><Mail size={20} /></div>
-                      <input type="email" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="name@example.com" className="w-full bg-transparent text-white px-4 py-4 focus:outline-none placeholder:text-gray-600 rounded-2xl" />
+                    <div className="relative group rounded-2xl p-[1px] bg-white/10">
+                         <input type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="name@example.com" className="w-full bg-[#161B22] text-white px-4 py-4 rounded-2xl focus:outline-none" />
                     </div>
-                  </div>
-                  <button type="submit" disabled={isLoading} className={`w-full text-white font-bold py-4 rounded-2xl shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 ${rainbowGradient}`}>
-                    {isLoading ? <Sparkles size={20} className="animate-spin" /> : <>{t.send_btn} <ChevronRight size={20} /></>}
-                  </button>
+                    <button type="submit" disabled={isLoading} className={`w-full text-white font-bold py-4 rounded-2xl ${rainbowGradient}`}>{isLoading ? <Loader2 className="animate-spin mx-auto"/> : t.send_btn}</button>
                 </form>
               </div>
             ) : (
-              <div className="text-center py-8 relative z-10">
-                <div className="w-20 h-20 bg-gradient-to-tr from-green-400 to-emerald-600 rounded-full flex items-center justify-center text-white mx-auto mb-6 shadow-lg shadow-green-500/20 animate-in zoom-in">
-                  <CheckCircle size={40} />
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-3">{t.success_title}</h2>
-                <p className="text-gray-400 mb-8">{t.success_desc} <br/><span className="text-white font-semibold bg-white/10 px-4 py-1 mt-2 inline-block rounded-lg">{forgotEmail}</span></p>
-                <button onClick={closePopup} className="w-full bg-[#0B0F14] border border-white/10 hover:bg-white/5 text-white font-bold py-4 rounded-2xl transition-all">OK, Close</button>
+              <div className="text-center py-8">
+                 <h2 className="text-2xl font-bold text-white">{t.success_title}</h2>
+                 <button onClick={closePopup} className="mt-6 w-full bg-[#0B0F14] border border-white/10 text-white font-bold py-4 rounded-2xl">Close</button>
               </div>
             )}
           </div>
