@@ -1,19 +1,33 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { Mail, Lock, Eye, EyeOff, ArrowLeft, Globe, User, Mic2, X, CheckCircle, KeyRound, ChevronRight, Sparkles, Ticket, Music } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, Globe, User, Mic2, X, CheckCircle, KeyRound, ChevronRight, Sparkles } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
-export default function LoginPage() {
+function LoginForm() {
   const { t } = useLanguage();
+  const searchParams = useSearchParams();
+  const roleParam = searchParams.get("role");
+
+  // กำหนดค่าเริ่มต้น: ถ้า URL มี ?role=organizer ให้เป็น organizer ทันที
+  const [userType, setUserType] = useState<"member" | "organizer">(
+    roleParam === "organizer" ? "organizer" : "member"
+  );
+
   const [showPassword, setShowPassword] = useState(false);
-  const [userType, setUserType] = useState<"member" | "organizer">("member");
 
   // State สำหรับ Pop-up
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [isForgotSubmitted, setIsForgotSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (showForgotPassword) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = 'unset';
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [showForgotPassword]);
 
   const handleForgotSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,13 +47,6 @@ export default function LoginPage() {
     }, 300);
   };
 
-  useEffect(() => {
-    if (showForgotPassword) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = 'unset';
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [showForgotPassword]);
-
-  // 🎨 Multi-color Gradient Class
   const rainbowGradient = "bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500";
   const rainbowText = "text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400";
 
@@ -48,7 +55,6 @@ export default function LoginPage() {
       
       {/* 🖼️ Left Side: Image Banner */}
       <div className="hidden lg:flex w-1/2 relative overflow-hidden bg-[#161B22] items-center justify-center">
-        {/* Animated Gradient Orb Background */}
         <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-blue-600/20 blur-[150px] rounded-full animate-pulse"></div>
         <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] bg-pink-600/20 blur-[150px] rounded-full animate-pulse delay-1000"></div>
 
@@ -75,14 +81,6 @@ export default function LoginPage() {
            <p className="text-xl text-gray-200 font-light leading-relaxed drop-shadow-md">
              &quot;{userType === "member" ? "Experience every color of sound." : "Orchestrate unforgettable moments."}&quot;
            </p>
-           
-           <div className="flex gap-2 mt-8">
-             <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-             <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-             <div className="w-3 h-3 rounded-full bg-pink-500"></div>
-             <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-             <div className="w-3 h-3 rounded-full bg-green-500"></div>
-           </div>
         </div>
       </div>
 
@@ -113,16 +111,26 @@ export default function LoginPage() {
           </div>
 
           <form className="space-y-6">
+            
+            {/* ✅ แก้ไขช่อง Email (ใช้ Absolute Icon + z-10) */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-300 ml-1">{t.email_label}</label>
               <div className="relative group rounded-2xl p-[1px] bg-white/10 transition-all duration-300 focus-within:bg-gradient-to-r focus-within:from-blue-500 focus-within:via-purple-500 focus-within:to-pink-500">
-                <div className="relative flex items-center bg-[#0B0F14] rounded-2xl">
-                  <div className="pl-4 text-gray-500 group-focus-within:text-white transition-colors"><Mail size={20} /></div>
-                  <input type="email" placeholder="name@example.com" className="w-full bg-transparent text-white px-4 py-4 focus:outline-none placeholder:text-gray-600 rounded-2xl" />
+                <div className="relative bg-[#0B0F14] rounded-2xl h-[58px]"> {/* กำหนดความสูงให้คงที่ */}
+                  {/* ไอคอน (ลอยอยู่เหนือ Input) */}
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none group-focus-within:text-white transition-colors">
+                    <Mail size={20} />
+                  </div>
+                  <input 
+                    type="email" 
+                    placeholder="name@example.com" 
+                    className="w-full h-full bg-transparent text-white px-4 pl-12 focus:outline-none placeholder:text-gray-600 rounded-2xl relative z-0" 
+                  />
                 </div>
               </div>
             </div>
 
+            {/* ✅ แก้ไขช่อง Password (ใช้ Absolute Icon + z-10) */}
             <div className="space-y-2">
               <div className="flex justify-between items-center ml-1">
                 <label className="text-sm font-medium text-gray-300">{t.password_label}</label>
@@ -131,10 +139,18 @@ export default function LoginPage() {
                 </button>
               </div>
               <div className="relative group rounded-2xl p-[1px] bg-white/10 transition-all duration-300 focus-within:bg-gradient-to-r focus-within:from-blue-500 focus-within:via-purple-500 focus-within:to-pink-500">
-                <div className="relative flex items-center bg-[#0B0F14] rounded-2xl">
-                  <div className="pl-4 text-gray-500 group-focus-within:text-white transition-colors"><Lock size={20} /></div>
-                  <input type={showPassword ? "text" : "password"} placeholder="••••••••" className="w-full bg-transparent text-white px-4 py-4 focus:outline-none placeholder:text-gray-600 rounded-2xl" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="pr-4 text-gray-500 hover:text-white transition-colors">
+                <div className="relative bg-[#0B0F14] rounded-2xl h-[58px]">
+                  {/* ไอคอน (ลอยอยู่เหนือ Input) */}
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none group-focus-within:text-white transition-colors">
+                    <Lock size={20} />
+                  </div>
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="••••••••" 
+                    className="w-full h-full bg-transparent text-white px-4 pl-12 pr-12 focus:outline-none placeholder:text-gray-600 rounded-2xl relative z-0" 
+                  />
+                  {/* ปุ่มดูรหัสผ่าน */}
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors z-20">
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
@@ -147,13 +163,13 @@ export default function LoginPage() {
           </form>
 
           <div className="relative my-10">
-             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
-             <div className="relative flex justify-center text-sm"><span className="px-6 py-2 bg-[#0B0F14] text-gray-500 rounded-full border border-white/5">{t.or_continue}</span></div>
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+              <div className="relative flex justify-center text-sm"><span className="px-6 py-2 bg-[#0B0F14] text-gray-500 rounded-full border border-white/5">{t.or_continue}</span></div>
           </div>
           <button className="w-full flex items-center justify-center gap-3 bg-[#161B22] border border-white/5 hover:bg-white/5 text-white py-3 rounded-2xl transition-all font-medium group relative overflow-hidden">
-             <div className="absolute inset-0 w-1 bg-gradient-to-b from-blue-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-             <Globe size={20} className="text-white group-hover:scale-110 transition-transform z-10" /> 
-             <span className="z-10">Continue with Google</span>
+              <div className="absolute inset-0 w-1 bg-gradient-to-b from-blue-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <Globe size={20} className="text-white group-hover:scale-110 transition-transform z-10" /> 
+              <span className="z-10">Continue with Google</span>
           </button>
           
           <p className="mt-10 text-center text-gray-400">
@@ -165,22 +181,16 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* 🔥 Pop-up (Multi-color Version) 🔥 */}
+      {/* Pop-up */}
       {showForgotPassword && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-[#0B0F14]/90 backdrop-blur-md" onClick={closePopup}></div>
           <div className="relative w-full max-w-lg bg-[#161B22] border border-white/10 rounded-3xl shadow-2xl p-8 overflow-hidden animate-in zoom-in-95 duration-300">
             
-            {/* 🌈 Top Border Rainbow */}
             <div className={`absolute top-0 inset-x-0 h-1.5 ${rainbowGradient}`}></div>
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[200px] bg-gradient-to-b from-purple-600/20 to-transparent blur-[60px] pointer-events-none"></div>
 
-            {/* ✅ ปุ่มปิด (Close Button) - แก้ไขใหม่ให้ใหญ่และกดง่าย */}
-            <button 
-              onClick={closePopup} 
-              className="absolute top-5 right-5 z-50 p-3 rounded-full text-gray-400 bg-white/5 hover:bg-white/20 hover:text-white transition-all hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-sm border border-white/5"
-              type="button"
-            >
+            <button onClick={closePopup} className="absolute top-5 right-5 z-50 p-3 rounded-full text-gray-400 bg-white/5 hover:bg-white/20 hover:text-white transition-all hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-sm border border-white/5" type="button">
               <X size={24} />
             </button>
 
@@ -196,14 +206,7 @@ export default function LoginPage() {
                   <div className="relative group rounded-2xl p-[1px] bg-white/10 transition-all duration-300 focus-within:bg-gradient-to-r focus-within:from-blue-500 focus-within:via-purple-500 focus-within:to-pink-500">
                     <div className="relative flex items-center bg-[#161B22] rounded-2xl">
                       <div className="pl-4 text-gray-500 group-focus-within:text-white transition-colors"><Mail size={20} /></div>
-                      <input 
-                        type="email" 
-                        required
-                        value={forgotEmail}
-                        onChange={(e) => setForgotEmail(e.target.value)}
-                        placeholder="name@example.com"
-                        className="w-full bg-transparent text-white px-4 py-4 focus:outline-none placeholder:text-gray-600 rounded-2xl" 
-                      />
+                      <input type="email" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="name@example.com" className="w-full bg-transparent text-white px-4 py-4 focus:outline-none placeholder:text-gray-600 rounded-2xl" />
                     </div>
                   </div>
                   <button type="submit" disabled={isLoading} className={`w-full text-white font-bold py-4 rounded-2xl shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 ${rainbowGradient}`}>
@@ -225,5 +228,13 @@ export default function LoginPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0B0F14] flex items-center justify-center text-white">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

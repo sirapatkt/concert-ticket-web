@@ -1,11 +1,14 @@
 @import "tailwindcss";
 
-/* การตั้งค่า Theme ใน Tailwind v4 จะทำที่นี่แทนไฟล์ config */
+/* การตั้งค่า Theme ใน Tailwind v4 */
 @theme {
   --color-background-base: #0B0F14;
   --color-background-glow: #080124;
   --color-foreground: #ffffff;
   
+  /* สีพื้นหลังของ Input (ใช้สีเดียวกับในคอมโพเนนต์ React ของคุณ) */
+  --color-input-bg: #161B22;
+
   /* เพิ่ม Font ถ้าต้องการ (Optional) */
   --font-sans: "Inter", ui-sans-serif, system-ui;
 }
@@ -30,5 +33,21 @@
     );
     background-attachment: fixed;
     background-size: cover;
+  }
+
+  /* 🔧 แก้ปัญหา Input เปลี่ยนสีขาวเมื่อ Browser Autofill 
+     (ต้องใส่ไว้ใน @layer base เพื่อให้ทำงานถูกต้องใน v4) */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus, 
+  input:-webkit-autofill:active {
+      /* ใช้ Box Shadow ถมสีพื้นหลังทับ (ใช้สี --color-input-bg ที่ประกาศข้างบน) */
+      -webkit-box-shadow: 0 0 0 30px var(--color-input-bg) inset !important;
+      
+      /* เปลี่ยนสีตัวอักษรกลับเป็นสีขาว */
+      -webkit-text-fill-color: white !important;
+      
+      /* เทคนิคชะลอการเปลี่ยนสีพื้นหลัง */
+      transition: background-color 5000s ease-in-out 0s;
   }
 }
