@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-// ✅ 1. Import ตัวจัดการภาษาเข้ามา (ต้องสร้างไฟล์ context/LanguageContext.tsx ก่อนนะครับ)
 import { LanguageProvider } from "@/context/LanguageContext";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -21,17 +18,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        {/* ✅ 2. ครอบด้วย LanguageProvider เพื่อให้ส่งค่าภาษาไปให้ทุกส่วนข้างใน */}
+        {/* ✅ เหลือแค่ Provider กับ children เปล่าๆ */}
+        {/* Navbar กับ Footer ไม่ต้องใส่ตรงนี้แล้ว ไม่งั้นมันจะไปโผล่หน้า Admin */}
         <LanguageProvider>
-          
-          <Navbar /> 
-          
-          <main className="pt-20 min-h-screen bg-[#0B0F14]"> 
-            {children}
-          </main>
-
-          <Footer />
-          
+          {children}
         </LanguageProvider>
       </body>
     </html>

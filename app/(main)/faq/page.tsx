@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import Navbar from "../../components/Navbar"; // อย่าลืม import Navbar ที่เราทำเสร็จแล้วมาใส่ด้วยนะครับ
+import Navbar from "../../../components/Navbar"; // อย่าลืม import Navbar ที่เราทำเสร็จแล้วมาใส่ด้วยนะครับ
 import { ChevronDown, HelpCircle, CreditCard, Ticket, AlertCircle, User, MapPin } from "lucide-react";
 
 export default function FAQPage() {
