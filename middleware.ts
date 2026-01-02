@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// ⚠️ ต้องมีคำว่า "export" ตรงนี้ Next.js ถึงจะหาเจอครับ
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   
@@ -11,16 +10,24 @@ export function middleware(request: NextRequest) {
   // 🚨 กฎข้อที่ 1: พื้นที่หวงห้ามสำหรับ Admin
   // ถ้าพยายามเข้าหน้า /admin...
   if (path.startsWith('/admin')) {
-    // ถ้ายังไม่ Login หรือไม่ใช่ Admin -> ดีดไปหน้า Login
+    
+    // ✅ ข้อยกเว้น: ถ้ากำลังจะเข้าหน้า Login ของ Admin ให้ปล่อยผ่านไปเลย
+    // (ไม่งั้นจะโดนดีดออก วนลูปเข้าไม่ได้สักที)
+    if (path === '/admin/login') {
+      return NextResponse.next();
+    }
+
+    // ถ้ายังไม่ Login หรือไม่ใช่ Admin -> ดีดไปหน้า Login ลับของ Admin
     if (userRole !== 'admin') {
-      return NextResponse.redirect(new URL('/login?error=unauthorized', request.url));
+      return NextResponse.redirect(new URL('/admin/login', request.url));
     }
   }
 
   // 🚨 กฎข้อที่ 2: พื้นที่สำหรับผู้จัดงาน (Organizer)
   // ถ้าพยายามเข้าหน้า /organizer...
   if (path.startsWith('/organizer') && path !== '/organizer/register') {
-    // ถ้าไม่ใช่ Organizer -> ดีดไปหน้า Login
+    
+    // ถ้าไม่ใช่ Organizer -> ดีดไปหน้า Login ปกติ
     if (userRole !== 'organizer') {
       return NextResponse.redirect(new URL('/login', request.url));
     }
@@ -30,7 +37,7 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Config นี้บอก Next.js ว่าให้ Middleware ทำงานที่หน้าไหนบ้าง
+// Config บอก Next.js ว่าให้ Middleware ทำงานที่หน้าไหนบ้าง
 export const config = {
   matcher: [
     '/admin/:path*',      // ดักจับทุกหน้าใน admin

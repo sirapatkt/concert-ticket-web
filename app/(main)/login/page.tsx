@@ -2,7 +2,7 @@
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Mail, Lock, Eye, EyeOff, ArrowLeft, Globe, User, Mic2, X, CheckCircle, KeyRound, ChevronRight, Sparkles, Loader2 } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, Globe, User, Mic2, X, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import Cookies from "js-cookie";
 
@@ -19,102 +19,104 @@ function LoginForm() {
 
   const [showPassword, setShowPassword] = useState(false);
   
-  // ✅ 1. เพิ่ม State สำหรับเก็บค่า Input และสถานะการโหลด
+  // State Input
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoginLoading, setIsLoginLoading] = useState(false);
-  const [loginSuccess, setLoginSuccess] = useState(false); // สถานะสำหรับโชว์ Popup
+  const [loginSuccess, setLoginSuccess] = useState(false);
 
-  // State สำหรับ Pop-up ลืมรหัสผ่าน
+  // ✅ State สำหรับ Custom Alert
+  const [errorMessage, setErrorMessage] = useState("");
+  const [showError, setShowError] = useState(false);
+
+  // State Forgot Password
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [isForgotSubmitted, setIsForgotSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ✅ 2. แก้ไขฟังก์ชัน Login ให้มี Loading และ Popup
+  // ฟังก์ชันแสดง Error (Custom Alert)
+  const triggerError = (msg: string) => {
+    setErrorMessage(msg);
+    setShowError(true);
+    // ตั้งเวลาให้ปิดเองใน 3 วินาที
+    setTimeout(() => setShowError(false), 3000);
+  };
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoginLoading(true); // เริ่มหมุนติ้วๆ
+    
+    // Validation
+    if (!email || !password) {
+      triggerError("⚠️ กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน");
+      return;
+    }
 
-    // จำลองการเชื่อมต่อ Server (หน่วงเวลา 1.5 วินาที)
+    setIsLoginLoading(true);
+
     setTimeout(() => {
-      setIsLoginLoading(false); // หยุดหมุน
+      setIsLoginLoading(false);
 
-      // ตรวจสอบเงื่อนไข (Mockup Logic)
+      // 🛑 BLOCK ADMIN
+      if (email === "admin@beatpass.com") {
+        triggerError("⛔ บัญชี Admin ไม่สามารถเข้าใช้งานหน้านี้ได้ (กรุณาไปที่ /admin/login)");
+        return; 
+      }
+
+      // 🏢 1. กรณีผู้จัดงาน (Organizer)
       if (userType === "organizer") {
-         // สำหรับ Organizer ต้องรหัสถูกเท่านั้น (Mock: admin/1234)
-         if (email === "admin@beatpass.com" && password === "1234") {
-            Cookies.set("user_role", "admin", { expires: 1 });
-            setLoginSuccess(true); // 🎉 แสดง Popup ความสำเร็จ
-            // รอ 2 วินาทีค่อยย้ายหน้า
-            setTimeout(() => router.push("/admin"), 2000);
+         if (email === "org@demo.com" && password === "1234") {
+            Cookies.set("user_role", "organizer", { expires: 1 });
+            setLoginSuccess(true);
+            setTimeout(() => router.push("/"), 2000); 
          } else {
-            alert("❌ รหัสผ่านผิด! (Organizer ใช้: admin@beatpass.com / 1234)");
+            triggerError("❌ อีเมลหรือรหัสผ่านผู้จัดงานไม่ถูกต้อง");
          }
-      } else {
-         // สำหรับ Member (อนุญาตให้ผ่านได้เลย เพื่อทดสอบ)
+      } 
+      
+      // 👤 2. กรณีสมาชิกทั่วไป (Member)
+      else {
          Cookies.set("user_role", "member", { expires: 1 });
-         setLoginSuccess(true); // 🎉 แสดง Popup ความสำเร็จ
-         // รอ 2 วินาทีค่อยย้ายหน้า
+         setLoginSuccess(true);
          setTimeout(() => router.push("/"), 2000);
       }
     }, 1500);
   };
 
   useEffect(() => {
-    if (showForgotPassword || loginSuccess) document.body.style.overflow = 'hidden';
+    if (showForgotPassword || loginSuccess || showError) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = 'unset';
     return () => { document.body.style.overflow = 'unset'; };
-  }, [showForgotPassword, loginSuccess]);
+  }, [showForgotPassword, loginSuccess, showError]);
 
-  const handleForgotSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setIsForgotSubmitted(true);
-    }, 1500);
-  };
-
-  const closePopup = () => {
-    setShowForgotPassword(false);
-    setTimeout(() => {
-      setIsForgotSubmitted(false);
-      setForgotEmail("");
-      setIsLoading(false);
-    }, 300);
-  };
-
+  // Helper Functions
+  const handleForgotSubmit = (e: React.FormEvent) => { e.preventDefault(); if(!forgotEmail) return; setIsLoading(true); setTimeout(() => { setIsLoading(false); setIsForgotSubmitted(true); }, 1500); };
+  const closePopup = () => { setShowForgotPassword(false); setTimeout(() => { setIsForgotSubmitted(false); setForgotEmail(""); setIsLoading(false); }, 300); };
   const rainbowGradient = "bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500";
   const rainbowText = "text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400";
 
   return (
     <div className="min-h-screen flex bg-[#0B0F14] relative font-sans selection:bg-pink-500/30 selection:text-white">
       
-      {/* 🖼️ Left Side: Image Banner */}
+      {/* 🖼️ Left Side */}
       <div className="hidden lg:flex w-1/2 relative overflow-hidden bg-[#161B22] items-center justify-center">
         <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-blue-600/20 blur-[150px] rounded-full animate-pulse"></div>
         <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] bg-pink-600/20 blur-[150px] rounded-full animate-pulse delay-1000"></div>
-
         <div className="absolute inset-0 z-0">
           <img 
             src={userType === "member" 
               ? "https://images.unsplash.com/photo-1459749411177-717441447994?q=80&w=2000&auto=format&fit=crop" 
               : "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?q=80&w=2000&auto=format&fit=crop"
             }
-            alt="Background" 
-            className="w-full h-full object-cover opacity-50 scale-110"
+            alt="Background" className="w-full h-full object-cover opacity-50 scale-110"
           />
           <div className="absolute inset-0 bg-[#0B0F14]/40 backdrop-grayscale-[0.5]"></div>
         </div>
-        
         <div className="relative z-10 p-16 max-w-lg">
            <div className={`w-20 h-1.5 mb-8 rounded-full ${rainbowGradient}`}></div>
            <h2 className="text-7xl font-black mb-6 tracking-tighter leading-none text-white drop-shadow-2xl">
              {userType === "member" ? "Feel" : "Create"} <br/>
-             <span className={rainbowText}>
-               {userType === "member" ? "Alive." : "Magic."}
-             </span>
+             <span className={rainbowText}>{userType === "member" ? "Alive." : "Magic."}</span>
            </h2>
            <p className="text-xl text-gray-200 font-light leading-relaxed drop-shadow-md">
              &quot;{userType === "member" ? "Experience every color of sound." : "Orchestrate unforgettable moments."}&quot;
@@ -122,16 +124,14 @@ function LoginForm() {
         </div>
       </div>
 
-      {/* 📝 Right Side: Login Form */}
+      {/* 📝 Right Side */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 md:px-16 lg:px-24 py-12 relative overflow-hidden"> 
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-blue-500/5 via-purple-500/5 to-pink-500/5 blur-[100px] rounded-full pointer-events-none"></div>
 
         <div className="max-w-md w-full mx-auto z-10">
           <div className="mb-10">
             <Link href="/" className="text-gray-500 hover:text-white flex items-center gap-2 transition-colors w-fit group">
-              <div className="p-2 rounded-full bg-white/5 group-hover:bg-white/10 transition-colors">
-                <ArrowLeft size={18} />
-              </div>
+              <div className="p-2 rounded-full bg-white/5 group-hover:bg-white/10 transition-colors"><ArrowLeft size={18} /></div>
               <span className="font-medium group-hover:text-blue-400 transition-colors">{t.back_home}</span>
             </Link>
           </div>
@@ -149,21 +149,12 @@ function LoginForm() {
           </div>
 
           <form className="space-y-6" onSubmit={handleLogin}>
-            
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-300 ml-1">{t.email_label}</label>
-              <div className="relative group rounded-2xl p-[1px] bg-white/10 transition-all duration-300 focus-within:bg-gradient-to-r focus-within:from-blue-500 focus-within:via-purple-500 focus-within:to-pink-500">
+              <div className="relative group rounded-2xl p-[1px] bg-white/10">
                 <div className="relative bg-[#0B0F14] rounded-2xl h-[58px]"> 
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none group-focus-within:text-white transition-colors">
-                    <Mail size={20} />
-                  </div>
-                  <input 
-                    type="email" 
-                    value={email} // ✅ Bind ค่า
-                    onChange={(e) => setEmail(e.target.value)} // ✅ รับค่า
-                    placeholder="name@example.com" 
-                    className="w-full h-full bg-transparent text-white px-4 pl-12 focus:outline-none placeholder:text-gray-600 rounded-2xl relative z-0" 
-                  />
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none group-focus-within:text-white transition-colors"><Mail size={20} /></div>
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="w-full h-full bg-transparent text-white px-4 pl-12 focus:outline-none placeholder:text-gray-600 rounded-2xl relative z-0" />
                 </div>
               </div>
             </div>
@@ -171,36 +162,23 @@ function LoginForm() {
             <div className="space-y-2">
               <div className="flex justify-between items-center ml-1">
                 <label className="text-sm font-medium text-gray-300">{t.password_label}</label>
-                <button type="button" onClick={() => setShowForgotPassword(true)} className={`text-sm font-bold bg-clip-text text-transparent bg-gradient-to-r ${userType === "member" ? "from-blue-400 to-cyan-400" : "from-purple-400 to-pink-400"} hover:opacity-80 transition-opacity`}>
-                  {t.forgot_password}
-                </button>
+                <button type="button" onClick={() => setShowForgotPassword(true)} className={`text-sm font-bold bg-clip-text text-transparent bg-gradient-to-r ${userType === "member" ? "from-blue-400 to-cyan-400" : "from-purple-400 to-pink-400"} hover:opacity-80 transition-opacity`}>{t.forgot_password}</button>
               </div>
-              <div className="relative group rounded-2xl p-[1px] bg-white/10 transition-all duration-300 focus-within:bg-gradient-to-r focus-within:from-blue-500 focus-within:via-purple-500 focus-within:to-pink-500">
+              <div className="relative group rounded-2xl p-[1px] bg-white/10">
                 <div className="relative bg-[#0B0F14] rounded-2xl h-[58px]">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none group-focus-within:text-white transition-colors">
-                    <Lock size={20} />
-                  </div>
-                  <input 
-                    type={showPassword ? "text" : "password"} 
-                    value={password} // ✅ Bind ค่า
-                    onChange={(e) => setPassword(e.target.value)} // ✅ รับค่า
-                    placeholder="••••••••" 
-                    className="w-full h-full bg-transparent text-white px-4 pl-12 pr-12 focus:outline-none placeholder:text-gray-600 rounded-2xl relative z-0" 
-                  />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors z-20">
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none group-focus-within:text-white transition-colors"><Lock size={20} /></div>
+                  <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full h-full bg-transparent text-white px-4 pl-12 pr-12 focus:outline-none placeholder:text-gray-600 rounded-2xl relative z-0" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors z-20">{showPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
                 </div>
               </div>
             </div>
 
             <button type="submit" disabled={isLoginLoading} className={`w-full text-white font-bold py-4 rounded-2xl shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 ${userType === "member" ? "bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:shadow-purple-500/30" : "bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 hover:shadow-orange-500/30"}`}>
-              {/* ✅ เปลี่ยนข้อความปุ่มถ้ากำลังโหลด */}
               {isLoginLoading ? <Loader2 size={24} className="animate-spin" /> : t.sign_in_btn}
             </button>
           </form>
 
-          {/* ... Social Login ... */}
+          {/* Social Login */}
           <div className="relative my-10">
               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
               <div className="relative flex justify-center text-sm"><span className="px-6 py-2 bg-[#0B0F14] text-gray-500 rounded-full border border-white/5">{t.or_continue}</span></div>
@@ -210,7 +188,6 @@ function LoginForm() {
               <Globe size={20} className="text-white group-hover:scale-110 transition-transform z-10" /> 
               <span className="z-10">Continue with Google</span>
           </button>
-          
           <p className="mt-10 text-center text-gray-400">
             {t.no_account} 
             <Link href={userType === "member" ? "/register" : "/organizer/register"} className={`font-bold hover:underline ml-2 text-transparent bg-clip-text bg-gradient-to-r ${userType === "member" ? "from-blue-400 to-pink-400" : "from-purple-400 to-orange-400"}`}>
@@ -220,20 +197,16 @@ function LoginForm() {
         </div>
       </div>
 
-      {/* ✅ 3. Success Popup (หน้าต่างแจ้งเตือนความสำเร็จ) */}
+      {/* ✅ Success Popup */}
       {loginSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
            <div className="bg-[#161B22] border border-green-500/20 rounded-3xl p-8 text-center max-w-sm w-full shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-emerald-600"></div>
-              
               <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle size={40} className="text-green-500 animate-bounce" />
               </div>
-              
               <h2 className="text-2xl font-bold text-white mb-2">ยินดีต้อนรับกลับ! 🎉</h2>
               <p className="text-gray-400 mb-6">เข้าสู่ระบบสำเร็จ กำลังพาคุณไป...</p>
-              
-              {/* Progress Bar Animation */}
               <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
                 <div className="h-full bg-green-500 animate-[loading_2s_ease-in-out_infinite] w-1/2 rounded-full"></div>
               </div>
@@ -241,33 +214,53 @@ function LoginForm() {
         </div>
       )}
 
-      {/* Forgot Password Pop-up */}
+      {/* ⛔ Custom Error Alert (Premium Design + Super Clear Text ✨) */}
+      {showError && (
+        <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-5 fade-in duration-300 w-[90%] max-w-md">
+          <div className="bg-gradient-to-r from-red-950/90 to-[#0B0F14]/95 backdrop-blur-xl border border-red-500/20 text-white px-6 py-5 rounded-3xl shadow-[0_8px_30px_rgb(220,38,38,0.15)] flex items-start gap-5 min-w-[360px] max-w-md overflow-hidden relative group cursor-default">
+            
+            {/* Ambient Glow */}
+            <div className="absolute -top-10 -left-10 w-32 h-32 bg-red-600/20 blur-[60px] rounded-full pointer-events-none group-hover:bg-red-600/30 transition-all duration-500"></div>
+
+            {/* Icon Box */}
+            <div className="p-3.5 bg-gradient-to-br from-red-500 to-red-700 rounded-2xl text-white shadow-lg shadow-red-500/20 shrink-0 relative z-10 flex items-center justify-center">
+              <AlertTriangle size={26} strokeWidth={2.5} />
+            </div>
+            
+            {/* Content */}
+            <div className="flex-1 relative z-10 pt-1">
+              <h3 className="font-bold text-lg text-white mb-1 tracking-tight drop-shadow-sm">แจ้งเตือน</h3>
+              {/* ✅ ปรับตรงนี้: ตัวหนังสือสีขาวล้วน + ตัวหนา + มีเงา อ่านชัดบนพื้นหลังเข้ม */}
+              <p className="text-white text-[15px] font-bold leading-relaxed drop-shadow-md">
+                {errorMessage}
+              </p>
+            </div>
+
+            {/* Close Button */}
+            <button onClick={() => setShowError(false)} className="text-white/60 hover:text-white hover:bg-white/10 p-2 rounded-full transition-all duration-200 shrink-0 relative z-10 -mt-1 -mr-2">
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Forgot Password */}
       {showForgotPassword && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-[#0B0F14]/90 backdrop-blur-md" onClick={closePopup}></div>
           <div className="relative w-full max-w-lg bg-[#161B22] border border-white/10 rounded-3xl shadow-2xl p-8 overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className={`absolute top-0 inset-x-0 h-1.5 ${rainbowGradient}`}></div>
             <button onClick={closePopup} className="absolute top-5 right-5 z-50 p-3 rounded-full text-gray-400 bg-white/5 hover:bg-white/20 hover:text-white"><X size={24} /></button>
-            {!isForgotSubmitted ? (
-              <div className="relative z-10 text-center sm:text-left">
-                <h2 className="text-3xl font-bold text-white mb-2">{t.forgot_title}</h2>
-                <p className="text-gray-400 mb-8">{t.forgot_subtitle}</p>
-                <form onSubmit={handleForgotSubmit} className="space-y-6">
-                    <div className="relative group rounded-2xl p-[1px] bg-white/10">
-                         <input type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="name@example.com" className="w-full bg-[#161B22] text-white px-4 py-4 rounded-2xl focus:outline-none" />
-                    </div>
-                    <button type="submit" disabled={isLoading} className={`w-full text-white font-bold py-4 rounded-2xl ${rainbowGradient}`}>{isLoading ? <Loader2 className="animate-spin mx-auto"/> : t.send_btn}</button>
-                </form>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                 <h2 className="text-2xl font-bold text-white">{t.success_title}</h2>
-                 <button onClick={closePopup} className="mt-6 w-full bg-[#0B0F14] border border-white/10 text-white font-bold py-4 rounded-2xl">Close</button>
-              </div>
-            )}
+            <h2 className="text-3xl font-bold text-white mb-2">{t.forgot_title}</h2>
+            <form onSubmit={handleForgotSubmit} className="space-y-6">
+                 <div className="relative group rounded-2xl p-[1px] bg-white/10">
+                      <input type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="name@example.com" className="w-full bg-[#161B22] text-white px-4 py-4 rounded-2xl focus:outline-none" />
+                 </div>
+                 <button type="submit" disabled={isLoading} className={`w-full text-white font-bold py-4 rounded-2xl ${rainbowGradient}`}>{isLoading ? <Loader2 className="animate-spin mx-auto"/> : t.send_btn}</button>
+            </form>
           </div>
         </div>
       )}
+
     </div>
   );
 }
