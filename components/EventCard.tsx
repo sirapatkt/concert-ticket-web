@@ -7,17 +7,28 @@ import { useLanguage } from "@/context/LanguageContext";
 // กำหนดประเภทข้อมูลที่การ์ดรับเข้ามา (Props)
 interface EventCardProps {
   id: number;
-  title: string;
+  title: string;       // ชื่อ Official (ภาษาอังกฤษ/ชื่อทางการ)
   date: string;
-  venue: string;
+  venueTh: string;     // ✅ เพิ่ม: สถานที่ภาษาไทย
+  venueEn: string;     // ✅ เพิ่ม: สถานที่ภาษาอังกฤษ
   price: string;
   image: string;
   status?: "Available" | "Sold Out" | "Selling Fast";
 }
 
-export default function EventCard({ id, title, date, venue, price, image, status = "Available" }: EventCardProps) {
-  // ✅ 2. เรียกใช้ Hook
-  const { t } = useLanguage();
+export default function EventCard({ 
+  id, 
+  title, 
+  date, 
+  venueTh, 
+  venueEn, 
+  price, 
+  image, 
+  status = "Available" 
+}: EventCardProps) {
+  
+  // ✅ 2. เรียกใช้ t และ language เพื่อเช็คภาษาปัจจุบัน
+  const { t, language } = useLanguage();
 
   return (
     <Link href={`/event/${id}`} className="group block bg-[#161B22] rounded-2xl overflow-hidden border border-white/10 hover:border-purple-500/50 transition-all duration-300 hover:shadow-[0_0_25px_rgba(168,85,247,0.2)] hover:-translate-y-1">
@@ -30,7 +41,7 @@ export default function EventCard({ id, title, date, venue, price, image, status
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
         />
         
-        {/* Badge สถานะบัตร (ปรับสีเล็กน้อยให้สดขึ้น) */}
+        {/* Badge สถานะบัตร */}
         <div className="absolute top-3 right-3">
           {status === "Sold Out" && (
             <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded shadow-lg uppercase tracking-wide">Sold Out</span>
@@ -46,21 +57,23 @@ export default function EventCard({ id, title, date, venue, price, image, status
 
       {/* ส่วนเนื้อหา */}
       <div className="p-4 relative -mt-12 bg-gradient-to-t from-[#161B22] via-[#161B22] to-transparent pt-12">
-        {/* วันที่ - เปลี่ยนเป็นสี Cyan สว่างๆ */}
+        {/* วันที่ */}
         <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold mb-2 uppercase tracking-wider">
           <Calendar size={12} />
           {date}
         </div>
 
-        {/* ชื่อคอนเสิร์ต - Hover แล้วเป็นสีม่วง */}
+        {/* ชื่อคอนเสิร์ต (Official Name - ไม่ต้องสลับภาษา) */}
         <h3 className="text-white text-lg font-bold leading-tight mb-3 group-hover:text-purple-400 transition-colors line-clamp-2 h-14">
           {title}
         </h3>
 
-        {/* สถานที่ */}
+        {/* ✅ สถานที่ (สลับภาษาตาม Context) */}
         <div className="flex items-center gap-2 text-gray-400 text-sm mb-4">
           <MapPin size={14} className="flex-shrink-0" />
-          <span className="truncate">{venue}</span>
+          <span className="truncate">
+            {language === "th" ? venueTh : venueEn}
+          </span>
         </div>
 
         {/* เส้นคั่น */}
@@ -69,11 +82,11 @@ export default function EventCard({ id, title, date, venue, price, image, status
         {/* ราคา & ปุ่ม */}
         <div className="flex items-center justify-between">
           <div className="text-gray-300 text-sm">
-            {/* ✅ 3. ใช้ตัวแปร t.price_start */}
+            {/* ใช้ตัวแปร t.price_start */}
             {t.price_start} <br />
             <span className="text-white font-bold text-lg">{price}</span>
           </div>
-          {/* ปุ่ม Ticket - เปลี่ยนเป็น Gradient ฟ้า-ม่วง */}
+          {/* ปุ่ม Ticket */}
           <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white group-hover:scale-110 transition-transform shadow-lg">
             <Ticket size={18} />
           </div>
