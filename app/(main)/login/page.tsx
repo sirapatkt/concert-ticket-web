@@ -6,10 +6,17 @@ import { Mail, Lock, Eye, EyeOff, ArrowLeft, Globe, User, Mic2, X, CheckCircle, 
 import { useLanguage } from "@/context/LanguageContext";
 import Cookies from "js-cookie";
 
+// ✅ Import Context
+import { useUser } from "../../../context/UserContext"; 
+
 function LoginForm() {
   const { t } = useLanguage();
   const searchParams = useSearchParams();
   const router = useRouter();
+  
+  const { setUser } = useUser();
+
+  const redirectPath = searchParams.get("redirect") || "/";
   const roleParam = searchParams.get("role");
 
   const [userType, setUserType] = useState<"member" | "organizer">(
@@ -17,15 +24,14 @@ function LoginForm() {
   );
 
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(""); 
   const [password, setPassword] = useState("");
+  
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [showError, setShowError] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const triggerError = (msg: string) => {
     setErrorMessage(msg);
@@ -39,25 +45,45 @@ function LoginForm() {
       triggerError("⚠️ กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน");
       return;
     }
+
     setIsLoginLoading(true);
+
     setTimeout(() => {
       setIsLoginLoading(false);
+      
       if (email === "admin@beatpass.com") {
         triggerError("⛔ บัญชี Admin ไม่สามารถเข้าใช้งานหน้านี้ได้");
         return; 
       }
+
       if (userType === "organizer") {
          if (email === "org@demo.com" && password === "1234") {
             Cookies.set("user_role", "organizer", { expires: 1 });
+            Cookies.set("isLoggedIn", "true", { expires: 1 });
+
+            setUser({
+                id: "org-001",
+                name: "Demo Organizer",
+                email: "org@demo.com"
+            });
+
             setLoginSuccess(true);
-            setTimeout(() => router.push("/"), 2000); 
+            setTimeout(() => router.push(redirectPath), 2000); 
          } else {
             triggerError("❌ อีเมลหรือรหัสผ่านผู้จัดงานไม่ถูกต้อง");
          }
       } else {
-          Cookies.set("user_role", "member", { expires: 1 });
-          setLoginSuccess(true);
-          setTimeout(() => router.push("/"), 2000);
+         Cookies.set("user_role", "member", { expires: 1 });
+         Cookies.set("isLoggedIn", "true", { expires: 1 });
+
+         setUser({
+            id: "101",
+            name: "BeatPass Member",
+            email: "user@beatpass.com"
+         });
+
+         setLoginSuccess(true);
+         setTimeout(() => router.push(redirectPath), 2000);
       }
     }, 1500);
   };
@@ -101,12 +127,10 @@ function LoginForm() {
       </div>
 
       {/* 📝 Right Side */}
-      {/* ✅ ปรับตรงนี้: ใช้ pt-32 (ประมาณ 128px) เพื่อเว้นระยะจาก Navbar ให้สวยงาม */}
       <div className="w-full lg:w-1/2 flex flex-col pt-32 px-8 md:px-16 lg:px-24 pb-20 relative overflow-y-auto"> 
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-blue-500/5 via-purple-500/5 to-pink-500/5 blur-[100px] rounded-full pointer-events-none"></div>
 
         <div className="max-w-md w-full mx-auto z-10 relative">
-          {/* ✅ ปุ่มกลับหน้าหลัก (อยู่ในตำแหน่งคงที่ ไม่โดน Navbar บัง) */}
           <div className="mb-10">
             <Link href="/" className="text-gray-500 hover:text-white flex items-center gap-2 transition-colors w-fit group">
               <div className="p-2 rounded-full bg-white/5 group-hover:bg-white/10 transition-colors"><ArrowLeft size={18} /></div>
@@ -175,19 +199,17 @@ function LoginForm() {
         </div>
       </div>
 
-      {/* ✅ ส่วนประกอบ Popup อื่นๆ (Success, Error, Forgot Password) คงเดิม */}
+      {/* Popups (Success, Error, Forgot Password) */}
       {loginSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
            <div className="bg-[#161B22] border border-green-500/20 rounded-3xl p-8 text-center max-w-sm w-full shadow-2xl relative overflow-hidden">
              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-emerald-600"></div>
              <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-               <CheckCircle size={40} className="text-green-500 animate-bounce" />
+               {/* ✅ ลบ animate-bounce ออกแล้วครับ ไอคอนจะอยู่นิ่งๆ */}
+               <CheckCircle size={40} className="text-green-500" />
              </div>
-             <h2 className="text-2xl font-bold text-white mb-2">ยินดีต้อนรับกลับ! 🎉</h2>
-             <p className="text-gray-400 mb-6">เข้าสู่ระบบสำเร็จ กำลังพาคุณไป...</p>
-             <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
-               <div className="h-full bg-green-500 animate-[loading_2s_ease-in-out_infinite] w-1/2 rounded-full"></div>
-             </div>
+             <h2 className="text-2xl font-bold text-white mb-2">เข้าสู่ระบบสำเร็จ! 🎉</h2>
+             <p className="text-gray-400 mb-6">ยินดีต้อนรับกลับสู่ BEATPASS กำลังพาคุณกลับไป...</p>
            </div>
         </div>
       )}
@@ -222,7 +244,6 @@ function LoginForm() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

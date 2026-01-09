@@ -5,10 +5,13 @@ import Link from "next/link";
 import { 
   Search, ChevronDown, ShoppingCart, Bell, 
   Mic2, Drama, Music2, Ticket, MapPin, TrendingUp,
-  CheckCircle, Calendar, Tag, ArrowUpRight, X
+  CheckCircle, Calendar, Tag, ArrowUpRight, X,
+  User, LogOut, History, Pencil, Lock 
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
-import { useCart } from "@/context/CartContext"; // ✅ 1. Import useCart เข้ามา
+import { useCart } from "@/context/CartContext";
+import { useUser } from "@/context/UserContext"; 
+import Cookies from "js-cookie"; 
 
 import { allSearchTerms } from "@/data/searchData"; 
 
@@ -24,7 +27,11 @@ type NotificationItem = {
 
 export default function Navbar() {
   const { language: lang, setLanguage: setLang, t } = useLanguage();
-  const { cartCount } = useCart(); // ✅ 2. ดึงจำนวนสินค้าจริงในตะกร้ามาใช้
+  const { cartCount } = useCart();
+  
+  // ✅ 1. ดึง user และ setUser มาด้วย เพื่อใช้เช็คสถานะและ Logout
+  const { user, setUser, profileImage } = useUser(); 
+  
   const router = useRouter();
 
   // State ต่างๆ
@@ -32,7 +39,26 @@ export default function Navbar() {
   const [isEventOpen, setIsEventOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotiOpen, setIsNotiOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false); 
   
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+
+  // ✅ 2. ปรับปรุง Logic การเช็ค Login ให้ Sync กับ UserContext ทันที
+  useEffect(() => {
+    const checkAuth = () => {
+      // เช็ค 2 ทาง: 1. มี User ใน Context ไหม? หรือ 2. มี Cookie ไหม?
+      const hasContextUser = !!user;
+      const hasCookie = Cookies.get("isLoggedIn") === "true";
+      
+      setIsLoggedIn(hasContextUser || hasCookie);
+    };
+
+    checkAuth();
+    // เพิ่ม interval ไว้เผื่อกรณี Cookie หมดอายุเอง
+    const authInterval = setInterval(checkAuth, 1000);
+    return () => clearInterval(authInterval);
+  }, [user]); // ใส่ dependency [user] เพื่อให้ Navbar เปลี่ยนสถานะทันทีเมื่อ Login
+
   const [searchQuery, setSearchQuery] = useState("");
 
   const searchSuggestions = allSearchTerms || []; 
@@ -48,6 +74,19 @@ export default function Navbar() {
     setSearchQuery(term);
     setIsSearchOpen(false);
     router.push(`/explore?q=${encodeURIComponent(term)}`);
+  };
+
+  // ✅ 3. แก้ไขฟังก์ชัน Logout ให้เคลียร์ Context ด้วย
+  const handleLogout = () => {
+    Cookies.remove("isLoggedIn");
+    Cookies.remove("user_role");
+    
+    setUser(null); // สำคัญ: สั่งเคลียร์ Context ให้เป็น null
+    
+    setIsLoggedIn(false);
+    setIsUserMenuOpen(false);
+    router.push("/"); 
+    router.refresh(); 
   };
 
   const trendingEvents = [
@@ -89,11 +128,11 @@ export default function Navbar() {
   const markAllAsRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // Refs
   const dropdownRef = useRef<HTMLDivElement>(null);
   const eventRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const notiRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -106,6 +145,7 @@ export default function Navbar() {
       if (eventRef.current && !eventRef.current.contains(event.target as Node)) setIsEventOpen(false);
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) setIsSearchOpen(false);
       if (notiRef.current && !notiRef.current.contains(event.target as Node)) setIsNotiOpen(false);
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) setIsUserMenuOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -279,15 +319,13 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* ✅ 3. ปุ่มตะกร้า: เชื่อมต่อกับหน้ารถเข็นและแสดงจำนวนสินค้าจริง */}
           <Link 
             href="/cart"
             className="relative text-gray-400 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/5 group"
           >
             <ShoppingCart size={20} className="group-active:scale-90 transition-transform" />
-            {/* แสดง Badge ตัวเลขเฉพาะเมื่อมีสินค้าในตะกร้า */}
             {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-blue-500 text-[10px] text-white font-bold px-1.5 py-0.5 rounded-full border border-[#0B0F14] animate-in zoom-in">
+              <span className="absolute -top-1 -right-1 bg-[#FF2D55] text-[10px] text-white font-bold px-1.5 py-0.5 rounded-full border border-[#0B0F14] animate-in zoom-in">
                 {cartCount}
               </span>
             )}
@@ -312,7 +350,67 @@ export default function Navbar() {
             )}
           </div>
 
-          <Link href="/login" className="hidden md:block px-6 py-2 text-sm font-bold text-white border-2 border-blue-500 rounded-lg hover:bg-blue-500 hover:text-white hover:shadow-[0_0_20px_rgba(59,130,246,0.6)] transition-all active:scale-95">{t.nav_login}</Link>
+          {isLoggedIn ? (
+            <div className="relative" ref={userMenuRef}>
+              <button 
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center gap-2 pl-3 pr-1 py-1 border border-white/20 rounded-lg group active:scale-95 transition-all bg-white/5 hover:bg-white/10"
+              >
+                <div className="text-right hidden md:block">
+                  <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">WELCOME</p>
+                  <p className="text-[13px] font-black text-[#4FACFE] group-hover:text-white transition-colors tracking-tight leading-none uppercase">
+                    BEATPASS MEMBER
+                  </p>
+                </div>
+                
+                <div className="w-9 h-9 bg-gradient-to-tr from-[#4FACFE] to-[#A855F7] rounded-full flex items-center justify-center border border-white/20 overflow-hidden shadow-lg shadow-blue-500/10">
+                   {profileImage ? (
+                     <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                   ) : (
+                     <User size={18} className="text-white" />
+                   )}
+                </div>
+              </button>
+
+              {isUserMenuOpen && (
+                <div className="absolute top-full right-0 mt-2 w-60 bg-[#1A1F2C] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-200 z-50">
+                  
+                  <Link href="/profile/tickets" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors group border-b border-white/5">
+                    <Ticket size={16} className="text-blue-500 group-hover:scale-110 transition-transform" /> 
+                    <span className="font-medium">ตั๋วของฉัน</span>
+                  </Link>
+
+                  <Link href="/profile/history" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors group border-b border-white/5">
+                    <History size={16} className="text-purple-500 group-hover:scale-110 transition-transform" /> 
+                    <span className="font-medium">ประวัติการสั่งซื้อ</span>
+                  </Link>
+
+                  <Link href="/profile/edit" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors group border-b border-white/5">
+                    <Pencil size={16} className="text-green-500 group-hover:scale-110 transition-transform" /> 
+                    <span className="font-medium">แก้ไขข้อมูลส่วนตัว</span>
+                  </Link>
+
+                  <Link href="/profile/password" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors group border-b border-white/5">
+                    <Lock size={16} className="text-orange-500 group-hover:scale-110 transition-transform" /> 
+                    <span className="font-medium">เปลี่ยนรหัสผ่าน</span>
+                  </Link>
+
+                  <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors group border-b border-white/5">
+                    <LogOut size={16} className="group-hover:translate-x-0.5 transition-transform" /> 
+                    <span className="font-medium">ออกจากระบบ</span>
+                  </button>
+
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link 
+              href="/login" 
+              className="hidden md:block px-6 py-2 text-sm font-bold text-white border-2 border-blue-500 rounded-lg hover:bg-blue-500 hover:text-white hover:shadow-[0_0_20px_rgba(59,130,246,0.6)] transition-all active:scale-95"
+            >
+              {t.nav_login}
+            </Link>
+          )}
         </div>
       </div>
     </nav>
