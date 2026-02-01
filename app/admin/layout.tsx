@@ -1,41 +1,51 @@
 "use client";
+
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation"; // ✅ 1. เพิ่ม useRouter
+import { usePathname, useRouter } from "next/navigation";
 import { 
-  LayoutDashboard, Users, Building2, CalendarDays, 
-  CreditCard, Settings, LogOut, ShieldCheck 
+  LayoutDashboard, 
+  Users, 
+  Building2, 
+  CalendarDays, 
+  CreditCard, 
+  Settings, 
+  LogOut, 
+  ShieldCheck,
+  // ✅ 1. Import the Image icon for Banner Management
+  Image as ImageIcon 
 } from "lucide-react";
-import Cookies from "js-cookie"; // ✅ 2. เพิ่ม js-cookie เพื่อสั่งลบ
+import Cookies from "js-cookie";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter(); // ✅ 3. ประกาศตัวแปร router
+  const router = useRouter();
 
-  // เมนูของ Admin
+  // Admin Menu Items
   const menuItems = [
     { name: "ภาพรวมระบบ", href: "/admin", icon: <LayoutDashboard size={20} /> },
     { name: "จัดการผู้ใช้งาน", href: "/admin/users", icon: <Users size={20} /> },
     { name: "อนุมัติผู้จัดงาน", href: "/admin/organizers", icon: <Building2 size={20} /> },
     { name: "รายการอีเวนต์", href: "/admin/events", icon: <CalendarDays size={20} /> },
+    
+    // ✅ 2. Added Banner Management Menu
+    { name: "จัดการแบนเนอร์", href: "/admin/banners", icon: <ImageIcon size={20} /> },
+
     { name: "ธุรกรรมการเงิน", href: "/admin/finance", icon: <CreditCard size={20} /> },
     { name: "ตั้งค่าระบบ", href: "/admin/settings", icon: <Settings size={20} /> },
   ];
 
-  // ✅ 4. ฟังก์ชันออกจากระบบ
   const handleLogout = () => {
-    // ลบบัตรผ่าน (Cookie) ทิ้ง
     Cookies.remove("user_role");
-    // ดีดกลับไปหน้า Login
     router.push("/login");
   };
 
   return (
     <div className="flex min-h-screen bg-[#0B0F14] text-white font-sans">
       
-      {/* 🔴 Sidebar (เมนูซ้าย) */}
+      {/* 🔴 Sidebar (Left Menu) */}
       <aside className="w-64 bg-[#161B22] border-r border-white/5 flex flex-col fixed h-full z-10">
         
-        {/* Logo Admin */}
+        {/* Admin Logo */}
         <div className="h-20 flex items-center px-6 border-b border-white/5 gap-3">
           <div className="p-2 bg-red-500/10 rounded-lg text-red-500">
             <ShieldCheck size={24} />
@@ -71,7 +81,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Logout */}
         <div className="p-4 border-t border-white/5">
-          {/* ✅ 5. ผูกฟังก์ชันใส่ปุ่มนี้ */}
           <button 
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-4 py-3 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all text-sm font-medium"
@@ -82,7 +91,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      {/* 🟢 Content Area (ส่วนเนื้อหาขวา) */}
+      {/* 🟢 Content Area (Right Content) */}
       <main className="flex-1 ml-64 p-8">
         {children}
       </main>

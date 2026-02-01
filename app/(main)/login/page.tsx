@@ -58,17 +58,17 @@ function LoginForm() {
 
       if (userType === "organizer") {
          if (email === "org@demo.com" && password === "1234") {
-            Cookies.set("user_role", "organizer", { expires: 1 });
-            Cookies.set("isLoggedIn", "true", { expires: 1 });
+           Cookies.set("user_role", "organizer", { expires: 1 });
+           Cookies.set("isLoggedIn", "true", { expires: 1 });
 
-            setUser({
+           setUser({
                 id: "org-001",
                 name: "Demo Organizer",
                 email: "org@demo.com"
             });
 
-            setLoginSuccess(true);
-            setTimeout(() => router.push(redirectPath), 2000); 
+           setLoginSuccess(true);
+           setTimeout(() => router.push(redirectPath), 2000); 
          } else {
             triggerError("❌ อีเมลหรือรหัสผ่านผู้จัดงานไม่ถูกต้อง");
          }
@@ -202,14 +202,15 @@ function LoginForm() {
       {/* Popups (Success, Error, Forgot Password) */}
       {loginSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-           <div className="bg-[#161B22] border border-green-500/20 rounded-3xl p-8 text-center max-w-sm w-full shadow-2xl relative overflow-hidden">
+           {/* ✅ แก้ไข: เพิ่ม max-w-md เพื่อให้กล่องกว้างขึ้น */}
+           <div className="bg-[#161B22] border border-green-500/20 rounded-3xl p-8 text-center max-w-md w-full shadow-2xl relative overflow-hidden">
              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-emerald-600"></div>
              <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-               {/* ✅ ลบ animate-bounce ออกแล้วครับ ไอคอนจะอยู่นิ่งๆ */}
                <CheckCircle size={40} className="text-green-500" />
              </div>
              <h2 className="text-2xl font-bold text-white mb-2">เข้าสู่ระบบสำเร็จ! 🎉</h2>
-             <p className="text-gray-400 mb-6">ยินดีต้อนรับกลับสู่ BEATPASS กำลังพาคุณกลับไป...</p>
+             {/* ✅ แก้ไข: เพิ่ม whitespace-nowrap และเปลี่ยน ... เป็น … */}
+             <p className="text-gray-400 mb-6 whitespace-nowrap">ยินดีต้อนรับกลับสู่ BEATPASS กำลังพาคุณกลับไป…</p>
            </div>
         </div>
       )}
