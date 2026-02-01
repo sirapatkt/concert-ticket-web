@@ -2,73 +2,24 @@
 "use client";
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { 
   ArrowUpRight, 
-  Home, 
-  LayoutList, 
-  PlusCircle, 
-  Ticket, 
-  Users, 
-  Settings, 
-  LogOut 
 } from 'lucide-react';
 
-// --- 1. ส่วนประกอบ Sidebar (เมนูซ้าย) ---
-function Sidebar() {
-  const pathname = usePathname();
-
-  const menuItems = [
-    { name: "หน้าหลัก", href: "/organizer", icon: Home },
-    { name: "อีเวนต์ของฉัน", href: "/organizer/my-events", icon: LayoutList },
-    { name: "สร้างอีเวนต์ใหม่", href: "/organizer/create", icon: PlusCircle },
-    { name: "สรุปยอดขาย", href: "/organizer/sales", icon: Ticket },
-    { name: "ผู้เข้าร่วม/ลูกค้า", href: "/organizer/customers", icon: Users },
-    { name: "ตั้งค่าบัญชี", href: "/organizer/settings", icon: Settings },
-  ];
-
-  return (
-    <div className="w-64 min-h-screen bg-[#020617] border-r border-slate-800 flex flex-col sticky top-0 shrink-0">
-      <div className="p-6 mb-2">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent cursor-default">
-          BEATPASS
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">Organizer Panel</p>
-      </div>
-
-      <nav className="flex-1 px-4 space-y-2">
-        {menuItems.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link 
-              key={item.href} 
-              href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                isActive 
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" 
-                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
-              }`}
-            >
-              <item.icon size={20} className={isActive ? "text-white" : "group-hover:text-blue-400 transition-colors"} />
-              <span className="font-medium text-sm">{item.name}</span>
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className="p-4 border-t border-slate-800">
-        <Link href="/login" className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all group">
-          <LogOut size={20} className="group-hover:text-red-400" />
-          <span className="font-medium text-sm">ออกจากระบบ</span>
-        </Link>
-      </div>
-    </div>
-  );
+// --- 1. แก้ไขเรื่อง Type (แก้ any แดง) ---
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  unit: string;
+  trend: string;
+  subtext?: string; // ? แปลว่ามีหรือไม่มีก็ได้
+  color: 'cyan' | 'purple' | 'pink'; // ล็อคค่าสีให้ถูกต้อง
 }
 
-// --- 2. ส่วนประกอบ StatCard (การ์ดตัวเลข) ---
-function StatCard({ title, value, unit, trend, subtext, color }: any) {
-  const colorStyles: any = {
+// --- 2. ส่วนประกอบ StatCard ---
+function StatCard({ title, value, unit, trend, subtext, color }: StatCardProps) {
+  // กำหนด Type ให้ key ของ object นี้
+  const colorStyles: Record<string, string> = {
     cyan: "border-cyan-500 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)]",
     purple: "border-purple-500 text-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.2)]",
     pink: "border-pink-500 text-pink-400 shadow-[0_0_15px_rgba(236,72,153,0.2)]"
@@ -95,7 +46,7 @@ function StatCard({ title, value, unit, trend, subtext, color }: any) {
   );
 }
 
-// --- 3. ส่วนประกอบ EventTable (ตาราง) ---
+// --- 3. ส่วนประกอบ EventTable ---
 function EventTable() {
   const events = [
     { id: 1, name: "2024 TREASURE RELAY TOUR", date: "23-26 พ.ค. 2567", status: "เสร็จสิ้น", progress: 100 },
@@ -149,31 +100,22 @@ function EventTable() {
   );
 }
 
-// --- 4. หน้าจอหลัก (รวมทุกอย่างเข้าด้วยกัน) ---
+// --- 4. หน้าจอหลัก (สะอาดแล้ว ไม่มี Sidebar ซ้อน) ---
 export default function OrganizerDashboard() {
   return (
-    // ⭐ จุดสำคัญ: จัด Layout ให้ Sidebar อยู่ซ้าย + เนื้อหาอยู่ขวา
-    <div className="flex bg-[#020617] min-h-screen font-sans text-white">
+    // ❌ ไม่ต้องมี div className="flex" หรือ <Sidebar /> แล้ว เพราะ layout.tsx จัดการให้
+    <div className="flex flex-col gap-8">
+      <div>
+        <h1 className="text-3xl font-bold text-white">แดชบอร์ดผู้จัดงาน</h1>
+      </div>
       
-      {/* 1. วาง Sidebar ไว้ตรงนี้ */}
-      <Sidebar />
-
-      {/* 2. วางเนื้อหา Dashboard ไว้ด้านขวา */}
-      <main className="flex-1 p-8 overflow-y-auto h-screen">
-        <div className="flex flex-col gap-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white">แดชบอร์ดผู้จัดงาน</h1>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard title="ยอดขายรวม" value="25,000" unit="บาท" trend="↑ +15% (ใน 30 วันล่าสุด)" color="cyan" />
-            <StatCard title="จำนวนบัตรที่ขายได้" value="180" unit="ใบ" trend="(90% of total)" subtext="" color="purple" />
-            <StatCard title="งานที่กำลังเปิดขาย" value="2" unit="งาน" trend="" subtext="" color="pink" />
-          </div>
-          
-          <EventTable />
-        </div>
-      </main>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StatCard title="ยอดขายรวม" value="25,000" unit="บาท" trend="↑ +15% (ใน 30 วันล่าสุด)" color="cyan" />
+        <StatCard title="จำนวนบัตรที่ขายได้" value="180" unit="ใบ" trend="(90% of total)" subtext="" color="purple" />
+        <StatCard title="งานที่กำลังเปิดขาย" value="2" unit="งาน" trend="" subtext="" color="pink" />
+      </div>
+      
+      <EventTable />
     </div>
   );
 }
