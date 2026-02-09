@@ -33,6 +33,7 @@ export default function Navbar() {
   // ==========================================
   // ✅ 1. เตรียมข้อมูล 2 ชุด (Guest vs Member)
   // ==========================================
+  // (ย้ายออกมานอก render หรือใช้ useMemo ก็ได้ แต่ไว้ตรงนี้เพื่อความง่ายในการอ่านตามเดิม)
   const guestNotifications: NotificationItem[] = [
     { 
       id: 101, type: "info", title: "🔥 กำลังฮิต: Bruno Mars", 
@@ -72,36 +73,46 @@ export default function Navbar() {
   // ✅ 2. State สำหรับเก็บ Notifications ที่จะแสดงผลจริง
   const [notifications, setNotifications] = useState<NotificationItem[]>(guestNotifications);
 
-  // ✅ 3. คำนวณจำนวนที่ยังไม่อ่าน
+  // ✅ 3. คำนวณจำนวนที่ยังไม่อ่าน (จะคำนวณใหม่ทุกครั้งที่ State เปลี่ยน)
   const unreadCount = notifications.filter(n => !n.read).length;
 
   // ✅ 4. ฟังก์ชันกด "อ่านทั้งหมด"
   const handleMarkAllAsRead = () => {
+    // อัปเดต State โดยตรงเพื่อให้ UI เปลี่ยนทันที และจะไม่โดนทับจาก Interval แล้ว
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
-  // Authentication Logic & Notification Switching
+  // ==========================================
+  // ✅ แก้ไขส่วน useEffect (แยกเป็น 2 ส่วน)
+  // ==========================================
+  
+  // ส่วนที่ 1: เช็คสถานะ Login อย่างเดียว (Loop ทุก 1 วิ)
   useEffect(() => {
     const checkAuth = () => {
       const hasContextUser = !!user;
       const hasCookie = Cookies.get("isLoggedIn") === "true";
       const userIsLoggedIn = hasContextUser || hasCookie;
       
+      // อัปเดตสถานะ Auth (ถ้าค่าเปลี่ยน React จะไปทำ useEffect ตัวถัดไป)
       setIsLoggedIn(userIsLoggedIn);
-
-      // ✅ 5. สลับข้อมูลแจ้งเตือนตามสถานะ Login
-      if (userIsLoggedIn) {
-        setNotifications(memberNotifications);
-      } else {
-        setNotifications(guestNotifications);
-      }
     };
     
     checkAuth();
     const authInterval = setInterval(checkAuth, 1000);
     return () => clearInterval(authInterval);
+  }, [user]);
+
+  // ส่วนที่ 2: โหลดข้อมูล Notification ใหม่ "เฉพาะตอนสถานะ Login เปลี่ยน" เท่านั้น
+  // วิธีนี้จะทำให้ค่า read: true ที่เรากดไป ไม่โดนทับจนกว่าจะ Logout/Login ใหม่
+  useEffect(() => {
+    if (isLoggedIn) {
+      setNotifications(memberNotifications);
+    } else {
+      setNotifications(guestNotifications);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); // เช็คเมื่อ User เปลี่ยน
+  }, [isLoggedIn]); 
+
 
   const [searchQuery, setSearchQuery] = useState("");
   const searchSuggestions = allSearchTerms || []; 
@@ -125,7 +136,7 @@ export default function Navbar() {
     setIsLoggedIn(false);
     setIsUserMenuOpen(false);
     
-    // ✅ รีเซ็ตแจ้งเตือนเป็น Guest ทันทีเมื่อ Logout
+    // รีเซ็ตแจ้งเตือนเป็น Guest ทันที
     setNotifications(guestNotifications);
 
     router.push("/"); 
@@ -285,7 +296,7 @@ export default function Navbar() {
             )}
           </div>
           
-          {/* ✅ ส่วนแจ้งเตือน (ควบคุม State จากที่นี่) */}
+          {/* ✅ ส่วนแจ้งเตือน */}
           <div className="relative" ref={notiRef}>
             <button 
                 onClick={() => setIsNotiOpen(!isNotiOpen)} 

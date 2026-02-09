@@ -11,8 +11,8 @@ import {
   Settings, 
   LogOut, 
   ShieldCheck,
-  // ✅ 1. Import the Image icon for Banner Management
-  Image as ImageIcon 
+  Image as ImageIcon,
+  MessageSquareWarning 
 } from "lucide-react";
 import Cookies from "js-cookie";
 
@@ -26,11 +26,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "จัดการผู้ใช้งาน", href: "/admin/users", icon: <Users size={20} /> },
     { name: "อนุมัติผู้จัดงาน", href: "/admin/organizers", icon: <Building2 size={20} /> },
     { name: "รายการอีเวนต์", href: "/admin/events", icon: <CalendarDays size={20} /> },
-    
-    // ✅ 2. Added Banner Management Menu
     { name: "จัดการแบนเนอร์", href: "/admin/banners", icon: <ImageIcon size={20} /> },
-
     { name: "ธุรกรรมการเงิน", href: "/admin/finance", icon: <CreditCard size={20} /> },
+    
+    // ✅ เหลือแค่เมนูรับแจ้งปัญหา
+    { name: "รับแจ้งปัญหา", href: "/admin/support", icon: <MessageSquareWarning size={20} /> },
+
     { name: "ตั้งค่าระบบ", href: "/admin/settings", icon: <Settings size={20} /> },
   ];
 
@@ -59,20 +60,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Menu List */}
-        <nav className="flex-1 px-4 py-6 space-y-1">
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
           {menuItems.map((item) => {
+            // เช็คว่าเมนูนี้ถูกเลือกอยู่หรือไม่ (Active State)
             const isActive = pathname === item.href;
+            
             return (
               <Link 
                 key={item.href} 
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm group ${
                   isActive 
                     ? "bg-red-600 text-white shadow-lg shadow-red-900/20" 
                     : "text-gray-400 hover:bg-white/5 hover:text-white"
                 }`}
               >
-                {item.icon}
+                <span className={`transition-colors ${isActive ? "text-white" : "group-hover:text-white"}`}>
+                   {item.icon}
+                </span>
                 {item.name}
               </Link>
             );

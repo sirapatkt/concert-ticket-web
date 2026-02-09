@@ -7,7 +7,7 @@ import {
   Eye, ShoppingBag, Unlock, Clock, MapPin, Send 
 } from "lucide-react";
 
-// Interface
+// --- Interface ---
 interface OrderType {
   id: string;
   event: string;
@@ -34,7 +34,7 @@ interface UserType {
   orders?: OrderType[];
 }
 
-// Mock Data
+// --- Mock Data ---
 const initialUsers: UserType[] = [
   { 
     id: 1, name: "Somchai Jai-dee", email: "somchai@gmail.com", role: "Member", status: "Active", 
@@ -102,7 +102,7 @@ export default function UsersPage() {
     }
   };
 
-  // ✅ ฟังก์ชันจำลองการส่งเมล (กดแล้ว Alert บอกว่าส่งแล้ว)
+  // ✅ ฟังก์ชันจำลองการส่งเมล
   const handleResendEmail = () => {
       alert(`✅ ระบบได้ส่ง E-Ticket ไปยังอีเมลของลูกค้าแล้ว!`);
   };
@@ -282,7 +282,7 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* ✅ E-TICKET MODAL (Admin View) */}
+      {/* ✅ E-TICKET MODAL (Admin View) - Integrated */}
       {selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
           <div className="absolute inset-0" onClick={() => setSelectedTicket(null)}></div>
@@ -328,7 +328,7 @@ export default function UsersPage() {
                 <p className="text-[10px] text-gray-500 uppercase tracking-widest animate-pulse">Scan to enter</p>
               </div>
 
-              {/* ✅ Footer Actions (สำหรับ Admin: ส่งเมลซ้ำ) */}
+              {/* Footer Actions (Resend Email) */}
               <div className="grid grid-cols-1 gap-3 mt-2">
                 <button 
                     onClick={handleResendEmail} 

@@ -9,22 +9,26 @@ import {
 export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(false);
   
-  // State ค่า Config
+  // ✅ ใช้ Local State ธรรมดา (ไม่พึ่ง Context แล้ว)
+  // TypeScript จะรู้อัตโนมัติว่าค่าเริ่มต้นเป็นแบบไหน
   const [config, setConfig] = useState({
     siteTitle: "BEATPASS",
     description: "Concert Ticket Platform",
     supportEmail: "support@beatpass.com",
-    serviceFee: 7,     // ค่าธรรมเนียมระบบ (%)
-    vat: 7,            // VAT (%)
-    gatewayFee: 3,     // ค่าธรรมเนียม Payment Gateway (%)
+    serviceFee: 7,
+    vat: 7,
+    gatewayFee: 3,
     maintenanceMode: false
   });
 
   const handleSave = () => {
     setIsLoading(true);
+    
+    // จำลองการบันทึก (Mock API)
     setTimeout(() => {
       setIsLoading(false);
       alert("✅ บันทึกการตั้งค่าเรียบร้อยแล้ว!");
+      console.log("Saved Config:", config); // ดูค่าใน Console แทน
     }, 1000);
   };
 
@@ -49,13 +53,13 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      {/* Main Content: Grid 2 Columns (ปรับ Layout ใหม่) */}
+      {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl">
         
         {/* Column 1: ข้อมูลทั่วไป & การเงิน */}
         <div className="space-y-6">
           
-          {/* 1. General Info */}
+          {/* General Info */}
           <div className="bg-[#161B22] border border-white/5 rounded-2xl p-6">
             <h3 className="font-bold text-lg text-white mb-6 flex items-center gap-2">
               <Globe size={18} className="text-blue-500" /> ข้อมูลทั่วไป (General)
@@ -91,7 +95,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* 2. Financial Settings */}
+          {/* Financial Settings */}
           <div className="bg-[#161B22] border border-white/5 rounded-2xl p-6">
             <h3 className="font-bold text-lg text-white mb-6 flex items-center gap-2">
               <CreditCard size={18} className="text-green-500" /> ตั้งค่าการเงิน (Financial)
@@ -140,7 +144,7 @@ export default function SettingsPage() {
               </div>
             </div>
             
-            {/* Hint เล็กๆ แทน Simulator */}
+            {/* Hint */}
             <div className="mt-4 p-3 bg-green-500/5 rounded-lg border border-green-500/10 flex items-start gap-3">
                 <ShieldCheck size={16} className="text-green-500 mt-0.5"/>
                 <p className="text-xs text-green-400">
@@ -153,7 +157,7 @@ export default function SettingsPage() {
         {/* Column 2: สถานะระบบ & แจ้งเตือน */}
         <div className="space-y-6">
           
-          {/* 3. System Status (Maintenance) */}
+          {/* System Status (Maintenance) */}
           <div className={`border rounded-2xl p-6 transition-all ${config.maintenanceMode ? 'bg-orange-500/10 border-orange-500/20' : 'bg-[#161B22] border-white/5'}`}>
             <div className="flex justify-between items-start mb-4">
               <div className={`p-3 rounded-xl ${config.maintenanceMode ? 'bg-orange-500 text-white' : 'bg-white/5 text-gray-400'}`}>
@@ -184,7 +188,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* 4. Notifications (ย้ายมาฝั่งขวา) */}
+          {/* Notifications */}
           <div className="bg-[#161B22] border border-white/5 rounded-2xl p-6">
             <h3 className="font-bold text-lg text-white mb-6 flex items-center gap-2">
               <Bell size={18} className="text-yellow-500" /> การแจ้งเตือน (Notifications)

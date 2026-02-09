@@ -6,8 +6,9 @@ export const translations = {
     nav_home: "หน้าแรก",
     nav_category: "หมวดหมู่งาน",
     nav_faq: "FAQ",
-    nav_login: "สมัครสมาชิก/เข้าสู่ระบบ",
-    
+    nav_login: "เข้าสู่ระบบ",
+    nav_register: "สมัครสมาชิก", // ✅ เพิ่มให้ครบตาม Footer
+
     // Hero & Home
     hero_title: "จองบัตรคอนเสิร์ตที่คุณรัก",
     hero_subtitle: "ประสบการณ์ทางดนตรีที่ดีที่สุด เริ่มต้นที่นี่",
@@ -24,15 +25,21 @@ export const translations = {
     cat_theater: "ละครเวที",
     cat_orch: "ออร์เคสตรา",
 
-    // Event Card (เพิ่มใหม่)
-    price_start: "ราคาเริ่มต้น", // ✅ เพิ่มบรรทัดนี้
+    // Event Card
+    price_start: "ราคาเริ่มต้น",
 
-    // Footer
+    // Footer (อัปเดตใหม่ ✅)
     footer_desc: "แพลตฟอร์มจองบัตรคอนเสิร์ตแห่งอนาคต สะดวก รวดเร็ว และปลอดภัยที่สุด",
     quick_links: "เมนูลัด",
     support: "ช่วยเหลือ",
     contact: "ติดต่อเรา",
     rights: "สงวนลิขสิทธิ์",
+    footer_how_to_buy: "วิธีการชำระเงิน",
+    footer_contact_us: "ติดต่อเรา",
+    footer_faq: "คำถามที่พบบ่อย",
+    footer_terms: "ข้อกำหนดและเงื่อนไข",
+    footer_privacy: "นโยบายความเป็นส่วนตัว",
+    footer_address: "123 อาคารไซเบอร์ทาวเวอร์ ถ.รัชดาภิเษก ห้วยขวาง กรุงเทพฯ 10400",
 
     // Login Page
     login_welcome: "ยินดีต้อนรับกลับมา!",
@@ -47,7 +54,7 @@ export const translations = {
     sign_up_link: "สมัครสมาชิก",
     back_home: "กลับหน้าหลัก",
 
-    // === Login Page (Organizer - เพิ่มใหม่) ===
+    // Login Page (Organizer)
     tab_member: "สมาชิกทั่วไป",
     tab_organizer: "ผู้จัดงาน",
     organizer_welcome: "จัดการอีเวนต์ของคุณ",
@@ -87,7 +94,8 @@ export const translations = {
     nav_home: "Home",
     nav_category: "Categories",
     nav_faq: "FAQ",
-    nav_login: "Register / Login",
+    nav_login: "Login",
+    nav_register: "Register", // ✅ เพิ่มให้ครบตาม Footer
 
     // Hero & Home
     hero_title: "Book Tickets for Your Favorite Concerts",
@@ -105,15 +113,21 @@ export const translations = {
     cat_theater: "Theater",
     cat_orch: "Orchestra",
 
-    // Event Card (เพิ่มใหม่)
-    price_start: "Starts at", // ✅ เพิ่มบรรทัดนี้
+    // Event Card
+    price_start: "Starts at",
 
-    // Footer
+    // Footer (อัปเดตใหม่ ✅)
     footer_desc: "The future of concert ticketing platform. Convenient, Fast, and Secure.",
     quick_links: "Quick Links",
     support: "Support",
     contact: "Contact Us",
     rights: "All rights reserved.",
+    footer_how_to_buy: "Payment Methods",
+    footer_contact_us: "Contact Us",
+    footer_faq: "FAQ",
+    footer_terms: "Terms of Service",
+    footer_privacy: "Privacy Policy",
+    footer_address: "123 Cyber Tower, Ratchada Road, Huai Khwang, Bangkok 10400",
 
     // Login Page
     login_welcome: "Welcome Back!",
@@ -128,7 +142,7 @@ export const translations = {
     sign_up_link: "Sign Up",
     back_home: "Back to Home",
 
-    // === Login Page (Organizer - เพิ่มใหม่) ===
+    // Login Page (Organizer)
     tab_member: "Member",
     tab_organizer: "Organizer",
     organizer_welcome: "Partner Portal",
