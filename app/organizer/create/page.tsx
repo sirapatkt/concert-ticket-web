@@ -228,11 +228,58 @@ export default function CreateEventPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); 
-    const finalLocation = selectedVenue;
-    const payload = { eventName, eventDate, saleStartDate, location: finalLocation, description, tickets, stageGrid }; // ส่ง stageGrid ไปด้วย
-    console.log("🚀 กำลังส่งข้อมูล...", payload);
-    alert("✅ บันทึกข้อมูลเรียบร้อย!");
+    e.preventDefault();
+
+    // 1. แปลงข้อมูลให้พร้อมส่ง
+    const payload = {
+      eventName : eventName,
+      eventDescription: description, // <-- แก้ตรงนี้! (เปลี่ยนจาก description เป็น eventDescription)
+      bannerImage: posterImage,
+
+      eventDate :eventDate,
+      saleStartDate : saleStartDate,
+      location: selectedVenue, // ใช้ค่าจาก state selectedVenue
+      posterImage, // <--- (สำคัญ) อย่าลืมส่งรูปที่อัปโหลดไปด้วย
+      // แปลงตั๋วให้ราคาและจำนวนเป็นตัวเลข (กัน error)
+      tickets: tickets.map(t => ({
+          name: t.name,
+          price: Number(t.price),
+          quantity: Number(t.quantity)
+      })),
+      // ส่ง Grid ไปด้วย (Backend ต้องมีคอลัมน์รับนะ หรือถ้าไม่มีให้ลบบรรทัดนี้ออกก่อน)
+      stageGrid: stageGrid
+    };
+
+    console.log("🚀 กำลังส่งข้อมูล...", payload); // เช็คใน Console ก่อนส่ง
+
+    try {
+      // 2. ยิงข้อมูลไปหา Laravel (พอร์ต 8000)
+      const res = await fetch('http://127.0.0.1:8000/api/events', {
+        method: 'POST', // ส่งแบบ POST
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload) // ห่อข้อมูลส่งไป
+      });
+
+      // ถ้า Server ตอบกลับมาว่า Error (เช่น 404, 500)
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'ส่งข้อมูลไม่สำเร็จ');
+      }
+
+      const data = await res.json();
+      console.log("Response:", data);
+      alert("✅ บันทึกข้อมูลสำเร็จ! ID: " + (data.event?.Event_id || "OK"));
+
+      // (ทางเลือก) บันทึกเสร็จแล้วให้เคลียร์ฟอร์ม หรือย้ายหน้า
+      // window.location.reload(); 
+
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      alert("❌ เกิดข้อผิดพลาด: " + error);
+    }
   };
 
   return (
