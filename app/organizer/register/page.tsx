@@ -23,14 +23,51 @@ export default function OrganizerRegister() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // ✅ 1. ใส่ async ตรงนี้
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (formData.password !== formData.confirmPassword) {
       alert("รหัสผ่านไม่ตรงกัน");
       return;
     }
-    console.log("Organizer Register Data:", formData);
-  };
+
+    // ✅ 2. เอา try...catch มาไว้ "ข้างใน" ฟังก์ชัน handleSubmit
+    try {  
+      // วิ่งไปหา Laravel
+      const res = await fetch("http://127.0.0.1:8000/api/organizer/register", {
+        method: "POST",
+        headers: {
+          "Content-Type" : "application/json",
+          "Accept" : "application/json",
+        },
+        body: JSON.stringify({ 
+          emailOG : formData.email,
+          passwordOG : formData.password,
+          passwordOG_confirmation: formData.confirmPassword,
+          firstnameOG: formData.firstName,
+          lastnameOG: formData.lastName,
+          telOG : formData.phone,
+          compName: formData.company,
+        }),
+      });
+
+      // รอรับคำตอบ
+      const data = await res.json();
+
+      // เช็คสถานะ
+      if (res.ok){
+        alert("✅ ส่งข้อมูลสำเร็จ! กรุณารอแอดมินตรวจสอบและอนุมัติบัญชีของคุณภายใน 24 ชม.");
+        window.location.href = "/login?role=organizer";
+      } else {
+        alert("❌ สมัครไม่ผ่าน: " + (data.message || "เช็คข้อมูลอีกครั้ง"));
+      }
+
+    } catch (error) {
+      console.error("Connection Error:", error);
+      alert("เชื่อมต่อ Server ไม่ได้");
+    }
+  }; // ✅ 3. ปิดฟังก์ชัน handleSubmit ตรงนี้ที่เดียวครับ!
 
   return (
     <div className="min-h-screen bg-[#0B0F14] text-white font-sans flex justify-center py-10 px-4">

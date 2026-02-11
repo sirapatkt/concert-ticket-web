@@ -5,33 +5,21 @@ import Link from "next/link";
 import { 
   Search, ChevronDown, ShoppingCart, Bell, 
   Mic2, Drama, Music2, Ticket, MapPin, TrendingUp,
-  CheckCircle, Calendar, Tag, ArrowUpRight, X,
-  User, LogOut, History, Pencil, Lock 
+  ArrowUpRight, X, User, LogOut, History, Pencil, Lock 
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useCart } from "@/context/CartContext";
 import { useUser } from "@/context/UserContext"; 
 import Cookies from "js-cookie"; 
-
 import { allSearchTerms } from "@/data/searchData"; 
 
-type NotificationItem = {
-  id: number;
-  title: string;
-  desc: string;
-  time: string;
-  read: boolean;
-  type: string;
-  icon: React.ReactNode;
-};
+// ✅ Import Component
+import NotificationDropdown, { NotificationItem } from "./NotificationDropdown";
 
 export default function Navbar() {
   const { language: lang, setLanguage: setLang, t } = useLanguage();
   const { cartCount } = useCart();
-  
-  // ✅ 1. ดึง user และ setUser มาด้วย เพื่อใช้เช็คสถานะและ Logout
   const { user, setUser, profileImage } = useUser(); 
-  
   const router = useRouter();
 
   // State ต่างๆ
@@ -40,27 +28,93 @@ export default function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotiOpen, setIsNotiOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false); 
-  
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
 
-  // ✅ 2. ปรับปรุง Logic การเช็ค Login ให้ Sync กับ UserContext ทันที
+  // ==========================================
+  // ✅ 1. เตรียมข้อมูล 2 ชุด (Guest vs Member)
+  // ==========================================
+  // (ย้ายออกมานอก render หรือใช้ useMemo ก็ได้ แต่ไว้ตรงนี้เพื่อความง่ายในการอ่านตามเดิม)
+  const guestNotifications: NotificationItem[] = [
+    { 
+      id: 101, type: "info", title: "🔥 กำลังฮิต: Bruno Mars", 
+      desc: "บัตรโซนยืนเหลือน้อยกว่า 100 ใบ! สมัครสมาชิกเพื่อจองเลย", 
+      time: "10 นาทีที่แล้ว", link: "/register", read: false 
+    },
+    { 
+      id: 102, type: "info", title: "สมาชิกใหม่ลด 10% 🎉", 
+      desc: "สมัครวันนี้รับโค้ด NEWUSER ทันที", 
+      time: "1 วันที่แล้ว", link: "/register", read: false 
+    },
+    { 
+      id: 103, type: "system", title: "ผังคอนเสิร์ต SUMMER SONIC", 
+      desc: "เปิดเผยผังที่นั่งและราคาบัตรแล้ว เช็คเลย!", 
+      time: "2 วันที่แล้ว", link: "/event/summer-sonic", read: true 
+    }
+  ];
+
+  const memberNotifications: NotificationItem[] = [
+    { 
+      id: 1, type: "alert", title: "ชำระเงินไม่สำเร็จ ❌", 
+      desc: "ออเดอร์ #BK88100 ถูกปฏิเสธ โปรดชำระใหม่ใน 15 นาที", 
+      time: "2 นาทีที่แล้ว", link: "/payment/retry", read: false 
+    },
+    { 
+      id: 2, type: "booking", title: "จองบัตรสำเร็จ! ✅", 
+      desc: "คุณจองบัตร 2060 MOTHERSHIP โซน A1 เรียบร้อยแล้ว", 
+      time: "5 นาทีที่แล้ว", link: "/ticket", read: false 
+    },
+    { 
+      id: 3, type: "event", title: "ใกล้ถึงวันงานแล้ว 📅", 
+      desc: "คอนเสิร์ต Jeff Satur จะเริ่มในอีก 24 ชม.", 
+      time: "1 ชั่วโมงที่แล้ว", link: "/event/1", read: true 
+    }
+  ];
+
+  // ✅ 2. State สำหรับเก็บ Notifications ที่จะแสดงผลจริง
+  const [notifications, setNotifications] = useState<NotificationItem[]>(guestNotifications);
+
+  // ✅ 3. คำนวณจำนวนที่ยังไม่อ่าน (จะคำนวณใหม่ทุกครั้งที่ State เปลี่ยน)
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  // ✅ 4. ฟังก์ชันกด "อ่านทั้งหมด"
+  const handleMarkAllAsRead = () => {
+    // อัปเดต State โดยตรงเพื่อให้ UI เปลี่ยนทันที และจะไม่โดนทับจาก Interval แล้ว
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  // ==========================================
+  // ✅ แก้ไขส่วน useEffect (แยกเป็น 2 ส่วน)
+  // ==========================================
+  
+  // ส่วนที่ 1: เช็คสถานะ Login อย่างเดียว (Loop ทุก 1 วิ)
   useEffect(() => {
     const checkAuth = () => {
-      // เช็ค 2 ทาง: 1. มี User ใน Context ไหม? หรือ 2. มี Cookie ไหม?
       const hasContextUser = !!user;
       const hasCookie = Cookies.get("isLoggedIn") === "true";
+      const userIsLoggedIn = hasContextUser || hasCookie;
       
-      setIsLoggedIn(hasContextUser || hasCookie);
+      // อัปเดตสถานะ Auth (ถ้าค่าเปลี่ยน React จะไปทำ useEffect ตัวถัดไป)
+      setIsLoggedIn(userIsLoggedIn);
     };
-
+    
     checkAuth();
-    // เพิ่ม interval ไว้เผื่อกรณี Cookie หมดอายุเอง
     const authInterval = setInterval(checkAuth, 1000);
     return () => clearInterval(authInterval);
-  }, [user]); // ใส่ dependency [user] เพื่อให้ Navbar เปลี่ยนสถานะทันทีเมื่อ Login
+  }, [user]);
+
+  // ส่วนที่ 2: โหลดข้อมูล Notification ใหม่ "เฉพาะตอนสถานะ Login เปลี่ยน" เท่านั้น
+  // วิธีนี้จะทำให้ค่า read: true ที่เรากดไป ไม่โดนทับจนกว่าจะ Logout/Login ใหม่
+  useEffect(() => {
+    if (isLoggedIn) {
+      setNotifications(memberNotifications);
+    } else {
+      setNotifications(guestNotifications);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn]); 
+
 
   const [searchQuery, setSearchQuery] = useState("");
-
   const searchSuggestions = allSearchTerms || []; 
   const filteredSuggestions = searchSuggestions
     .filter((item: string) => item.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -70,21 +124,21 @@ export default function Navbar() {
     if (e) e.preventDefault();
     const term = keyword || searchQuery;
     if (!term.trim()) return;
-
     setSearchQuery(term);
     setIsSearchOpen(false);
     router.push(`/explore?q=${encodeURIComponent(term)}`);
   };
 
-  // ✅ 3. แก้ไขฟังก์ชัน Logout ให้เคลียร์ Context ด้วย
   const handleLogout = () => {
     Cookies.remove("isLoggedIn");
     Cookies.remove("user_role");
-    
-    setUser(null); // สำคัญ: สั่งเคลียร์ Context ให้เป็น null
-    
+    setUser(null); 
     setIsLoggedIn(false);
     setIsUserMenuOpen(false);
+    
+    // รีเซ็ตแจ้งเตือนเป็น Guest ทันที
+    setNotifications(guestNotifications);
+
     router.push("/"); 
     router.refresh(); 
   };
@@ -94,39 +148,6 @@ export default function Navbar() {
     { id: 2, title: "Phantom of the Opera", venue: "Rachadalai", image: "https://images.unsplash.com/photo-1503095392237-5985e5a9536e?w=200&q=80" },
     { id: 3, title: "Neon Music Festival", venue: "BITEC Live", image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&q=80" },
   ];
-
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    { 
-      id: 1, 
-      title: "จองบัตรสำเร็จ!", 
-      desc: "คุณจองบัตร THE BOYZ โซน A1 เรียบร้อยแล้ว", 
-      time: "2 นาทีที่แล้ว", 
-      read: false, 
-      type: "success", 
-      icon: <CheckCircle size={24} className="text-green-500" /> 
-    },
-    { 
-      id: 2, 
-      title: "ใกล้ถึงวันงานแล้ว", 
-      desc: "คอนเสิร์ต SUMMER SONIC จะเริ่มในอีก 24 ชม.", 
-      time: "1 ชั่วโมงที่แล้ว", 
-      read: false, 
-      type: "warning", 
-      icon: <Calendar size={24} className="text-orange-500" /> 
-    },
-    { 
-      id: 3, 
-      title: "โปรโมชั่นพิเศษ 🎉", 
-      desc: "ส่วนลด 10% สำหรับสมาชิกใหม่ ใช้โค้ด NEW10", 
-      time: "1 วันที่แล้ว", 
-      read: true, 
-      type: "info", 
-      icon: <Tag size={24} className="text-blue-500" /> 
-    },
-  ]);
-
-  const markAllAsRead = () => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const eventRef = useRef<HTMLDivElement>(null);
@@ -275,46 +296,23 @@ export default function Navbar() {
             )}
           </div>
           
+          {/* ✅ ส่วนแจ้งเตือน */}
           <div className="relative" ref={notiRef}>
-            <button onClick={() => setIsNotiOpen(!isNotiOpen)} className={`relative text-gray-400 hover:text-white transition-colors p-1.5 rounded-full ${isNotiOpen ? 'bg-white/10 text-white' : ''}`}>
+            <button 
+                onClick={() => setIsNotiOpen(!isNotiOpen)} 
+                className={`relative text-gray-400 hover:text-white transition-colors p-1.5 rounded-full ${isNotiOpen ? 'bg-white/10 text-white' : ''}`}
+            >
                 <Bell size={20} />
+                {/* 🔴 จุดแดง (จะหายไปถ้า unreadCount = 0) */}
                 {unreadCount > 0 && <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#0B0F14] animate-pulse"></span>}
             </button>
+
             {isNotiOpen && (
-                <div className="absolute top-full right-[-60px] md:right-0 mt-3 w-80 bg-[#1A1F2C] border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-50">
-                    <div className="flex justify-between items-center p-4 border-b border-white/5 bg-[#1C2128]">
-                        <h3 className="font-bold text-base text-white">การแจ้งเตือน</h3>
-                        <button onClick={markAllAsRead} className="text-xs text-blue-400 hover:text-blue-300">
-                            อ่านทั้งหมด
-                        </button>
-                    </div>
-                    <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
-                        {notifications.length > 0 ? (
-                            notifications.map((n, index) => (
-                                <div key={n.id}>
-                                    <div className="p-4 flex gap-3 hover:bg-white/5 transition-colors cursor-pointer group">
-                                        <div className="mt-1 flex-shrink-0">{n.icon}</div>
-                                        <div className="flex-1">
-                                            <div className="flex justify-between items-start">
-                                                <p className="text-sm font-bold text-white mb-1">{n.title}</p>
-                                                {!n.read && <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></div>}
-                                            </div>
-                                            <p className="text-xs text-gray-300 leading-relaxed">{n.desc}</p>
-                                            <p className="text-[10px] text-gray-500 mt-2">{n.time}</p>
-                                        </div>
-                                    </div>
-                                    {index !== notifications.length - 1 && <hr className="border-white/5 mx-4" />}
-                                </div>
-                            ))
-                        ) : (
-                            <div className="p-8 text-center text-gray-500 text-sm">ไม่มีการแจ้งเตือน</div>
-                        )}
-                    </div>
-                    <div className="p-3 bg-[#151923] text-center border-t border-white/5">
-                        <Link href="/notifications" className="text-xs text-gray-400 hover:text-white transition-colors">
-                            ดูประวัติการแจ้งเตือน
-                        </Link>
-                    </div>
+                <div className="absolute top-full right-[-60px] md:right-0 mt-3 z-50 animate-in fade-in zoom-in-95 duration-200">
+                    <NotificationDropdown 
+                      notifications={notifications} 
+                      onMarkAllAsRead={handleMarkAllAsRead} 
+                    />
                 </div>
             )}
           </div>
