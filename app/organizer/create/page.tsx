@@ -1,114 +1,64 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   Calendar, AlignLeft, Image as ImageIcon, 
-  Plus, Trash2, Save, Ticket, Building2, ChevronDown, Clock, Map, Grid3X3 
+  Plus, Trash2, Save, Ticket, Building2, ChevronDown, Clock, Map, Grid3X3,
+  Maximize 
 } from "lucide-react";
 
 // --- 1. Constants & Types ---
-const CAPACITY_PER_BLOCK = 50; // 1 ช่อง = 50 คน
+const CAPACITY_PER_BLOCK = 50; 
+
+// ✅ คงไว้: กำหนดขนาดของ Grid
+const GRID_SIZES = {
+  Small:  { label: "เล็ก (Small Hall)",  total: 48,  cols: 6,  css: "grid-cols-6 max-w-[280px]" },
+  Medium: { label: "กลาง (Medium Hall)", total: 80,  cols: 8,  css: "grid-cols-8 max-w-[380px]" },
+  Large:  { label: "ใหญ่ (Grand Hall)",  total: 120, cols: 10, css: "grid-cols-10 max-w-[480px]" }
+};
+
+type VenueSize = keyof typeof GRID_SIZES; 
 
 interface TicketTier {
   name: string;
   price: number;
   quantity: number;
 }
-
-// ประเภทของช่องใน Grid
 type CellType = "empty" | "stageMain" | "stageSub" | "catwalk" | "zoneA" | "zoneB" | "zoneC";
 
-// --- 2. Mock Data (ข้อมูลเดิมของคุณ) ---
-const venuePresets: Record<string, { image: string, defaultTickets: TicketTier[] }> = {
-  "IMPACT ARENA (Muang Thong Thani)": {
-    image: "/impact_plan.png", 
-    defaultTickets: [
-      { name: "AL (Standing)", price: 6000, quantity: 1000 },
-      { name: "AR (Standing)", price: 6000, quantity: 1000 },
-      { name: "BL (Standing)", price: 5500, quantity: 800 },
-      { name: "BR (Standing)", price: 5500, quantity: 800 },
-      { name: "Zone SH (Center)", price: 5000, quantity: 200 },
-      { name: "Zone SG (Center)", price: 5000, quantity: 200 },
-      { name: "Zone SI", price: 4500, quantity: 300 },
-      { name: "Zone SF", price: 4500, quantity: 300 },
-      { name: "Zone SJ", price: 4500, quantity: 350 },
-      { name: "Zone SE", price: 4500, quantity: 350 },
-      { name: "Zone SK", price: 4000, quantity: 400 },
-      { name: "Zone SD", price: 4000, quantity: 400 },
-      { name: "Zone SL", price: 4000, quantity: 400 },
-      { name: "Zone SC", price: 4000, quantity: 400 },
-      { name: "Zone SM", price: 3500, quantity: 300 },
-      { name: "Zone SB", price: 3500, quantity: 300 },
-      { name: "Zone SN", price: 3500, quantity: 250 },
-      { name: "Zone K (Center)", price: 3000, quantity: 500 },
-      { name: "Zone L (Center)", price: 3000, quantity: 500 },
-      { name: "Zone J", price: 2500, quantity: 450 },
-      { name: "Zone M", price: 2500, quantity: 450 },
-      { name: "Zone I", price: 2500, quantity: 450 },
-      { name: "Zone N", price: 2500, quantity: 450 },
-      { name: "Zone H", price: 2000, quantity: 400 },
-      { name: "Zone O", price: 2000, quantity: 400 },
-      { name: "Zone G", price: 2000, quantity: 400 },
-      { name: "Zone P", price: 2000, quantity: 400 },
-      { name: "Zone F", price: 1500, quantity: 350 },
-      { name: "Zone Q", price: 1500, quantity: 350 },
-      { name: "Zone E", price: 1500, quantity: 350 },
-      { name: "Zone R", price: 1500, quantity: 350 },
-      { name: "Zone D", price: 1200, quantity: 300 },
-      { name: "Zone S", price: 1200, quantity: 300 },
-      { name: "Zone C", price: 1200, quantity: 200 },
-      { name: "Zone T", price: 1200, quantity: 200 },
-      { name: "Zone B", price: 1000, quantity: 150 },
-    ]
-  },
-  "Prince Mahidol Hall": {
-    image: "https://placehold.co/800x600/4a1d1d/FFF?text=Prince+Mahidol+Hall+Plan",
-    defaultTickets: [
-      { name: "L1 Stalls (Center)", price: 4000, quantity: 400 },
-      { name: "L1 Stalls (Side)", price: 3500, quantity: 300 },
-      { name: "L2 Mezzanine", price: 3000, quantity: 350 },
-      { name: "L3 Balcony", price: 2000, quantity: 300 },
-      { name: "L4 Gallery", price: 1000, quantity: 200 },
-    ]
-  },
-  "เมืองไทยรัชดาลัย เธียเตอร์": {
-    image: "https://placehold.co/800x600/1d254a/FFF?text=Rachadalai+Theatre+Plan",
-    defaultTickets: [
-      { name: "VIP Box", price: 5000, quantity: 40 },
-      { name: "R Zone (Orchestra)", price: 4500, quantity: 150 },
-      { name: "Zone A (Stalls)", price: 3500, quantity: 300 },
-      { name: "Zone B (Stalls)", price: 3000, quantity: 300 },
-      { name: "Zone C (Circle)", price: 2500, quantity: 250 },
-      { name: "Zone D (Circle)", price: 2000, quantity: 250 },
-    ]
-  }
-};
+// --- 2. Mock Data (ลบข้อมูล Presets ออกหมดแล้ว) ---
+const venuePresets: Record<string, { image: string, defaultTickets: TicketTier[] }> = {};
 
 export default function CreateEventPage() {
-  // --- State เดิม ---
+  // --- Form State ---
   const [eventName, setEventName] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [saleStartDate, setSaleStartDate] = useState(""); 
   const [description, setDescription] = useState("");
   const [posterImage, setPosterImage] = useState<string | null>(null);
+  
   const [selectedVenue, setSelectedVenue] = useState(""); 
   const [venuePlanImage, setVenuePlanImage] = useState<string | null>(null);
+  
+  // ลบ Mock Ticket ออก: เริ่มต้นด้วยบัตรว่าง 1 ใบ
   const [tickets, setTickets] = useState<TicketTier[]>([
-    { name: "Regular", price: 2500, quantity: 100 }
+    { name: "", price: 0, quantity: 0 }
   ]);
 
-  // --- ✅ State ใหม่สำหรับ Grid System ---
-  const [stageGrid, setStageGrid] = useState<CellType[]>(Array(80).fill("empty"));
+  // --- Grid State ---
+  const [venueSize, setVenueSize] = useState<VenueSize>("Medium"); 
+  const [stageGrid, setStageGrid] = useState<CellType[]>(Array(GRID_SIZES["Medium"].total).fill("empty"));
   const [activeTool, setActiveTool] = useState<CellType>("stageMain");
 
+  // ✅ คงไว้: ตัวเลือกสถานที่ (แต่ไม่มี data presets ผูกแล้ว)
   const venues = [
     "IMPACT ARENA (Muang Thong Thani)",
     "Prince Mahidol Hall",
     "เมืองไทยรัชดาลัย เธียเตอร์"
   ];
 
-  // --- Helpers ของ Grid System ---
+  // --- Helpers ---
   const getCellColor = (type: CellType) => {
     switch (type) {
       case "stageMain": return "bg-slate-200 border-white shadow-lg shadow-white/10 z-20 scale-105"; 
@@ -125,9 +75,19 @@ export default function CreateEventPage() {
     return grid.filter((c) => c === zoneType).length * CAPACITY_PER_BLOCK;
   };
 
-  // ✅ ฟังก์ชันอัปเดต Grid และ บัตรพร้อมกัน
+  const handleSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newSize = e.target.value as VenueSize;
+    setVenueSize(newSize);
+    
+    // Reset Grid ตามขนาดใหม่
+    const newTotal = GRID_SIZES[newSize].total;
+    const newGrid = Array(newTotal).fill("empty");
+    setStageGrid(newGrid);
+    
+    updateTicketsFromGrid(newGrid); 
+  };
+
   const toggleCell = (index: number) => {
-    // 1. อัปเดต Grid
     const newGrid = [...stageGrid];
     if (newGrid[index] === activeTool) {
       newGrid[index] = "empty";
@@ -136,13 +96,11 @@ export default function CreateEventPage() {
     }
     setStageGrid(newGrid);
 
-    // 2. ถ้าเป็นโซนบัตร (A, B, C) ให้ไปอัปเดตใน tickets ด้วย
     if (["zoneA", "zoneB", "zoneC"].includes(activeTool) || ["zoneA", "zoneB", "zoneC"].includes(stageGrid[index])) {
        updateTicketsFromGrid(newGrid);
     }
   };
 
-  // ฟังก์ชันคำนวณบัตรจาก Grid แล้ว Sync ลง State tickets
   const updateTicketsFromGrid = (grid: CellType[]) => {
     const countA = calculateZoneCapacity(grid, "zoneA");
     const countB = calculateZoneCapacity(grid, "zoneB");
@@ -150,65 +108,57 @@ export default function CreateEventPage() {
 
     setTickets(prev => {
         let newTickets = [...prev];
-
-        // Helper update or add
         const syncZone = (zoneName: string, count: number, defaultPrice: number) => {
             const idx = newTickets.findIndex(t => t.name === zoneName);
             if (count > 0) {
                 if (idx >= 0) {
-                    // มีอยู่แล้ว -> อัปเดตจำนวน
                     newTickets[idx] = { ...newTickets[idx], quantity: count };
                 } else {
-                    // ยังไม่มี -> เพิ่มใหม่
                     newTickets.unshift({ name: zoneName, price: defaultPrice, quantity: count });
                 }
             } else if (idx >= 0) {
-                 // ถ้าจำนวนเป็น 0 ให้ลบออก หรือจะเก็บไว้แต่ quantity 0 ก็ได้ (ที่นี้ลบออกเพื่อความ clean)
                  newTickets = newTickets.filter(t => t.name !== zoneName);
             }
         };
-
-        syncZone("Zone A (Grid)", countA, 6000);
-        syncZone("Zone B (Grid)", countB, 5000);
-        syncZone("Zone C (Grid)", countC, 4000);
-
+        // ราคา Default เป็น 0 ไว้ก่อน เพราะไม่มี Mock Data แล้ว
+        syncZone("Zone A (Grid)", countA, 0);
+        syncZone("Zone B (Grid)", countB, 0);
+        syncZone("Zone C (Grid)", countC, 0);
         return newTickets;
     });
   };
 
   const clearGrid = () => {
-    const emptyGrid = Array(80).fill("empty");
+    const emptyGrid = Array(GRID_SIZES[venueSize].total).fill("empty");
     setStageGrid(emptyGrid);
     updateTicketsFromGrid(emptyGrid);
   };
 
-  // --- Handlers เดิม ---
   const handleVenueChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const venueName = e.target.value;
     setSelectedVenue(venueName);
 
+    // เช็คว่ามี Preset ไหม (ตอนนี้ไม่มีแล้ว จะเข้า else ตลอด)
     if (venuePresets[venueName]) {
       const preset = venuePresets[venueName];
       setVenuePlanImage(preset.image);
-      setTickets(preset.defaultTickets); // Reset tickets ตาม preset
-      setStageGrid(Array(80).fill("empty")); // Reset Grid ด้วยเพื่อไม่ให้ตีกัน
+      setTickets(preset.defaultTickets);
+      
+      // Default behavior when preset exists
+      setVenueSize("Medium");
+      setStageGrid(Array(GRID_SIZES["Medium"].total).fill("empty"));
     } else {
+      // เมื่อไม่มี Preset ให้เคลียร์รูป และเคลียร์บัตรเป็นค่าว่าง
       setVenuePlanImage(null);
-      setTickets([{ name: "Regular", price: 2500, quantity: 100 }]);
+      setTickets([{ name: "", price: 0, quantity: 0 }]);
     }
   };
 
-  const addTicketTier = () => {
-    setTickets([...tickets, { name: "", price: 0, quantity: 0 }]);
-  };
-
+  const addTicketTier = () => setTickets([...tickets, { name: "", price: 0, quantity: 0 }]);
+  
   const removeTicketTier = (index: number) => {
-    if (tickets.length > 1) {
-      const newTickets = tickets.filter((_, i) => i !== index);
-      setTickets(newTickets);
-    } else {
-      alert("ต้องมีบัตรอย่างน้อย 1 ประเภทครับ");
-    }
+     if (tickets.length > 1) setTickets(tickets.filter((_, i) => i !== index));
+     else alert("ต้องมีบัตรอย่างน้อย 1 ประเภทครับ");
   };
 
   const updateTicket = (index: number, field: keyof TicketTier, value: string | number) => {
@@ -227,59 +177,36 @@ export default function CreateEventPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // 1. แปลงข้อมูลให้พร้อมส่ง
-    const payload = {
-      eventName : eventName,
-      eventDescription: description, // <-- แก้ตรงนี้! (เปลี่ยนจาก description เป็น eventDescription)
-      bannerImage: posterImage,
-
-      eventDate :eventDate,
-      saleStartDate : saleStartDate,
-      location: selectedVenue, // ใช้ค่าจาก state selectedVenue
-      posterImage, // <--- (สำคัญ) อย่าลืมส่งรูปที่อัปโหลดไปด้วย
-      // แปลงตั๋วให้ราคาและจำนวนเป็นตัวเลข (กัน error)
-      tickets: tickets.map(t => ({
-          name: t.name,
-          price: Number(t.price),
-          quantity: Number(t.quantity)
-      })),
-      // ส่ง Grid ไปด้วย (Backend ต้องมีคอลัมน์รับนะ หรือถ้าไม่มีให้ลบบรรทัดนี้ออกก่อน)
-      stageGrid: stageGrid
-    };
-
-    console.log("🚀 กำลังส่งข้อมูล...", payload); // เช็คใน Console ก่อนส่ง
-
-    try {
-      // 2. ยิงข้อมูลไปหา Laravel (พอร์ต 8000)
-      const res = await fetch('http://127.0.0.1:8000/api/events', {
-        method: 'POST', // ส่งแบบ POST
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(payload) // ห่อข้อมูลส่งไป
-      });
-
-      // ถ้า Server ตอบกลับมาว่า Error (เช่น 404, 500)
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'ส่งข้อมูลไม่สำเร็จ');
-      }
-
-      const data = await res.json();
-      console.log("Response:", data);
-      alert("✅ บันทึกข้อมูลสำเร็จ! ID: " + (data.event?.Event_id || "OK"));
-
-      // (ทางเลือก) บันทึกเสร็จแล้วให้เคลียร์ฟอร์ม หรือย้ายหน้า
-      // window.location.reload(); 
-
-    } catch (error) {
-      console.error("Error submitting form:", error);
-      alert("❌ เกิดข้อผิดพลาด: " + error);
+  // เพิ่ม Handler สำหรับอัปโหลดรูปผังที่นั่งเอง
+  const handlePlanImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setVenuePlanImage(reader.result as string);
+      reader.readAsDataURL(file);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      const payload = {
+          eventName,
+          eventDescription: description,
+          bannerImage: posterImage,
+          eventDate,
+          saleStartDate,
+          location: selectedVenue,
+          venueSize: venueSize,
+          venuePlanImage, 
+          tickets: tickets.map(t => ({
+              name: t.name,
+              price: Number(t.price),
+              quantity: Number(t.quantity)
+          })),
+          stageGrid: stageGrid
+      }
+      console.log("🚀 Payload to send:", payload);
+      alert("ข้อมูลพร้อมส่ง (ดูใน Console) - นำไปต่อ API ได้เลย");
   };
 
   return (
@@ -291,7 +218,7 @@ export default function CreateEventPage() {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
             สร้างอีเวนต์ใหม่
           </h1>
-          <p className="text-slate-400 mt-1">ระบบจะดึงผังที่นั่งให้อัตโนมัติตามสถานที่</p>
+          <p className="text-slate-400 mt-1">กรอกข้อมูลและออกแบบผังที่นั่ง</p>
         </div>
         <div className="flex gap-3">
           <Link href="/organizer" className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors">ยกเลิก</Link>
@@ -319,28 +246,51 @@ export default function CreateEventPage() {
                   type="text" 
                   value={eventName}
                   onChange={(e) => setEventName(e.target.value)}
-                  placeholder="เช่น Cat Expo, Big Mountain..."
+                  placeholder="ใส่ชื่องาน..."
                   className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 outline-none"
                 />
               </div>
 
-              {/* Venue Dropdown */}
-              <div>
-                  <label className="block text-sm text-slate-400 mb-1 flex items-center gap-1">
-                    <Building2 size={14} /> สถานที่จัดงาน (Venue)
-                  </label>
-                  <div className="relative">
-                    <select 
-                        value={selectedVenue}
-                        onChange={handleVenueChange} 
-                        className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 outline-none cursor-pointer appearance-none"
-                    >
-                        <option value="" disabled className="text-slate-500">เลือกสถานที่จัดงาน...</option>
-                        {venues.map((v) => (
-                        <option key={v} value={v}>{v}</option>
-                        ))}
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={20} />
+              {/* Grid สำหรับ Venue และ Size */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Venue Dropdown (คงไว้ตามคำขอ) */}
+                  <div>
+                      <label className="block text-sm text-slate-400 mb-1 flex items-center gap-1">
+                        <Building2 size={14} /> สถานที่จัดงาน (Venue)
+                      </label>
+                      <div className="relative">
+                        <select 
+                            value={selectedVenue}
+                            onChange={handleVenueChange} 
+                            className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 outline-none cursor-pointer appearance-none"
+                        >
+                            <option value="" disabled className="text-slate-500">เลือกสถานที่จัดงาน...</option>
+                            {venues.map((v) => (
+                              <option key={v} value={v}>{v}</option>
+                            ))}
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={20} />
+                      </div>
+                  </div>
+
+                  {/* Dropdown ขนาดพื้นที่ (คงไว้ตามคำขอ) */}
+                  <div>
+                      <label className="block text-sm text-slate-400 mb-1 flex items-center gap-1">
+                        <Maximize size={14} /> ขนาดพื้นที่ (Size)
+                      </label>
+                      <div className="relative">
+                        <select 
+                            value={venueSize}
+                            onChange={handleSizeChange} 
+                            disabled={!selectedVenue} // ห้ามเลือกถ้ายังไม่เลือกสถานที่
+                            className={`w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 outline-none cursor-pointer appearance-none ${!selectedVenue ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                            {Object.entries(GRID_SIZES).map(([key, config]) => (
+                                <option key={key} value={key}>{config.label}</option>
+                            ))}
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={20} />
+                      </div>
                   </div>
               </div>
 
@@ -361,19 +311,21 @@ export default function CreateEventPage() {
 
               <div>
                 <label className="block text-sm text-slate-400 mb-1">รายละเอียดเพิ่มเติม</label>
-                <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="อธิบายเกี่ยวกับงานของคุณ..." className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 resize-none" />
+                <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="รายละเอียดงาน..." className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 resize-none" />
               </div>
             </div>
           </div>
 
-          {/* ✅ 2. Stage Layout Editor (เพิ่มส่วนนี้เข้ามา) */}
+          {/* 2. Stage Layout Editor */}
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-slate-700 pb-4 gap-4">
                <div>
                   <h2 className="text-xl font-bold flex items-center gap-2 text-purple-400">
                      <Grid3X3 size={20} /> ออกแบบผังเวที (Standing Grid)
                   </h2>
-                  <p className="text-xs text-slate-500 mt-1">วาดโซนยืนเพื่อสร้างบัตรอัตโนมัติ (1 Block ≈ {CAPACITY_PER_BLOCK} คน)</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                      ขนาดปัจจุบัน: <span className="text-white font-bold">{GRID_SIZES[venueSize].label}</span> ({GRID_SIZES[venueSize].cols} คอลัมน์)
+                  </p>
                </div>
                
                {/* Toolbar */}
@@ -393,11 +345,12 @@ export default function CreateEventPage() {
 
             <div className="flex flex-col md:flex-row gap-6">
                 {/* Grid */}
-                <div className="flex-1 flex justify-center bg-[#020617] p-6 rounded-xl border-2 border-dashed border-slate-700 relative select-none">
+                <div className="flex-1 flex justify-center bg-[#020617] p-6 rounded-xl border-2 border-dashed border-slate-700 relative select-none overflow-x-auto">
                     <div className="absolute top-2 text-slate-600 text-[10px] uppercase font-bold tracking-widest">FRONT STAGE</div>
-                    <div className="grid grid-cols-8 gap-1.5 w-full max-w-[380px]">
+                    
+                    <div className={`grid gap-1.5 w-full transition-all duration-300 ${GRID_SIZES[venueSize].css}`}>
                         {stageGrid.map((type, index) => (
-                           <div key={index} onClick={() => toggleCell(index)} className={`aspect-square rounded-sm cursor-pointer transition-all duration-150 border ${getCellColor(type)} ${activeTool === type ? 'ring-2 ring-white/50 scale-95' : ''} flex items-center justify-center text-[9px] font-bold`}>
+                           <div key={index} onClick={() => toggleCell(index)} className={`aspect-square rounded-sm cursor-pointer transition-all duration-150 border ${getCellColor(type)} ${activeTool === type ? 'ring-2 ring-white/50 scale-95' : ''} flex items-center justify-center text-[9px] font-bold hover:brightness-110`}>
                               {type === 'stageMain' && 'M'}
                               {type === 'stageSub' && 'S'}
                               {type === 'catwalk' && '•'}
@@ -437,7 +390,7 @@ export default function CreateEventPage() {
             </div>
           </div>
 
-          {/* 3. จัดการบัตร + ผังที่นั่ง (ของเดิม + Grid Auto Added) */}
+          {/* 3. จัดการบัตร + ผังที่นั่ง */}
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold flex items-center gap-2 text-purple-400">
@@ -447,65 +400,58 @@ export default function CreateEventPage() {
                 <Plus size={16} /> เพิ่มโซน
               </button>
             </div>
-
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* ส่วนแสดงรูปผัง (ซ้าย) */}
-                <div className="border border-slate-700 rounded-xl bg-[#1E293B]/30 p-4 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden group">
-                    {venuePlanImage ? (
-                        <>
-                            <p className="text-xs text-slate-400 mb-2 flex items-center gap-1 absolute top-3 left-3 bg-black/50 px-2 py-1 rounded z-10"><Map size={12}/> {selectedVenue}</p>
-                            <img src={venuePlanImage} alt="Seating Plan" className="w-full h-auto rounded-lg shadow-lg object-contain hover:scale-105 transition-transform" />
-                        </>
-                    ) : (
-                        <div className="text-center text-slate-500">
-                            <Map size={48} className="mx-auto mb-2 opacity-20"/>
-                            <p className="text-sm">เลือกสถานที่ด้านบน</p>
-                            <p className="text-xs">หรือใช้ Grid ด้านบนออกแบบเอง</p>
-                        </div>
-                    )}
-                </div>
+               {/* Left: Image Plan (อัปโหลดเองได้) */}
+               <label className="border border-slate-700 rounded-xl bg-[#1E293B]/30 p-4 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden group cursor-pointer hover:border-blue-500 transition-colors">
+                   {venuePlanImage ? (
+                       <>
+                           <img src={venuePlanImage} alt="Seating Plan" className="w-full h-auto rounded-lg shadow-lg object-contain" />
+                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                               <p className="text-white text-sm font-bold">เปลี่ยนรูปผัง</p>
+                           </div>
+                       </>
+                   ) : (
+                       <div className="text-center text-slate-500">
+                           <Map size={48} className="mx-auto mb-2 opacity-20"/>
+                           <p className="text-sm">คลิกเพื่ออัปโหลดรูปผังที่นั่ง</p>
+                           <p className="text-xs">(ถ้ามี)</p>
+                       </div>
+                   )}
+                   <input type="file" className="hidden" accept="image/*" onChange={handlePlanImageUpload} />
+               </label>
 
-                {/* ส่วนรายการบัตร (ขวา) */}
-                <div className="space-y-2 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
-                    {tickets.map((ticket, index) => (
-                        <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 bg-[#1E293B]/50 rounded-lg border border-slate-700 hover:border-purple-500/30 transition-colors animate-in fade-in slide-in-from-right-4 duration-300">
-                            {/* ชื่อโซน */}
-                            <div className="col-span-5">
-                                <label className="text-[10px] text-slate-500 mb-0.5 block">โซน</label>
-                                <input type="text" value={ticket.name} onChange={(e) => updateTicket(index, 'name', e.target.value)} className={`w-full bg-[#0F172A] border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none ${ticket.name.includes("(Grid)") ? "text-yellow-400 font-bold" : ""}`} />
-                            </div>
-                            {/* ราคา */}
-                            <div className="col-span-3">
-                                <label className="text-[10px] text-slate-500 mb-0.5 block">ราคา</label>
-                                <input type="number" value={ticket.price} onChange={(e) => updateTicket(index, 'price', e.target.value)} className="w-full bg-[#0F172A] border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none" />
-                            </div>
-                            {/* จำนวน */}
-                            <div className="col-span-3">
-                                <label className="text-[10px] text-slate-500 mb-0.5 block">จำนวน</label>
-                                <input 
-                                    type="number" 
-                                    value={ticket.quantity} 
-                                    onChange={(e) => updateTicket(index, 'quantity', e.target.value)} 
-                                    readOnly={ticket.name.includes("(Grid)")} // ถ้ามาจาก Grid ห้ามแก้จำนวนเอง
-                                    className={`w-full bg-[#0F172A] border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none ${ticket.name.includes("(Grid)") ? "opacity-60 cursor-not-allowed" : ""}`} 
-                                />
-                            </div>
-                            {/* ลบ */}
-                            <div className="col-span-1 flex justify-center pt-4">
-                                <button onClick={() => removeTicketTier(index)} className="text-slate-600 hover:text-red-500 transition-colors p-1"><Trash2 size={16} /></button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+               {/* Right: Ticket Inputs */}
+               <div className="space-y-2 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
+                   {tickets.map((ticket, index) => (
+                       <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 bg-[#1E293B]/50 rounded-lg border border-slate-700 hover:border-purple-500/30 transition-colors">
+                           <div className="col-span-5">
+                               <label className="text-[10px] text-slate-500 mb-0.5 block">โซน</label>
+                               <input type="text" value={ticket.name} onChange={(e) => updateTicket(index, 'name', e.target.value)} placeholder="Zone A" className={`w-full bg-[#0F172A] border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none ${ticket.name.includes("(Grid)") ? "text-yellow-400 font-bold" : ""}`} />
+                           </div>
+                           <div className="col-span-3">
+                               <label className="text-[10px] text-slate-500 mb-0.5 block">ราคา</label>
+                               <input type="number" value={ticket.price} onChange={(e) => updateTicket(index, 'price', e.target.value)} className="w-full bg-[#0F172A] border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none" />
+                           </div>
+                           <div className="col-span-3">
+                               <label className="text-[10px] text-slate-500 mb-0.5 block">จำนวน</label>
+                               <input type="number" value={ticket.quantity} onChange={(e) => updateTicket(index, 'quantity', e.target.value)} readOnly={ticket.name.includes("(Grid)")} className={`w-full bg-[#0F172A] border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none ${ticket.name.includes("(Grid)") ? "opacity-60 cursor-not-allowed" : ""}`} />
+                           </div>
+                           <div className="col-span-1 flex justify-center pt-4">
+                               <button onClick={() => removeTicketTier(index)} className="text-slate-600 hover:text-red-500 transition-colors p-1"><Trash2 size={16} /></button>
+                           </div>
+                       </div>
+                   ))}
+               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Upload */}
+        {/* Right Column: Upload Poster */}
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl sticky top-6">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-cyan-400"><ImageIcon size={20} /> โปสเตอร์งาน</h2>
-            <label className="w-full aspect-[3/4] rounded-xl border-2 border-dashed border-slate-700 bg-[#1E293B]/30 flex flex-col items-center justify-center text-slate-500 hover:border-cyan-500 hover:text-cyan-500 hover:bg-[#1E293B]/50 transition-all cursor-pointer group overflow-hidden">
+             <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-cyan-400"><ImageIcon size={20} /> โปสเตอร์งาน</h2>
+             <label className="w-full aspect-[3/4] rounded-xl border-2 border-dashed border-slate-700 bg-[#1E293B]/30 flex flex-col items-center justify-center text-slate-500 hover:border-cyan-500 hover:text-cyan-500 hover:bg-[#1E293B]/50 transition-all cursor-pointer group overflow-hidden">
                 {posterImage ? (
                     <img src={posterImage} alt="Preview" className="w-full h-full object-cover" />
                 ) : (
@@ -516,12 +462,13 @@ export default function CreateEventPage() {
                     </>
                 )}
                 <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
-            </label>
+             </label>
 
-            <div className="mt-6 pt-6 border-t border-slate-800">
+             <div className="mt-6 pt-6 border-t border-slate-800">
               <h3 className="text-sm font-semibold text-slate-300 mb-3">สรุปข้อมูลเบื้องต้น</h3>
               <ul className="space-y-2 text-sm text-slate-400">
                 <li className="flex justify-between"><span>สถานที่:</span><span className="text-white text-right">{selectedVenue || "-"}</span></li>
+                <li className="flex justify-between"><span>ขนาดพื้นที่:</span><span className="text-cyan-400 text-right">{selectedVenue ? GRID_SIZES[venueSize].label : "-"}</span></li>
                 <li className="flex justify-between border-t border-slate-800 pt-2 mt-2"><span>จำนวนบัตร:</span><span className="text-white">{tickets.reduce((sum, t) => sum + Number(t.quantity), 0)} ใบ</span></li>
               </ul>
             </div>

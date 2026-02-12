@@ -1,121 +1,73 @@
-<<<<<<< HEAD
-// 📂 ไฟล์: app/admin/page.tsx
-import Link from 'next/link';
-=======
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // ✅ เพิ่ม useRouter เพื่อใช้สั่งเปลี่ยนหน้า
+import { useRouter } from "next/navigation";
 import { 
   Users, Building2, Ticket, DollarSign, 
   ArrowUpRight, ArrowDownRight, MoreHorizontal,
-  CheckCircle, XCircle, Clock, Calendar, ChevronDown, Check, FileText
+  CheckCircle, XCircle, Clock, Calendar, ChevronDown, Check
 } from "lucide-react";
->>>>>>> origin/main
 
-// Interface ข้อมูลสถิติ
-interface StatData {
-  revenue: string;
-  users: string;
-  events: string;
-  revChange: string;
-  userChange: string;
-  evtChange: string;
+// Interface สำหรับข้อมูล
+interface Organizer {
+  id: number;
+  name: string;
+  email: string;
+  date: string;
+  status: string;
+}
+
+interface Transaction {
+  id: string;
+  user: string;
+  action: string;
+  time: string;
+  amount: string;
+  status: string;
 }
 
 export default function AdminDashboard() {
-<<<<<<< HEAD
-  return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-red-600">Admin Dashboard</h1>
-          <p className="text-gray-500 mt-1">แผงควบคุมสำหรับผู้ดูแลระบบ (Person 2)</p>
-        </div>
-        <div className="px-4 py-2 bg-red-100 text-red-700 rounded-lg font-semibold border border-red-200">
-          Super Admin
-        </div>
-      </div>
-
-      {/* Stats Cards (ภาพรวมระบบ) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-yellow-400">
-          <h3 className="text-gray-500 text-sm font-medium">คำขอจัดงานใหม่ (รออนุมัติ)</h3>
-          <p className="text-4xl font-bold text-gray-800 mt-2">5 <span className="text-lg font-normal text-gray-400">งาน</span></p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
-          <h3 className="text-gray-500 text-sm font-medium">สมาชิกทั้งหมด</h3>
-          <p className="text-4xl font-bold text-gray-800 mt-2">1,240 <span className="text-lg font-normal text-gray-400">คน</span></p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
-          <h3 className="text-gray-500 text-sm font-medium">รายได้รวม Platform</h3>
-          <p className="text-4xl font-bold text-gray-800 mt-2">฿450,000</p>
-        </div>
-      </div>
-
-      {/* Action Menu (เมนูจัดการ) */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">เมนูจัดการระบบ</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button className="flex flex-col items-center justify-center p-6 bg-red-50 hover:bg-red-100 rounded-lg border border-red-100 transition-colors group cursor-pointer">
-            <span className="text-red-600 font-bold text-lg mb-1 group-hover:scale-105 transition-transform">อนุมัติอีเวนต์</span>
-            <span className="text-red-400 text-sm">ตรวจสอบงานที่ขอเข้ามา</span>
-          </button>
-          
-          <button className="flex flex-col items-center justify-center p-6 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors cursor-pointer">
-            <span className="text-gray-700 font-bold text-lg mb-1">จัดการผู้ใช้งาน</span>
-            <span className="text-gray-500 text-sm">แบน/แก้ไขสมาชิก</span>
-          </button>
-
-          <button className="flex flex-col items-center justify-center p-6 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors cursor-pointer">
-            <span className="text-gray-700 font-bold text-lg mb-1">รายงานการขาย</span>
-            <span className="text-gray-500 text-sm">ดูสถิติรายได้</span>
-          </button>
-=======
-  const router = useRouter(); // ✅ เรียกใช้ Router
+  const router = useRouter(); 
   
-  // State
+  // State UI
   const [dateRange, setDateRange] = useState("วันนี้");
   const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [openMenuId, setOpenMenuId] = useState(null as number | null);
 
   const dateOptions = ["วันนี้", "7 วันล่าสุด",  "เดือนนี้", "ปีนี้"];
 
-  // Mock Data สถิติ
-  const statsData: Record<string, StatData> = {
-    "วันนี้": { revenue: "฿12.5M", users: "45,231", events: "1,204", revChange: "+12.5%", userChange: "+8.2%", evtChange: "-2.4%" },
-    "7 วันล่าสุด": { revenue: "฿84.2M", users: "48,150", events: "1,215", revChange: "+25.4%", userChange: "+10.1%", evtChange: "+1.2%" },
-    "เดือนนี้": { revenue: "฿340.5M", users: "52,800", events: "1,350", revChange: "+45.2%", userChange: "+15.8%", evtChange: "+5.6%" },
-    "ปีนี้": { revenue: "฿4.2B", users: "120,500", events: "2,100", revChange: "+88.5%", userChange: "+42.3%", evtChange: "+24.8%" },
+  // --- ส่วนข้อมูล (Data) ที่ล้างค่าออกแล้ว (รอต่อ API) ---
+
+  // 1. สถิติรวม (ตั้งเป็น 0 ไว้ก่อน)
+  const currentStat = { 
+    revenue: "0", 
+    users: "0", 
+    events: "0", 
+    revChange: "0%", 
+    userChange: "0%", 
+    evtChange: "0%" 
   };
-  const currentStat = statsData[dateRange] || statsData["วันนี้"];
 
-  // Mock Data ผู้จัดงาน
-  const [pendingOrganizers, setPendingOrganizers] = useState([
-    { id: 1, name: "GMM Grammy", email: "contact@gmm.com", date: "10 นาทีที่แล้ว", status: "รอตรวจสอบ" },
-    { id: 2, name: "RS Group", email: "admin@rs.co.th", date: "2 ชั่วโมงที่แล้ว", status: "รอตรวจสอบ" },
-    { id: 3, name: "Smallroom", email: "info@smallroom.com", date: "1 วันที่แล้ว", status: "เอกสารไม่ครบ" },
-  ]);
+  // 2. ข้อมูลผู้จัดงานรอตรวจสอบ (อาเรย์ว่าง)
+  const [pendingOrganizers, setPendingOrganizers] = useState<Organizer[]>([]); 
 
+  // 3. ข้อมูลธุรกรรมล่าสุด (อาเรย์ว่าง)
+  const transactions: Transaction[] = []; 
+
+  // ฟังก์ชันจัดการสถานะ (คงไว้สำหรับใช้ต่อกับ API)
   const handleUpdateStatus = (id: number, newStatus: string) => {
-    setPendingOrganizers(prev => prev.map(org => org.id === id ? { ...org, status: newStatus } : org));
+    // TODO: เรียก API อัปเดตสถานะตรงนี้
+    console.log(`Update org ${id} to ${newStatus}`);
     setOpenMenuId(null);
   };
 
-  // Mock Data ธุรกรรม (เพิ่ม ID เพื่อใช้ทำ Link)
-  const transactions = [
-    { id: "TX-8821", user: "User #8821", action: "ซื้อบัตร Jeff Satur (Zone A)", time: "2 นาทีที่แล้ว", amount: "+฿6,500", status: "success" },
-    { id: "TX-9102", user: "User #9102", action: "ซื้อบัตร Summer Sonic (VIP)", time: "5 นาทีที่แล้ว", amount: "+฿12,000", status: "success" },
-    { id: "TX-8811", user: "User #8811", action: "ซื้อบัตร Cat Expo", time: "25 นาทีที่แล้ว", amount: "+฿1,500", status: "success" },
-  ];
-
+  // โครงสร้างการ์ดสถิติ
   const stats = [
     { title: "รายได้รวม", value: currentStat.revenue, change: currentStat.revChange, isUp: true, icon: <DollarSign size={20} />, color: "text-green-400", bg: "bg-green-500/10" },
     { title: "ผู้ใช้งานทั้งหมด", value: currentStat.users, change: currentStat.userChange, isUp: true, icon: <Users size={20} />, color: "text-blue-400", bg: "bg-blue-500/10" },
-    { title: "อีเวนต์ที่จัดแล้ว", value: currentStat.events, change: currentStat.evtChange, isUp: !currentStat.evtChange.includes('-'), icon: <Ticket size={20} />, color: "text-purple-400", bg: "bg-purple-500/10" },
-    { title: "รออนุมัติผู้จัด", value: pendingOrganizers.filter(o => o.status === "รอตรวจสอบ").length.toString(), change: "Action Needed", isUp: true, icon: <Building2 size={20} />, color: "text-orange-400", bg: "bg-orange-500/10" },
+    { title: "อีเวนต์ที่จัดแล้ว", value: currentStat.events, change: currentStat.evtChange, isUp: true, icon: <Ticket size={20} />, color: "text-purple-400", bg: "bg-purple-500/10" },
+    { title: "รออนุมัติผู้จัด", value: pendingOrganizers.length.toString(), change: "Pending", isUp: true, icon: <Building2 size={20} />, color: "text-orange-400", bg: "bg-orange-500/10" },
   ];
 
   return (
@@ -125,10 +77,11 @@ export default function AdminDashboard() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold mb-1 text-white">ภาพรวมระบบ</h1>
-          <p className="text-gray-400 text-sm">ยินดีต้อนรับกลับ, Admin 👋 นี่คือสถานะของระบบ <span className="text-white font-bold">{dateRange}</span></p>
+          <p className="text-gray-400 text-sm">ยินดีต้อนรับกลับ, Admin 👋 สถานะระบบ: <span className="text-white font-bold">{dateRange}</span></p>
         </div>
+        
+        {/* Date Filter UI */}
         <div className="flex items-center gap-3 relative z-20">
-            <span className="text-sm text-gray-500 hidden sm:block">ข้อมูลประจำ:</span>
             <div className="relative">
                 <button onClick={(e) => { e.stopPropagation(); setIsDateMenuOpen(!isDateMenuOpen); }} className={`flex items-center gap-2 bg-[#161B22] border hover:border-pink-500/50 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-sm ${isDateMenuOpen ? 'border-pink-500 ring-2 ring-pink-500/20' : 'border-white/10'}`}>
                     <Calendar size={16} className="text-pink-500"/>
@@ -154,13 +107,13 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 z-10 relative">
         {stats.map((stat, index) => (
           <div key={index} className="bg-[#161B22] p-5 rounded-2xl border border-white/5 hover:border-white/10 transition-all">
             <div className="flex justify-between items-start mb-4">
                <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>{stat.icon}</div>
-               <span className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${stat.change.includes('+') ? 'bg-green-500/10 text-green-400' : stat.change.includes('-') ? 'bg-red-500/10 text-red-400' : 'bg-orange-500/10 text-orange-400'}`}>
+               <span className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${stat.change.includes('+') ? 'bg-green-500/10 text-green-400' : 'bg-gray-500/10 text-gray-400'}`}>
                   {stat.isUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />} {stat.change}
                </span>
             </div>
@@ -170,57 +123,45 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Main Grid */}
+      {/* Main Content Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 z-0 relative">
         
-        {/* Left Column */}
+        {/* Left Column (Transactions & Organizers) */}
         <div className="xl:col-span-2 space-y-8">
             
-            {/* 🔴 Recent Transactions (แก้ไขให้คลิกได้) */}
-            <div className="bg-[#161B22] rounded-2xl border border-white/5 overflow-hidden">
+            {/* Recent Transactions */}
+            <div className="bg-[#161B22] rounded-2xl border border-white/5 overflow-hidden min-h-[200px]">
                 <div className="p-6 border-b border-white/5 flex justify-between items-center">
                     <h3 className="font-bold text-lg flex items-center gap-2 text-white">
                         <DollarSign size={18} className="text-green-400"/> ธุรกรรมล่าสุด
                     </h3>
-                    {/* ✅ ลิงก์ไปหน้า Finance */}
                     <Link href="/admin/finance" className="text-xs text-gray-400 hover:text-white transition-colors cursor-pointer">
                         ดูทั้งหมด
                     </Link>
                 </div>
                 <div>
-                    {transactions.map((tx, i) => (
-                        <div 
-                            key={i} 
-                            // ✅ กดแล้วไปหน้ารายละเอียด (สมมติ ID)
-                            onClick={() => router.push(`/admin/finance/${tx.id}`)}
-                            className="flex items-center justify-between p-4 hover:bg-white/5 border-b border-white/5 last:border-0 transition-all cursor-pointer group"
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 font-bold text-xs group-hover:bg-gray-700 group-hover:text-white transition-colors">
-                                    {tx.user.substring(0,2)}
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">{tx.action}</p>
-                                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                                        {tx.user} • <span className="font-mono text-gray-600">{tx.id}</span> • {tx.time}
-                                    </p>
-                                </div>
+                    {transactions.length > 0 ? (
+                        transactions.map((tx, i) => (
+                            <div key={i} onClick={() => router.push(`/admin/finance/${tx.id}`)} className="flex items-center justify-between p-4 hover:bg-white/5 border-b border-white/5 last:border-0 transition-all cursor-pointer group">
+                                {/* ... Transaction Item Layout ... */}
+                                <div className="text-white">{tx.action}</div>
                             </div>
-                            <span className={`font-mono font-bold text-sm ${tx.status === 'success' ? 'text-green-400' : 'text-red-400'}`}>
-                                {tx.amount}
-                            </span>
+                        ))
+                    ) : (
+                        <div className="p-8 text-center text-gray-500 text-sm">
+                            ยังไม่มีรายการธุรกรรมในขณะนี้
                         </div>
-                    ))}
+                    )}
                 </div>
             </div>
 
-            {/* Pending Organizers */}
-            <div className="bg-[#161B22] border border-white/5 rounded-2xl overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
+            {/* Pending Organizers Table */}
+            <div className="bg-[#161B22] border border-white/5 rounded-2xl overflow-hidden shadow-xl min-h-[200px]" onClick={(e) => e.stopPropagation()}>
                 <div className="p-6 border-b border-white/5 flex justify-between items-center">
                     <div className="flex items-center gap-2">
                         <h2 className="font-bold text-lg text-white">คำขอสมัครผู้จัดงาน</h2>
                         <span className="bg-orange-500/10 text-orange-500 text-xs px-2 py-0.5 rounded-full border border-orange-500/20 font-bold">
-                            {pendingOrganizers.filter(o => o.status === "รอตรวจสอบ").length}
+                            {pendingOrganizers.length}
                         </span>
                     </div>
                     <Link href="/admin/organizers" className="text-sm text-blue-400 hover:text-blue-300 font-medium hover:underline">
@@ -239,64 +180,43 @@ export default function AdminDashboard() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                            {pendingOrganizers.map((org) => (
-                                <tr key={org.id} className="hover:bg-white/5 transition-colors">
-                                    <td className="px-6 py-4 font-bold text-white">{org.name}</td>
-                                    <td className="px-6 py-4 text-gray-400">{org.email}</td>
-                                    <td className="px-6 py-4 flex items-center gap-2"><Clock size={14} className="text-gray-600" /> {org.date}</td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 ${org.status === 'รอตรวจสอบ' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : org.status === 'อนุมัติแล้ว' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : org.status === 'เอกสารไม่ครบ' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                                            {org.status === 'อนุมัติแล้ว' && <CheckCircle size={12} />}
-                                            {org.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right relative">
-                                        <button onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === org.id ? null : org.id); }} className={`p-2 rounded-lg transition-colors ${openMenuId === org.id ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
-                                            <MoreHorizontal size={18} />
-                                        </button>
-                                        {openMenuId === org.id && (
-                                            <div className="absolute right-8 top-10 w-40 bg-[#1C2128] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                                <button onClick={() => handleUpdateStatus(org.id, "อนุมัติแล้ว")} className="w-full text-left px-4 py-3 text-sm text-green-400 hover:bg-green-500/10 hover:text-green-300 flex items-center gap-2 font-medium"><CheckCircle size={16} /> อนุมัติทันที</button>
-                                                <button onClick={() => handleUpdateStatus(org.id, "เอกสารไม่ครบ")} className="w-full text-left px-4 py-3 text-sm text-yellow-400 hover:bg-yellow-500/10 hover:text-yellow-300 flex items-center gap-2 font-medium"><Clock size={16} /> เอกสารขาด</button>
-                                                <div className="h-[1px] bg-white/5 my-0"></div>
-                                                <button onClick={() => handleUpdateStatus(org.id, "ถูกปฏิเสธ")} className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center gap-2 font-medium"><XCircle size={16} /> ปฏิเสธ</button>
-                                            </div>
-                                        )}
+                            {pendingOrganizers.length > 0 ? (
+                                pendingOrganizers.map((org) => (
+                                    <tr key={org.id} className="hover:bg-white/5 transition-colors">
+                                        <td className="px-6 py-4 font-bold text-white">{org.name}</td>
+                                        <td className="px-6 py-4 text-gray-400">{org.email}</td>
+                                        <td className="px-6 py-4 flex items-center gap-2"><Clock size={14} className="text-gray-600" /> {org.date}</td>
+                                        <td className="px-6 py-4">
+                                            <span className="text-orange-400">{org.status}</span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right relative">
+                                            <button onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === org.id ? null : org.id); }} className="p-2 text-gray-400 hover:text-white">
+                                                <MoreHorizontal size={18} />
+                                            </button>
+                                            {/* Context Menu would go here */}
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={5} className="p-8 text-center text-gray-500 text-sm">
+                                        ไม่พบคำขอที่รอการตรวจสอบ
                                     </td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
                 </div>
             </div>
->>>>>>> origin/main
         </div>
 
-        {/* Right Column (Top Events) */}
+        {/* Right Column (Top Events - Empty State) */}
         <div className="space-y-8">
-            <div className="bg-[#161B22] rounded-2xl border border-white/5 p-6">
+            <div className="bg-[#161B22] rounded-2xl border border-white/5 p-6 min-h-[300px]">
                 <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-white"><span className="text-xl">🏆</span> อีเวนต์ยอดนิยม</h3>
-                <div className="space-y-6">
-                    {[
-                        { title: "Jeff Satur: Space Shuttle", sold: "95%", img: "https://images.unsplash.com/photo-1516280440614-6697288d5d38?q=80&w=1000" },
-                        { title: "Summer Sonic BKK", sold: "82%", img: "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=1000" },
-                        { title: "Cat Expo 10", sold: "64%", img: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1000" },
-                        { title: "NONT TANONT Concert", sold: "45%", img: "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?q=80&w=1000" },
-                    ].map((event, index) => (
-                        <div key={index} className="flex gap-4 items-center group cursor-pointer">
-                            <div className={`font-bold text-lg w-4 text-center ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-orange-400' : 'text-gray-600'}`}>{index + 1}</div>
-                            <div className="w-12 h-12 rounded-lg bg-gray-800 overflow-hidden shrink-0 border border-white/10 group-hover:border-pink-500 transition-colors">
-                                <img src={event.img} alt="" className="w-full h-full object-cover"/>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-sm truncate text-gray-200 group-hover:text-pink-500 transition-colors">{event.title}</h4>
-                                <div className="flex justify-between items-center mt-1">
-                                    <div className="w-full bg-gray-800 h-1.5 rounded-full mr-3 overflow-hidden"><div className="bg-gradient-to-r from-pink-500 to-purple-500 h-full rounded-full" style={{width: event.sold}}></div></div>
-                                    <span className="text-xs font-bold text-gray-400">{event.sold}</span>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                <div className="flex flex-col items-center justify-center h-40 text-gray-500 text-sm">
+                    <Ticket size={32} className="mb-2 opacity-50"/>
+                    <p>ยังไม่มีข้อมูลอีเวนต์</p>
                 </div>
                 <Link href="/admin/events" className="block w-full mt-6">
                   <button className="w-full py-3 rounded-xl border border-white/10 text-sm font-bold text-gray-400 hover:bg-white/5 hover:text-white transition-all cursor-pointer">ดูรายงานฉบับเต็ม</button>
