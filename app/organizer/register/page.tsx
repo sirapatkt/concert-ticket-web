@@ -255,4 +255,4 @@ export default function OrganizerRegister() {
       </div>
     </div>
   );
-}
+}//ผ่านแล้ว
