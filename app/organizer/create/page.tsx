@@ -3,21 +3,14 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
-  Calendar, AlignLeft, Image as ImageIcon, 
-  Plus, Trash2, Save, Ticket, Building2, ChevronDown, Clock, Map, Grid3X3,
-  Maximize 
+  AlignLeft, Image as ImageIcon, 
+  Trash2, Save, Ticket, ChevronDown, Grid3X3,
+  Map, Plus
 } from "lucide-react";
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-const CAPACITY_PER_BLOCK = 50; 
-=======
-=======
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
-// --- 1. Constants & Types ---
 const CAPACITY_PER_BLOCK = 50; 
 
-// ✅ คงไว้: กำหนดขนาดของ Grid
+// --- Constants & Types ---
 const GRID_SIZES = {
   Small:  { label: "เล็ก (Small Hall)",  total: 48,  cols: 6,  css: "grid-cols-6 max-w-[280px]" },
   Medium: { label: "กลาง (Medium Hall)", total: 80,  cols: 8,  css: "grid-cols-8 max-w-[380px]" },
@@ -25,23 +18,14 @@ const GRID_SIZES = {
 };
 
 type VenueSize = keyof typeof GRID_SIZES; 
-<<<<<<< HEAD
->>>>>>> a7e320caced6215472f4a5dc20df232fa33d66ba
-=======
-=======
-const CAPACITY_PER_BLOCK = 50; 
->>>>>>> bb0f8a0 (merge main into feature-admin)
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
+
+type CellType = "empty" | "stageMain" | "stageSub" | "catwalk" | "zoneA" | "zoneB" | "zoneC";
 
 interface TicketTier {
   name: string;
   price: number;
   quantity: number;
 }
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-type CellType = "empty" | "stageMain" | "stageSub" | "catwalk" | "zoneA" | "zoneB" | "zoneC";
 
 interface Hall {
   Hall_id: number;
@@ -50,122 +34,37 @@ interface Hall {
 
 export default function CreateEventPage() {
   // --- State สำหรับข้อมูลหลัก ---
-=======
-=======
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
-type CellType = "empty" | "stageMain" | "stageSub" | "catwalk" | "zoneA" | "zoneB" | "zoneC";
-
-// --- 2. Mock Data (ลบข้อมูล Presets ออกหมดแล้ว) ---
-const venuePresets: Record<string, { image: string, defaultTickets: TicketTier[] }> = {};
-
-export default function CreateEventPage() {
-  // --- Form State ---
-<<<<<<< HEAD
->>>>>>> a7e320caced6215472f4a5dc20df232fa33d66ba
-=======
-=======
-
-type CellType = "empty" | "stageMain" | "stageSub" | "catwalk" | "zoneA" | "zoneB" | "zoneC";
-
-interface Hall {
-  Hall_id: number;
-  hallName: string;
-}
-
-export default function CreateEventPage() {
-  // --- State สำหรับข้อมูลหลัก ---
->>>>>>> bb0f8a0 (merge main into feature-admin)
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
   const [eventName, setEventName] = useState("");
   const [description, setDescription] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [saleStartDate, setSaleStartDate] = useState(""); 
   const [posterImage, setPosterImage] = useState<string | null>(null);
-<<<<<<< HEAD
-<<<<<<< HEAD
+  const [venuePlanImage, setVenuePlanImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // --- State สำหรับสถานที่ (ดึงจาก Database) ---
+  // --- State สำหรับสถานที่ ---
   const [halls, setHalls] = useState<Hall[]>([]);
   const [selectedHallId, setSelectedHallId] = useState<string>("");
 
   // --- State สำหรับบัตรและ Grid ---
-  const [tickets, setTickets] = useState<TicketTier[]>([]);
-  const [stageGrid, setStageGrid] = useState<CellType[]>(Array(80).fill("empty"));
-  const [activeTool, setActiveTool] = useState<CellType>("stageMain");
-
-  // 1. ดึงข้อมูลสถานที่จาก Database จริง
-  useEffect(() => {
-    const fetchHalls = async () => {
-      try {
-        const res = await fetch("http://127.0.0.1:8000/api/halls");
-        const data = await res.json();
-        setHalls(data);
-      } catch (error) {
-        console.error("Failed to fetch halls:", error);
-      }
-    };
-    fetchHalls();
-  }, []);
-
-  // 2. ระบบ Grid Helpers
-=======
-=======
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
-  
-  const [selectedVenue, setSelectedVenue] = useState(""); 
-  const [venuePlanImage, setVenuePlanImage] = useState<string | null>(null);
-  
-  // ลบ Mock Ticket ออก: เริ่มต้นด้วยบัตรว่าง 1 ใบ
+  const [venueSize, setVenueSize] = useState<VenueSize>("Medium");
   const [tickets, setTickets] = useState<TicketTier[]>([
     { name: "", price: 0, quantity: 0 }
   ]);
-
-  // --- Grid State ---
-  const [venueSize, setVenueSize] = useState<VenueSize>("Medium"); 
   const [stageGrid, setStageGrid] = useState<CellType[]>(Array(GRID_SIZES["Medium"].total).fill("empty"));
   const [activeTool, setActiveTool] = useState<CellType>("stageMain");
 
-  // ✅ คงไว้: ตัวเลือกสถานที่ (แต่ไม่มี data presets ผูกแล้ว)
-  const venues = [
-    "IMPACT ARENA (Muang Thong Thani)",
-    "Prince Mahidol Hall",
-    "เมืองไทยรัชดาลัย เธียเตอร์"
-  ];
-
-  // --- Helpers ---
-<<<<<<< HEAD
->>>>>>> a7e320caced6215472f4a5dc20df232fa33d66ba
-=======
-=======
-  const [loading, setLoading] = useState(false);
-
-  // --- State สำหรับสถานที่ (ดึงจาก Database) ---
-  const [halls, setHalls] = useState<Hall[]>([]);
-  const [selectedHallId, setSelectedHallId] = useState<string>("");
-
-  // --- State สำหรับบัตรและ Grid ---
-  const [tickets, setTickets] = useState<TicketTier[]>([]);
-  const [stageGrid, setStageGrid] = useState<CellType[]>(Array(80).fill("empty"));
-  const [activeTool, setActiveTool] = useState<CellType>("stageMain");
-
-  // 1. ดึงข้อมูลสถานที่จาก Database จริง
+  // 1. กำหนดสถานที่จัดงานแบบล็อกตายตัว 3 ที่
   useEffect(() => {
-    const fetchHalls = async () => {
-      try {
-        const res = await fetch("http://127.0.0.1:8000/api/halls");
-        const data = await res.json();
-        setHalls(data);
-      } catch (error) {
-        console.error("Failed to fetch halls:", error);
-      }
-    };
-    fetchHalls();
+    const specificHalls = [
+      { Hall_id: 1, hallName: "อิมแพคอารีน่า (Impact Arena)" },
+      { Hall_id: 2, hallName: "มหิดลฮอล์ (Prince Mahidol Hall)" },
+      { Hall_id: 3, hallName: "เมืองไทยรัชดาลัยเธียร์เตอร์" }
+    ];
+    setHalls(specificHalls);
   }, []);
 
   // 2. ระบบ Grid Helpers
->>>>>>> bb0f8a0 (merge main into feature-admin)
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
   const getCellColor = (type: CellType) => {
     switch (type) {
       case "stageMain": return "bg-slate-200 border-white shadow-lg"; 
@@ -178,11 +77,6 @@ export default function CreateEventPage() {
     }
   };
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
   const calculateZoneCapacity = (grid: CellType[], zoneType: CellType) => {
     return grid.filter((c) => c === zoneType).length * CAPACITY_PER_BLOCK;
   };
@@ -199,59 +93,23 @@ export default function CreateEventPage() {
     updateTicketsFromGrid(newGrid); 
   };
 
-<<<<<<< HEAD
->>>>>>> a7e320caced6215472f4a5dc20df232fa33d66ba
-=======
-=======
->>>>>>> bb0f8a0 (merge main into feature-admin)
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
   const toggleCell = (index: number) => {
     const newGrid = [...stageGrid];
     newGrid[index] = newGrid[index] === activeTool ? "empty" : activeTool;
     setStageGrid(newGrid);
-<<<<<<< HEAD
-<<<<<<< HEAD
-    updateTicketsFromGrid(newGrid);
-=======
-=======
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
 
+    // อัปเดตตั๋วเฉพาะเมื่อมีการเปลี่ยนแปลงโซนที่นั่ง (A, B, C)
     if (["zoneA", "zoneB", "zoneC"].includes(activeTool) || ["zoneA", "zoneB", "zoneC"].includes(stageGrid[index])) {
        updateTicketsFromGrid(newGrid);
     }
-<<<<<<< HEAD
->>>>>>> a7e320caced6215472f4a5dc20df232fa33d66ba
-=======
-=======
-    updateTicketsFromGrid(newGrid);
->>>>>>> bb0f8a0 (merge main into feature-admin)
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
   };
 
   const updateTicketsFromGrid = (grid: CellType[]) => {
-    const calculateCapacity = (type: CellType) => grid.filter(c => c === type).length * CAPACITY_PER_BLOCK;
-    
-    const countA = calculateCapacity("zoneA");
-    const countB = calculateCapacity("zoneB");
-    const countC = calculateCapacity("zoneC");
+    const countA = grid.filter(c => c === "zoneA").length * CAPACITY_PER_BLOCK;
+    const countB = grid.filter(c => c === "zoneB").length * CAPACITY_PER_BLOCK;
+    const countC = grid.filter(c => c === "zoneC").length * CAPACITY_PER_BLOCK;
 
     setTickets(prev => {
-<<<<<<< HEAD
-<<<<<<< HEAD
-      let otherTickets = prev.filter(t => !t.name.includes("(Grid)"));
-      const gridTickets: TicketTier[] = [];
-      
-      if (countA > 0) gridTickets.push({ name: "Zone A (Grid)", price: 6000, quantity: countA });
-      if (countB > 0) gridTickets.push({ name: "Zone B (Grid)", price: 4500, quantity: countB });
-      if (countC > 0) gridTickets.push({ name: "Zone C (Grid)", price: 2500, quantity: countC });
-      
-      return [...gridTickets, ...otherTickets];
-    });
-  };
-
-=======
-=======
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
         let newTickets = [...prev];
         const syncZone = (zoneName: string, count: number, defaultPrice: number) => {
             const idx = newTickets.findIndex(t => t.name === zoneName);
@@ -265,10 +123,10 @@ export default function CreateEventPage() {
                  newTickets = newTickets.filter(t => t.name !== zoneName);
             }
         };
-        // ราคา Default เป็น 0 ไว้ก่อน เพราะไม่มี Mock Data แล้ว
-        syncZone("Zone A (Grid)", countA, 0);
-        syncZone("Zone B (Grid)", countB, 0);
-        syncZone("Zone C (Grid)", countC, 0);
+        
+        syncZone("Zone A (Grid)", countA, 6000);
+        syncZone("Zone B (Grid)", countB, 4500);
+        syncZone("Zone C (Grid)", countC, 2500);
         return newTickets;
     });
   };
@@ -277,26 +135,6 @@ export default function CreateEventPage() {
     const emptyGrid = Array(GRID_SIZES[venueSize].total).fill("empty");
     setStageGrid(emptyGrid);
     updateTicketsFromGrid(emptyGrid);
-  };
-
-  const handleVenueChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const venueName = e.target.value;
-    setSelectedVenue(venueName);
-
-    // เช็คว่ามี Preset ไหม (ตอนนี้ไม่มีแล้ว จะเข้า else ตลอด)
-    if (venuePresets[venueName]) {
-      const preset = venuePresets[venueName];
-      setVenuePlanImage(preset.image);
-      setTickets(preset.defaultTickets);
-      
-      // Default behavior when preset exists
-      setVenueSize("Medium");
-      setStageGrid(Array(GRID_SIZES["Medium"].total).fill("empty"));
-    } else {
-      // เมื่อไม่มี Preset ให้เคลียร์รูป และเคลียร์บัตรเป็นค่าว่าง
-      setVenuePlanImage(null);
-      setTickets([{ name: "", price: 0, quantity: 0 }]);
-    }
   };
 
   const addTicketTier = () => setTickets([...tickets, { name: "", price: 0, quantity: 0 }]);
@@ -313,23 +151,6 @@ export default function CreateEventPage() {
     setTickets(newTickets);
   };
 
-<<<<<<< HEAD
->>>>>>> a7e320caced6215472f4a5dc20df232fa33d66ba
-=======
-=======
-      let otherTickets = prev.filter(t => !t.name.includes("(Grid)"));
-      const gridTickets: TicketTier[] = [];
-      
-      if (countA > 0) gridTickets.push({ name: "Zone A (Grid)", price: 6000, quantity: countA });
-      if (countB > 0) gridTickets.push({ name: "Zone B (Grid)", price: 4500, quantity: countB });
-      if (countC > 0) gridTickets.push({ name: "Zone C (Grid)", price: 2500, quantity: countC });
-      
-      return [...gridTickets, ...otherTickets];
-    });
-  };
-
->>>>>>> bb0f8a0 (merge main into feature-admin)
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -339,62 +160,15 @@ export default function CreateEventPage() {
     }
   };
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-  // 3. ส่งข้อมูลไป Backend Laravel
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedHallId) return alert("กรุณาเลือกสถานที่");
-
-    setLoading(true);
-    const token = localStorage.getItem("token");
-
-    const payload = {
-      eventName,
-      eventDescription: description,
-      Hall_id: Number(selectedHallId),
-      eventDate,
-      saleStartDate,
-      posterImage,
-      tickets,
-      stageGrid: JSON.stringify(stageGrid)
-    };
-
-    try {
-      const res = await fetch('http://127.0.0.1:8000/api/events', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        alert("✅ บันทึกคอนเสิร์ตเรียบร้อย!");
-        window.location.href = "/organizer/dashboard";
-      } else {
-        const err = await res.json();
-        alert("❌ Error: " + err.message);
-      }
-    } catch (error) {
-      alert("❌ เชื่อมต่อ Server ไม่ได้");
-    } finally {
-      setLoading(false);
-=======
-=======
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
-  // เพิ่ม Handler สำหรับอัปโหลดรูปผังที่นั่งเอง
   const handlePlanImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => setVenuePlanImage(reader.result as string);
       reader.readAsDataURL(file);
-<<<<<<< HEAD
->>>>>>> a7e320caced6215472f4a5dc20df232fa33d66ba
-=======
-=======
+    }
+  };
+
   // 3. ส่งข้อมูลไป Backend Laravel
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -410,6 +184,8 @@ export default function CreateEventPage() {
       eventDate,
       saleStartDate,
       posterImage,
+      venuePlanImage,
+      venueSize,
       tickets,
       stageGrid: JSON.stringify(stageGrid)
     };
@@ -429,62 +205,21 @@ export default function CreateEventPage() {
         window.location.href = "/organizer/dashboard";
       } else {
         const err = await res.json();
-        alert("❌ Error: " + err.message);
+        alert("❌ Error: " + (err.message || "Something went wrong"));
       }
     } catch (error) {
       alert("❌ เชื่อมต่อ Server ไม่ได้");
     } finally {
       setLoading(false);
->>>>>>> bb0f8a0 (merge main into feature-admin)
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
     }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      const payload = {
-          eventName,
-          eventDescription: description,
-          bannerImage: posterImage,
-          eventDate,
-          saleStartDate,
-          location: selectedVenue,
-          venueSize: venueSize,
-          venuePlanImage, 
-          tickets: tickets.map(t => ({
-              name: t.name,
-              price: Number(t.price),
-              quantity: Number(t.quantity)
-          })),
-          stageGrid: stageGrid
-      }
-      console.log("🚀 Payload to send:", payload);
-      alert("ข้อมูลพร้อมส่ง (ดูใน Console) - นำไปต่อ API ได้เลย");
   };
 
   return (
     <div className="min-h-screen bg-[#020617] text-white p-6 pb-20 font-sans">
       <div className="max-w-7xl mx-auto mb-8 flex justify-between items-center">
         <div>
-<<<<<<< HEAD
-<<<<<<< HEAD
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">สร้างอีเวนต์ใหม่</h1>
           <p className="text-slate-400 mt-1">ดีไซน์ผังเวทีและกำหนดราคาบัตรได้ตามต้องการ</p>
-=======
-=======
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
-            สร้างอีเวนต์ใหม่
-          </h1>
-          <p className="text-slate-400 mt-1">กรอกข้อมูลและออกแบบผังที่นั่ง</p>
-<<<<<<< HEAD
->>>>>>> a7e320caced6215472f4a5dc20df232fa33d66ba
-=======
-=======
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">สร้างอีเวนต์ใหม่</h1>
-          <p className="text-slate-400 mt-1">ดีไซน์ผังเวทีและกำหนดราคาบัตรได้ตามต้องการ</p>
->>>>>>> bb0f8a0 (merge main into feature-admin)
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
         </div>
         <div className="flex gap-3">
           <Link href="/organizer" className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800">ยกเลิก</Link>
@@ -500,187 +235,92 @@ export default function CreateEventPage() {
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
             <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-blue-400"><AlignLeft size={20} /> รายละเอียดงาน</h2>
             <div className="space-y-4">
-<<<<<<< HEAD
-<<<<<<< HEAD
-              <input type="text" value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="ชื่องานคอนเสิร์ต..." className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 focus:border-blue-500 outline-none" />
-              
-              <div className="relative">
-                <select value={selectedHallId} onChange={(e) => setSelectedHallId(e.target.value)} className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 appearance-none outline-none focus:border-blue-500">
-                  <option value="">เลือกสถานที่จัดงาน (Venue)...</option>
-                  {halls.map((h) => <option key={h.Hall_id} value={h.Hall_id}>{h.hallName}</option>)}
-                </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-=======
-=======
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
               <div>
                 <label className="block text-sm text-slate-400 mb-1">ชื่องานอีเวนต์</label>
-                <input 
-                  type="text" 
-                  value={eventName}
-                  onChange={(e) => setEventName(e.target.value)}
-                  placeholder="ใส่ชื่องาน..."
-                  className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 outline-none"
-                />
+                <input type="text" value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="ชื่องานคอนเสิร์ต..." className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 focus:border-blue-500 outline-none" />
               </div>
-
-              {/* Grid สำหรับ Venue และ Size */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Venue Dropdown (คงไว้ตามคำขอ) */}
-                  <div>
-                      <label className="block text-sm text-slate-400 mb-1 flex items-center gap-1">
-                        <Building2 size={14} /> สถานที่จัดงาน (Venue)
-                      </label>
-                      <div className="relative">
-                        <select 
-                            value={selectedVenue}
-                            onChange={handleVenueChange} 
-                            className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 outline-none cursor-pointer appearance-none"
-                        >
-                            <option value="" disabled className="text-slate-500">เลือกสถานที่จัดงาน...</option>
-                            {venues.map((v) => (
-                              <option key={v} value={v}>{v}</option>
-                            ))}
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={20} />
-                      </div>
-                  </div>
-
-                  {/* Dropdown ขนาดพื้นที่ (คงไว้ตามคำขอ) */}
-                  <div>
-                      <label className="block text-sm text-slate-400 mb-1 flex items-center gap-1">
-                        <Maximize size={14} /> ขนาดพื้นที่ (Size)
-                      </label>
-                      <div className="relative">
-                        <select 
-                            value={venueSize}
-                            onChange={handleSizeChange} 
-                            disabled={!selectedVenue} // ห้ามเลือกถ้ายังไม่เลือกสถานที่
-                            className={`w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 outline-none cursor-pointer appearance-none ${!selectedVenue ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                            {Object.entries(GRID_SIZES).map(([key, config]) => (
-                                <option key={key} value={key}>{config.label}</option>
-                            ))}
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={20} />
-                      </div>
-                  </div>
-<<<<<<< HEAD
->>>>>>> a7e320caced6215472f4a5dc20df232fa33d66ba
-=======
-=======
-              <input type="text" value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="ชื่องานคอนเสิร์ต..." className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 focus:border-blue-500 outline-none" />
               
-              <div className="relative">
-                <select value={selectedHallId} onChange={(e) => setSelectedHallId(e.target.value)} className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 appearance-none outline-none focus:border-blue-500">
-                  <option value="">เลือกสถานที่จัดงาน (Venue)...</option>
-                  {halls.map((h) => <option key={h.Hall_id} value={h.Hall_id}>{h.hallName}</option>)}
-                </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
->>>>>>> bb0f8a0 (merge main into feature-admin)
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* เลือก Hall จาก Database */}
+                <div>
+                   <label className="block text-sm text-slate-400 mb-1">สถานที่จัดงาน (Venue)</label>
+                   <div className="relative">
+                    <select value={selectedHallId} onChange={(e) => setSelectedHallId(e.target.value)} className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 appearance-none outline-none focus:border-blue-500">
+                      <option value="">เลือกสถานที่จัดงาน...</option>
+                      {halls.map((h) => <option key={h.Hall_id} value={h.Hall_id}>{h.hallName}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={20}/>
+                   </div>
+                </div>
+
+                {/* เลือก Size ของ Grid (แก้ไขแล้ว: ล็อกถ้าไม่เลือกสถานที่) */}
+                <div>
+                  <label className={`block text-sm mb-1 flex items-center gap-1 ${!selectedHallId ? "text-slate-600" : "text-slate-400"}`}>
+                      <Grid3X3 size={14} /> ขนาดพื้นที่ (Grid Size)
+                  </label>
+                  <div className="relative">
+                    <select 
+                        value={venueSize}
+                        onChange={handleSizeChange} 
+                        disabled={!selectedHallId}
+                        className={`w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 outline-none appearance-none
+                          ${!selectedHallId ? "opacity-50 cursor-not-allowed bg-slate-800" : "cursor-pointer"} 
+                        `}
+                    >
+                        {Object.entries(GRID_SIZES).map(([key, config]) => (
+                            <option key={key} value={key}>{config.label}</option>
+                        ))}
+                    </select>
+                    <ChevronDown className={`absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none ${!selectedHallId ? "text-slate-600" : "text-slate-500"}`} size={20} />
+                  </div>
+                  {!selectedHallId && (
+                    <p className="text-xs text-red-400 mt-1">* กรุณาเลือกสถานที่ก่อน</p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="datetime-local" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 [color-scheme:dark]" />
-                <input type="datetime-local" value={saleStartDate} onChange={(e) => setSaleStartDate(e.target.value)} className="bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 [color-scheme:dark]" />
+                 <div>
+                    <label className="block text-sm text-slate-400 mb-1">วันเวลาแสดง</label>
+                    <input type="datetime-local" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 [color-scheme:dark]" />
+                 </div>
+                 <div>
+                    <label className="block text-sm text-slate-400 mb-1">วันเวลาเปิดขายบัตร</label>
+                    <input type="datetime-local" value={saleStartDate} onChange={(e) => setSaleStartDate(e.target.value)} className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 [color-scheme:dark]" />
+                 </div>
               </div>
-              <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="รายละเอียดเพิ่มเติม..." className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 resize-none outline-none focus:border-blue-500" />
-            </div>
-          </div>
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-          {/* Section 2: Grid Editor */}
-          <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
-            <h2 className="text-xl font-bold mb-6 text-purple-400 flex items-center gap-2"><Grid3X3 size={20} /> ออกแบบผังหน้าเวที</h2>
-            <div className="flex gap-2 mb-6">
-                {["stageMain", "catwalk", "zoneA", "zoneB", "zoneC"].map((t) => (
-                    <button key={t} onClick={() => setActiveTool(t as CellType)} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTool === t ? "bg-white text-black" : "bg-slate-800 text-slate-400"}`}>
-                        {t.replace("stage", "").replace("zone", "Zone ")}
-                    </button>
-                ))}
-            </div>
-            <div className="bg-[#020617] p-8 rounded-xl border-2 border-dashed border-slate-700 flex justify-center">
-              <div className="grid grid-cols-8 gap-1.5 w-full max-w-[400px]">
-                {stageGrid.map((type, i) => (
-                  <div key={i} onClick={() => toggleCell(i)} className={`aspect-square border rounded-sm cursor-pointer transition-all ${getCellColor(type)} ${activeTool === type ? "ring-2 ring-white/50" : ""}`} />
-                ))}
-=======
               <div>
                 <label className="block text-sm text-slate-400 mb-1">รายละเอียดเพิ่มเติม</label>
-                <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="รายละเอียดงาน..." className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 resize-none" />
->>>>>>> a7e320caced6215472f4a5dc20df232fa33d66ba
-=======
-              <div>
-                <label className="block text-sm text-slate-400 mb-1">รายละเอียดเพิ่มเติม</label>
-                <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="รายละเอียดงาน..." className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 resize-none" />
-=======
-          {/* Section 2: Grid Editor */}
-          <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
-            <h2 className="text-xl font-bold mb-6 text-purple-400 flex items-center gap-2"><Grid3X3 size={20} /> ออกแบบผังหน้าเวที</h2>
-            <div className="flex gap-2 mb-6">
-                {["stageMain", "catwalk", "zoneA", "zoneB", "zoneC"].map((t) => (
-                    <button key={t} onClick={() => setActiveTool(t as CellType)} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTool === t ? "bg-white text-black" : "bg-slate-800 text-slate-400"}`}>
-                        {t.replace("stage", "").replace("zone", "Zone ")}
-                    </button>
-                ))}
-            </div>
-            <div className="bg-[#020617] p-8 rounded-xl border-2 border-dashed border-slate-700 flex justify-center">
-              <div className="grid grid-cols-8 gap-1.5 w-full max-w-[400px]">
-                {stageGrid.map((type, i) => (
-                  <div key={i} onClick={() => toggleCell(i)} className={`aspect-square border rounded-sm cursor-pointer transition-all ${getCellColor(type)} ${activeTool === type ? "ring-2 ring-white/50" : ""}`} />
-                ))}
->>>>>>> bb0f8a0 (merge main into feature-admin)
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
+                <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="รายละเอียดงาน..." className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 resize-none outline-none focus:border-blue-500" />
               </div>
             </div>
           </div>
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-          {/* Section 3: Tickets */}
-          <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
-            <div className="flex justify-between mb-6">
-              <h2 className="text-xl font-bold text-purple-400 flex items-center gap-2"><Ticket size={20} /> รายการบัตร</h2>
-              <button onClick={() => setTickets([...tickets, { name: "", price: 0, quantity: 0 }])} className="text-sm border border-purple-500/50 text-purple-400 px-3 py-1.5 rounded-lg hover:bg-purple-500 hover:text-white transition-all">+ เพิ่มโซน</button>
-            </div>
-            <div className="space-y-3">
-              {tickets.map((t, i) => (
-                <div key={i} className="grid grid-cols-12 gap-3 p-3 bg-[#1E293B]/50 rounded-xl border border-slate-700 items-center">
-                  <input type="text" value={t.name} onChange={(e) => { const nt = [...tickets]; nt[i].name = e.target.value; setTickets(nt); }} className="col-span-5 bg-[#0F172A] border border-slate-700 rounded p-2 text-sm outline-none" placeholder="ชื่อโซน..." />
-                  <input type="number" value={t.price} onChange={(e) => { const nt = [...tickets]; nt[i].price = Number(e.target.value); setTickets(nt); }} className="col-span-3 bg-[#0F172A] border border-slate-700 rounded p-2 text-sm outline-none" placeholder="ราคา..." />
-                  <input type="number" value={t.quantity} readOnly={t.name.includes("(Grid)")} onChange={(e) => { const nt = [...tickets]; nt[i].quantity = Number(e.target.value); setTickets(nt); }} className={`col-span-3 bg-[#0F172A] border border-slate-700 rounded p-2 text-sm outline-none ${t.name.includes("(Grid)") ? "opacity-50" : ""}`} placeholder="จำนวน..." />
-                  <button onClick={() => setTickets(tickets.filter((_, idx) => idx !== i))} className="col-span-1 text-slate-500 hover:text-red-500"><Trash2 size={18} /></button>
-                </div>
-              ))}
-=======
-=======
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
-          {/* 2. Stage Layout Editor */}
+          {/* Section 2: Grid Editor */}
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-slate-700 pb-4 gap-4">
                <div>
-                  <h2 className="text-xl font-bold flex items-center gap-2 text-purple-400">
-                     <Grid3X3 size={20} /> ออกแบบผังเวที (Standing Grid)
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-1">
-                      ขนาดปัจจุบัน: <span className="text-white font-bold">{GRID_SIZES[venueSize].label}</span> ({GRID_SIZES[venueSize].cols} คอลัมน์)
-                  </p>
+                 <h2 className="text-xl font-bold flex items-center gap-2 text-purple-400">
+                    <Grid3X3 size={20} /> ออกแบบผังเวที (Standing Grid)
+                 </h2>
+                 <p className="text-xs text-slate-500 mt-1">
+                     ขนาดปัจจุบัน: <span className="text-white font-bold">{GRID_SIZES[venueSize].label}</span> ({GRID_SIZES[venueSize].cols} คอลัมน์)
+                 </p>
                </div>
                
                {/* Toolbar */}
                <div className="flex flex-wrap gap-2">
-                  <div className="flex bg-[#1E293B] p-1 rounded-lg border border-slate-700">
-                      <button onClick={()=>setActiveTool("stageMain")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="stageMain" ? "bg-slate-200 text-black shadow" : "text-slate-400 hover:text-white"}`}>Main</button>
-                      <button onClick={()=>setActiveTool("catwalk")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="catwalk" ? "bg-slate-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>Catwalk</button>
-                      <button onClick={()=>setActiveTool("stageSub")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="stageSub" ? "bg-slate-400 text-black shadow" : "text-slate-400 hover:text-white"}`}>Mini</button>
-                  </div>
-                  <div className="flex bg-[#1E293B] p-1 rounded-lg border border-slate-700">
-                      <button onClick={()=>setActiveTool("zoneA")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="zoneA" ? "bg-purple-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>A</button>
-                      <button onClick={()=>setActiveTool("zoneB")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="zoneB" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>B</button>
-                      <button onClick={()=>setActiveTool("zoneC")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="zoneC" ? "bg-green-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>C</button>
-                  </div>
+                 <div className="flex bg-[#1E293B] p-1 rounded-lg border border-slate-700">
+                     <button onClick={()=>setActiveTool("stageMain")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="stageMain" ? "bg-slate-200 text-black shadow" : "text-slate-400 hover:text-white"}`}>Main</button>
+                     <button onClick={()=>setActiveTool("catwalk")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="catwalk" ? "bg-slate-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>Catwalk</button>
+                     <button onClick={()=>setActiveTool("stageSub")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="stageSub" ? "bg-slate-400 text-black shadow" : "text-slate-400 hover:text-white"}`}>Mini</button>
+                 </div>
+                 <div className="flex bg-[#1E293B] p-1 rounded-lg border border-slate-700">
+                     <button onClick={()=>setActiveTool("zoneA")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="zoneA" ? "bg-purple-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>A</button>
+                     <button onClick={()=>setActiveTool("zoneB")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="zoneB" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>B</button>
+                     <button onClick={()=>setActiveTool("zoneC")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="zoneC" ? "bg-green-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>C</button>
+                 </div>
                </div>
             </div>
 
@@ -731,7 +371,7 @@ export default function CreateEventPage() {
             </div>
           </div>
 
-          {/* 3. จัดการบัตร + ผังที่นั่ง */}
+          {/* Section 3: Tickets + Venue Plan Image */}
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold flex items-center gap-2 text-purple-400">
@@ -784,47 +424,11 @@ export default function CreateEventPage() {
                        </div>
                    ))}
                </div>
-<<<<<<< HEAD
->>>>>>> a7e320caced6215472f4a5dc20df232fa33d66ba
-=======
-=======
-          {/* Section 3: Tickets */}
-          <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
-            <div className="flex justify-between mb-6">
-              <h2 className="text-xl font-bold text-purple-400 flex items-center gap-2"><Ticket size={20} /> รายการบัตร</h2>
-              <button onClick={() => setTickets([...tickets, { name: "", price: 0, quantity: 0 }])} className="text-sm border border-purple-500/50 text-purple-400 px-3 py-1.5 rounded-lg hover:bg-purple-500 hover:text-white transition-all">+ เพิ่มโซน</button>
-            </div>
-            <div className="space-y-3">
-              {tickets.map((t, i) => (
-                <div key={i} className="grid grid-cols-12 gap-3 p-3 bg-[#1E293B]/50 rounded-xl border border-slate-700 items-center">
-                  <input type="text" value={t.name} onChange={(e) => { const nt = [...tickets]; nt[i].name = e.target.value; setTickets(nt); }} className="col-span-5 bg-[#0F172A] border border-slate-700 rounded p-2 text-sm outline-none" placeholder="ชื่อโซน..." />
-                  <input type="number" value={t.price} onChange={(e) => { const nt = [...tickets]; nt[i].price = Number(e.target.value); setTickets(nt); }} className="col-span-3 bg-[#0F172A] border border-slate-700 rounded p-2 text-sm outline-none" placeholder="ราคา..." />
-                  <input type="number" value={t.quantity} readOnly={t.name.includes("(Grid)")} onChange={(e) => { const nt = [...tickets]; nt[i].quantity = Number(e.target.value); setTickets(nt); }} className={`col-span-3 bg-[#0F172A] border border-slate-700 rounded p-2 text-sm outline-none ${t.name.includes("(Grid)") ? "opacity-50" : ""}`} placeholder="จำนวน..." />
-                  <button onClick={() => setTickets(tickets.filter((_, idx) => idx !== i))} className="col-span-1 text-slate-500 hover:text-red-500"><Trash2 size={18} /></button>
-                </div>
-              ))}
->>>>>>> bb0f8a0 (merge main into feature-admin)
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
             </div>
           </div>
         </div>
 
-<<<<<<< HEAD
-<<<<<<< HEAD
         {/* Right Sidebar: Poster */}
-        <div className="lg:col-span-4">
-          <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 sticky top-6 shadow-xl text-center">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-cyan-400"><ImageIcon size={20} /> โปสเตอร์งาน</h2>
-            <label className="block w-full aspect-[3/4] border-2 border-dashed border-slate-700 rounded-2xl overflow-hidden cursor-pointer hover:border-cyan-500 group transition-all">
-              {posterImage ? <img src={posterImage} className="w-full h-full object-cover" /> : <div className="h-full flex flex-col items-center justify-center text-slate-500 group-hover:text-cyan-500"><ImageIcon size={48} className="mb-2 opacity-20" /><span className="text-sm font-medium">คลิกเพื่ออัปโหลด</span></div>}
-              <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
-            </label>
-            <div className="mt-6 pt-6 border-t border-slate-800 text-left space-y-2">
-                <div className="flex justify-between text-sm text-slate-400"><span>รวมจำนวนบัตร:</span><span className="text-white font-bold">{tickets.reduce((s, t) => s + t.quantity, 0)} ใบ</span></div>
-=======
-=======
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
-        {/* Right Column: Upload Poster */}
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl sticky top-6">
              <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-cyan-400"><ImageIcon size={20} /> โปสเตอร์งาน</h2>
@@ -844,26 +448,10 @@ export default function CreateEventPage() {
              <div className="mt-6 pt-6 border-t border-slate-800">
               <h3 className="text-sm font-semibold text-slate-300 mb-3">สรุปข้อมูลเบื้องต้น</h3>
               <ul className="space-y-2 text-sm text-slate-400">
-                <li className="flex justify-between"><span>สถานที่:</span><span className="text-white text-right">{selectedVenue || "-"}</span></li>
-                <li className="flex justify-between"><span>ขนาดพื้นที่:</span><span className="text-cyan-400 text-right">{selectedVenue ? GRID_SIZES[venueSize].label : "-"}</span></li>
-                <li className="flex justify-between border-t border-slate-800 pt-2 mt-2"><span>จำนวนบัตร:</span><span className="text-white">{tickets.reduce((sum, t) => sum + Number(t.quantity), 0)} ใบ</span></li>
+                <li className="flex justify-between"><span>สถานที่ (Hall ID):</span><span className="text-white text-right">{selectedHallId || "-"}</span></li>
+                <li className="flex justify-between"><span>ขนาด Grid:</span><span className="text-cyan-400 text-right">{GRID_SIZES[venueSize].label}</span></li>
+                <li className="flex justify-between border-t border-slate-800 pt-2 mt-2"><span>จำนวนบัตรทั้งหมด:</span><span className="text-white">{tickets.reduce((sum, t) => sum + Number(t.quantity), 0)} ใบ</span></li>
               </ul>
-<<<<<<< HEAD
->>>>>>> a7e320caced6215472f4a5dc20df232fa33d66ba
-=======
-=======
-        {/* Right Sidebar: Poster */}
-        <div className="lg:col-span-4">
-          <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 sticky top-6 shadow-xl text-center">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-cyan-400"><ImageIcon size={20} /> โปสเตอร์งาน</h2>
-            <label className="block w-full aspect-[3/4] border-2 border-dashed border-slate-700 rounded-2xl overflow-hidden cursor-pointer hover:border-cyan-500 group transition-all">
-              {posterImage ? <img src={posterImage} className="w-full h-full object-cover" /> : <div className="h-full flex flex-col items-center justify-center text-slate-500 group-hover:text-cyan-500"><ImageIcon size={48} className="mb-2 opacity-20" /><span className="text-sm font-medium">คลิกเพื่ออัปโหลด</span></div>}
-              <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
-            </label>
-            <div className="mt-6 pt-6 border-t border-slate-800 text-left space-y-2">
-                <div className="flex justify-between text-sm text-slate-400"><span>รวมจำนวนบัตร:</span><span className="text-white font-bold">{tickets.reduce((s, t) => s + t.quantity, 0)} ใบ</span></div>
->>>>>>> bb0f8a0 (merge main into feature-admin)
->>>>>>> 8342dca1f22f68c535b7e0b042eebd3b0e844300
             </div>
           </div>
         </div>
