@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
-  Calendar, AlignLeft, Image as ImageIcon, 
+  Calendar, AlignLeft, Image as ImageIcon,  
   Plus, Trash2, Save, Ticket, Building2, ChevronDown, Clock, Map, Grid3X3,
   Maximize 
 } from "lucide-react";
