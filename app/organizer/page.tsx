@@ -3,8 +3,7 @@
 
 import Link from 'next/link';
 import { 
-  ArrowUpRight,
-  User 
+  ArrowUpRight
 } from 'lucide-react';
 
 // --- (ส่วนประกอบ StatCard) ---
@@ -89,13 +88,7 @@ export default function OrganizerDashboard() {
   return (
     <div className="relative flex flex-col gap-6 md:gap-8 p-4 md:p-8 w-full max-w-[1920px] mx-auto">
       
-      {/* ✅ แก้ไขเป็น -top-2 ตามที่รีเควสครับ */}
-      <div className="absolute -top-2 right-4 md:-top-2 md:right-8 z-20 hidden sm:block">
-        <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-700 bg-[#020617] text-slate-300 hover:bg-slate-800 hover:text-white transition-all text-sm font-medium shadow-lg">
-             <User size={18} />
-             <span>ผู้จัดงาน</span>
-        </button>
-      </div>
+      {/* 🗑️ ลบปุ่มเดิมออกเรียบร้อยแล้วครับ ตำแหน่ง UserDropdown จะคุมจาก Layout แทน */}
 
       <div className="flex flex-col gap-1 mt-4 sm:pr-32">
         <h1 className="text-2xl md:text-3xl font-bold text-white">แดชบอร์ดผู้จัดงาน</h1>

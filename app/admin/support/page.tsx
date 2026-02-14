@@ -15,7 +15,7 @@ import {
   Send
 } from "lucide-react";
 
-// --- Mock Data ---
+// --- Mock Data: เหลือไว้ 1 ตัวอย่าง เพื่อเป็น Template ---
 const initialTickets: any[] = [
   {
     id: "TK-1024",
@@ -27,50 +27,6 @@ const initialTickets: any[] = [
     status: "Pending",
     date: "10 Feb 2026, 10:30",
     avatar: "S"
-  },
-  {
-    id: "TK-1023",
-    user: "Kanda J.",
-    email: "kanda@hotmail.com",
-    category: "Account",
-    subject: "เข้าสู่ระบบไม่ได้ ลืมรหัสผ่าน",
-    priority: "Medium",
-    status: "In Progress",
-    date: "09 Feb 2026, 15:45",
-    avatar: "K"
-  },
-  {
-    id: "TK-1022",
-    user: "John Doe",
-    email: "john.d@gmail.com",
-    category: "Bug Report",
-    subject: "กดจองบัตรแล้วหน้าเว็บค้าง",
-    priority: "High",
-    status: "Resolved",
-    date: "08 Feb 2026, 09:20",
-    avatar: "J"
-  },
-  {
-    id: "TK-1021",
-    user: "Alice Wonderland",
-    email: "alice@yahoo.com",
-    category: "General",
-    subject: "สอบถามรายละเอียดงาน Big Mountain",
-    priority: "Low",
-    status: "Pending",
-    date: "08 Feb 2026, 08:00",
-    avatar: "A"
-  },
-  {
-    id: "TK-1020",
-    user: "Bobby Rock",
-    email: "bob@music.com",
-    category: "Refund",
-    subject: "ขอยกเลิกบัตรและขอคืนเงิน",
-    priority: "Medium",
-    status: "Resolved",
-    date: "07 Feb 2026, 18:30",
-    avatar: "B"
   }
 ];
 

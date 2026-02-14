@@ -5,7 +5,7 @@ import {
   CalendarDays, MapPin, Eye, Check, X, Search, Filter, 
   User, FileText, CreditCard, DollarSign, Clock, 
   RotateCcw, MessageSquare, Edit, Trash2, Save, ImageIcon,
-  PlusCircle, MinusCircle, Tag, CalendarClock 
+  PlusCircle, MinusCircle, Tag, CalendarClock, Ticket 
 } from "lucide-react";
 
 // ✅ 1. Interface
@@ -42,7 +42,7 @@ export default function EventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<EventType | null>(null);
   const [editingEvent, setEditingEvent] = useState<EventType | null>(null);
 
-  // ✅ Mock Data
+  // ✅ Mock Data: เหลือไว้ 1 ตัวอย่างเพื่อเป็น Template
   const [events, setEvents] = useState<EventType[]>([
     { 
       id: 1, 
@@ -56,7 +56,7 @@ export default function EventsPage() {
       description: "คอนเสิร์ตใหญ่ส่งท้ายปี...",
       category: "Concert",
       approvalStatus: "approved", 
-      paymentStatus: "paid",      
+      paymentStatus: "paid",       
       publishDate: "01 Dec 2024, 09:00",
       saleStartDate: "05 Dec 2024, 10:00",
       depositAmount: "50,000",
@@ -64,67 +64,7 @@ export default function EventsPage() {
         { id: 1, zone: "A1", price: 5000, totalSeats: 100 },
         { id: 2, zone: "B1", price: 3500, totalSeats: 200 },
       ]
-    },
-    { 
-      id: 2, 
-      title: "Indie Rock Night", 
-      organizer: "Smallroom", 
-      date: "2024-11-25", 
-      endDate: "2024-11-25",
-      time: "19:00 - 23:30",
-      venue: "Voice Space", 
-      image: "https://images.unsplash.com/photo-1459749411177-d4a428c389f5?w=500&q=80",
-      description: "ค่ำคืนแห่งดนตรีอินดี้...",
-      category: "Music Festival",
-      approvalStatus: "pending", 
-      paymentStatus: "unpaid",   
-      publishDate: "20 Nov 2024, 10:00",
-      saleStartDate: "21 Nov 2024, 10:00",
-      depositAmount: "5,000",
-      tickets: [
-        { id: 1, zone: "Standing", price: 1500, totalSeats: 500 }
-      ]
-    },
-    { 
-      id: 3, 
-      title: "Jazz in the Park", 
-      organizer: "Unknown Organizer", 
-      date: "2025-01-01", 
-      endDate: "2025-01-01",
-      time: "16:00 - 20:00",
-      venue: "Benjakitti Park", 
-      image: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=500&q=80",
-      description: "ดนตรีแจ๊สในสวน...",
-      category: "Jazz",
-      approvalStatus: "rejected", 
-      paymentStatus: "unpaid",
-      publishDate: "-",
-      saleStartDate: "-",
-      depositAmount: "2,000",
-      tickets: []
-    },
-    { 
-      id: 4, 
-      title: "EDM Water War", 
-      organizer: "ZAAP Party", 
-      date: "2026-04-13", 
-      endDate: "2026-04-15",
-      time: "12:00 - 24:00",
-      venue: "RCA", 
-      image: "https://images.unsplash.com/photo-1571266028243-371695039133?w=500&q=80",
-      description: "สงกรานต์นี้ต้องมันส์...",
-      category: "Festival",
-      approvalStatus: "changes_requested", 
-      adminFeedback: "รูปปกไม่ชัดเจน กรุณาอัปโหลดใหม่",
-      paymentStatus: "unpaid",
-      publishDate: "10 Apr 2026, 12:00",
-      saleStartDate: "11 Apr 2026, 12:00",
-      depositAmount: "10,000",
-      tickets: [
-        { id: 1, zone: "VIP", price: 3000, totalSeats: 100 },
-        { id: 2, zone: "Regular", price: 1500, totalSeats: 1000 },
-      ]
-    },
+    }
   ]);
 
   const filteredEvents = events.filter((event) => {
@@ -150,12 +90,6 @@ export default function EventsPage() {
       setEvents(events.map(e => e.id === id ? { ...e, approvalStatus: "rejected" } : e));
       setSelectedEvent(null); 
     }
-  };
-
-  const handleRevert = (id: number) => {
-    if (!confirm("ดึงงานกลับมาสถานะ 'รอตรวจสอบ' ใช่หรือไม่?")) return;
-    setEvents(events.map(e => e.id === id ? { ...e, approvalStatus: "pending" } : e));
-    setSelectedEvent(null);
   };
 
   const handleRequestChanges = (id: number) => {
@@ -328,27 +262,139 @@ export default function EventsPage() {
         )}
       </div>
 
-      {/* MODAL 1: รายละเอียด (View Mode) */}
+      {/* 👁️ MODAL 1: รายละเอียด (View Mode) - ปรับปรุงใหม่ให้แสดงครบ */}
       {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-           <div className="bg-[#161B22] w-full max-w-2xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-              <div className="relative h-48 sm:h-56 shrink-0">
-                  <img src={selectedEvent.image} className="w-full h-full object-cover"/>
-                  <button onClick={() => setSelectedEvent(null)} className="absolute top-4 right-4 p-2 bg-black/50 rounded-full text-white hover:bg-red-500"><X size={20} /></button>
-                  <div className="absolute bottom-4 left-6">
-                      <h2 className="text-2xl font-bold text-white shadow-black drop-shadow-lg">{selectedEvent.title}</h2>
+           <div className="bg-[#161B22] w-full max-w-3xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              
+              {/* Header Image */}
+              <div className="relative h-56 sm:h-64 shrink-0 bg-gray-800">
+                  {selectedEvent.image ? (
+                    <img src={selectedEvent.image} className="w-full h-full object-cover opacity-90"/>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-600"><ImageIcon size={48}/></div>
+                  )}
+                  
+                  <button onClick={() => setSelectedEvent(null)} className="absolute top-4 right-4 p-2 bg-black/50 rounded-full text-white hover:bg-white hover:text-black transition-colors">
+                    <X size={20} />
+                  </button>
+
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#161B22] to-transparent p-6 pt-20">
+                      <div className="flex items-end justify-between gap-4">
+                        <div>
+                            <span className="px-2 py-1 rounded bg-blue-500/20 text-blue-300 text-xs font-bold border border-blue-500/30 mb-2 inline-block">
+                                {selectedEvent.category}
+                            </span>
+                            <h2 className="text-3xl font-bold text-white shadow-black drop-shadow-md">{selectedEvent.title}</h2>
+                        </div>
+                        {/* Status Badge */}
+                        <div className={`px-4 py-1.5 rounded-full text-sm font-bold border shadow-lg ${
+                            selectedEvent.approvalStatus === 'approved' ? 'bg-green-500 text-black border-green-400' :
+                            selectedEvent.approvalStatus === 'pending' ? 'bg-orange-500 text-white border-orange-400' : 
+                            'bg-red-500 text-white border-red-400'
+                        }`}>
+                            {selectedEvent.approvalStatus.toUpperCase()}
+                        </div>
+                      </div>
                   </div>
               </div>
-              <div className="p-6 overflow-y-auto space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-[#0B0F14] p-3 rounded-xl border border-white/5"><p className="text-xs text-gray-500 font-bold uppercase">ผู้จัด</p><p className="text-white">{selectedEvent.organizer}</p></div>
-                      <div className="bg-[#0B0F14] p-3 rounded-xl border border-white/5"><p className="text-xs text-gray-500 font-bold uppercase">วันที่แสดง</p><p className="text-white">{selectedEvent.date}</p></div>
-                  </div>
-                  <p className="text-gray-400 text-sm bg-[#0B0F14] p-4 rounded-xl border border-white/5">{selectedEvent.description}</p>
+
+              {/* Scrollable Content */}
+              <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
                   
-                  <div className="flex gap-3 pt-4 border-t border-white/10">
-                      <button onClick={() => handleEdit(selectedEvent)} className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl">แก้ไขข้อมูล</button>
-                      <button onClick={() => setSelectedEvent(null)} className="flex-1 py-3 bg-[#0B0F14] hover:bg-white/5 text-gray-400 font-bold rounded-xl">ปิด</button>
+                  {/* 1. ข้อมูลหลัก (Grid Layout) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-[#0B0F14] p-4 rounded-xl border border-white/5 flex items-start gap-3">
+                          <User className="text-blue-500 mt-1" size={18} />
+                          <div>
+                             <p className="text-xs text-gray-500 font-bold uppercase">ผู้จัดงาน (Organizer)</p>
+                             <p className="text-white font-medium">{selectedEvent.organizer}</p>
+                          </div>
+                      </div>
+                      <div className="bg-[#0B0F14] p-4 rounded-xl border border-white/5 flex items-start gap-3">
+                          <MapPin className="text-red-500 mt-1" size={18} />
+                          <div>
+                             <p className="text-xs text-gray-500 font-bold uppercase">สถานที่ (Venue)</p>
+                             <p className="text-white font-medium">{selectedEvent.venue}</p>
+                          </div>
+                      </div>
+                      <div className="bg-[#0B0F14] p-4 rounded-xl border border-white/5 flex items-start gap-3">
+                          <CalendarDays className="text-purple-500 mt-1" size={18} />
+                          <div>
+                             <p className="text-xs text-gray-500 font-bold uppercase">วันแสดง</p>
+                             <p className="text-white font-medium">{selectedEvent.date} {selectedEvent.endDate ? `- ${selectedEvent.endDate}` : ''}</p>
+                          </div>
+                      </div>
+                      <div className="bg-[#0B0F14] p-4 rounded-xl border border-white/5 flex items-start gap-3">
+                          <Clock className="text-yellow-500 mt-1" size={18} />
+                          <div>
+                             <p className="text-xs text-gray-500 font-bold uppercase">เวลา</p>
+                             <p className="text-white font-medium">{selectedEvent.time}</p>
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* 2. รายละเอียดงาน */}
+                  <div>
+                      <h3 className="text-sm font-bold text-gray-300 mb-2 flex items-center gap-2">
+                        <FileText size={16}/> รายละเอียด
+                      </h3>
+                      <div className="text-gray-400 text-sm bg-[#0B0F14] p-4 rounded-xl border border-white/5 leading-relaxed whitespace-pre-line">
+                        {selectedEvent.description || "ไม่มีรายละเอียดระบุ"}
+                      </div>
+                  </div>
+
+                  {/* 3. ✅ เพิ่ม: ข้อมูลบัตรและราคา */}
+                  <div>
+                      <h3 className="text-sm font-bold text-gray-300 mb-2 flex items-center gap-2">
+                        <Ticket size={16}/> บัตรและราคา (Tickets)
+                      </h3>
+                      <div className="border border-white/10 rounded-xl overflow-hidden">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-white/5 text-gray-400 text-xs uppercase">
+                                <tr>
+                                    <th className="p-3 pl-4">Zone</th>
+                                    <th className="p-3 text-right">Price</th>
+                                    <th className="p-3 text-right pr-4">Seats</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5 bg-[#0B0F14]">
+                                {selectedEvent.tickets?.length > 0 ? (
+                                    selectedEvent.tickets.map((t, i) => (
+                                        <tr key={i}>
+                                            <td className="p-3 pl-4 font-medium text-white">{t.zone}</td>
+                                            <td className="p-3 text-right text-green-400">฿{t.price.toLocaleString()}</td>
+                                            <td className="p-3 text-right pr-4 text-gray-400">{t.totalSeats.toLocaleString()} ใบ</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan={3} className="p-4 text-center text-gray-500">ไม่มีข้อมูลบัตร</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                      </div>
+                  </div>
+
+                  {/* Action Buttons (แสดงเฉพาะตอนสถานะ Pending เพื่อให้กดอนุมัติได้เลย) */}
+                  {selectedEvent.approvalStatus === 'pending' && (
+                      <div className="flex gap-3 pt-4 border-t border-white/10">
+                          <button 
+                            onClick={() => handleApprove(selectedEvent.id)} 
+                            className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl shadow-lg shadow-green-900/20 transition-all active:scale-95"
+                          >
+                             ✅ อนุมัติทันที
+                          </button>
+                          <button 
+                            onClick={() => handleRequestChanges(selectedEvent.id)} 
+                            className="flex-1 py-3 bg-yellow-600 hover:bg-yellow-500 text-white font-bold rounded-xl shadow-lg shadow-yellow-900/20 transition-all active:scale-95"
+                          >
+                             ⚠️ ส่งแก้ไข
+                          </button>
+                      </div>
+                  )}
+
+                  <div className="flex justify-center pt-2">
+                      <button onClick={() => setSelectedEvent(null)} className="text-gray-500 hover:text-white text-sm">ปิดหน้าต่าง</button>
                   </div>
               </div>
            </div>

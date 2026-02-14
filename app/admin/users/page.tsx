@@ -34,47 +34,44 @@ interface UserType {
   orders?: OrderType[];
 }
 
-// --- Mock Data ---
+// --- ✅ Mock Data: เหลือไว้ 1 ตัวอย่าง เพื่อเป็น Template โครงสร้างข้อมูล ---
 const initialUsers: UserType[] = [
   { 
-    id: 1, name: "Somchai Jai-dee", email: "somchai@gmail.com", role: "Member", status: "Active", 
-    joined: "12 Jan 2024", spent: 4500, avatar: "S", phone: "081-111-1111", birthDate: "15 Aug 1995",
+    id: 1, 
+    name: "Somchai Jai-dee", 
+    email: "somchai@gmail.com", 
+    role: "Member", 
+    status: "Active", 
+    joined: "12 Jan 2024", 
+    spent: 4500, 
+    avatar: "S", 
+    phone: "081-111-1111", 
+    birthDate: "15 Aug 1995",
     orders: [
        { 
-         id: "ORD-8821", event: "Jeff Satur Space Shuttle", seat: "A1 / U7", price: 2500, 
-         date: "15 Jan 2026", time: "19:00", venue: "UOB Live, Emsphere", status: "Paid",
+         id: "ORD-8821", 
+         event: "Jeff Satur Space Shuttle", 
+         seat: "A1 / U7", 
+         price: 2500, 
+         date: "15 Jan 2026", 
+         time: "19:00", 
+         venue: "UOB Live, Emsphere", 
+         status: "Paid",
          poster: "https://thestandard.co/wp-content/uploads/2024/01/Jeff-Satur-Space-Shuttle-No.8-Asia-Tour.jpg"
        },
        { 
-         id: "ORD-7742", event: "Big Mountain 14", seat: "VIP", price: 2000, 
-         date: "10 Dec 2025", time: "12:00", venue: "The Ocean Khao Yai", status: "Used",
+         id: "ORD-7742", 
+         event: "Big Mountain 14", 
+         seat: "VIP", 
+         price: 2000, 
+         date: "10 Dec 2025", 
+         time: "12:00", 
+         venue: "The Ocean Khao Yai", 
+         status: "Used", 
          poster: "https://s.isanook.com/jo/0/ud/489/2446729/bmmf13.jpg"
        }
     ]
-  },
-  { 
-    id: 2, name: "Alice Wonderland", email: "alice@yahoo.com", role: "Organizer", status: "Banned", 
-    joined: "15 Feb 2024", spent: 0, avatar: "A", phone: "082-222-2222", birthDate: "01 Jan 1990",
-    orders: [] 
-  },
-  { 
-    id: 3, name: "Admin Nut", email: "nut@beatpass.com", role: "Admin", status: "Active", 
-    joined: "01 Jan 2024", spent: 0, avatar: "N", phone: "-", 
-    orders: [] 
-  },
-  { 
-    id: 4, name: "Kanda J.", email: "kanda@hotmail.com", role: "Member", status: "Active", 
-    joined: "20 Mar 2024", spent: 12500, avatar: "K", phone: "089-999-8888", birthDate: "20 Feb 1998",
-    orders: [
-        { 
-          id: "ORD-9999", event: "Mean Fanmeet", seat: "ZONE B", price: 12500, 
-          date: "20 Mar 2024", time: "18:00", venue: "Union Hall", status: "Paid",
-          poster: "https://s.isanook.com/jo/0/ud/491/2459795/mean.jpg"
-        }
-    ]
-  },
-  { id: 5, name: "Bobby Rock", email: "bob@music.com", role: "Organizer", status: "Active", joined: "22 Mar 2024", spent: 850, avatar: "B", phone: "090-555-5555", orders: [] },
-  { id: 6, name: "John Doe", email: "john.d@gmail.com", role: "Member", status: "Banned", joined: "25 Mar 2024", spent: 1200, avatar: "J", phone: "065-444-3333", orders: [] },
+  }
 ];
 
 export default function UsersPage() {

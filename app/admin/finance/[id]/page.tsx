@@ -53,7 +53,7 @@ export default function TransactionDetailPage() {
   const params = useParams();
   const { id } = params; 
 
-  // 2. Mock Data
+  // 2. ✅ Mock Data: เหลือไว้ 1 ตัวอย่าง และ Default สำหรับกัน Error
   const transactions: Record<string, TransactionData> = {
     "TX-8821": {
       id: "TX-8821",
@@ -83,62 +83,7 @@ export default function TransactionDetailPage() {
         { status: "ส่ง E-Ticket ทางอีเมล", time: "14:31 น.", completed: true },
       ]
     },
-    "TX-9102": {
-      id: "TX-9102",
-      status: "success",
-      amount: "12,000.00",
-      date: "12 ก.พ. 2026",
-      time: "14:25 น.",
-      paymentMethod: "PromptPay (QR Code)",
-      customer: {
-        name: "Alice Wonderland",
-        email: "alice@example.com",
-        phone: "099-999-9999",
-        id: "User #9102"
-      },
-      items: [
-        { name: "Summer Sonic BKK", type: "VIP Pass", price: "11,500.00", qty: 1 }
-      ],
-      fees: {
-        subtotal: "11,500.00",
-        serviceFee: "500.00",
-        vat: "0.00",
-        total: "12,000.00"
-      },
-      timeline: [
-        { status: "ทำรายการสั่งซื้อ", time: "14:20 น.", completed: true },
-        { status: "ชำระเงินสำเร็จ", time: "14:25 น.", completed: true },
-        { status: "ส่ง E-Ticket ทางอีเมล", time: "14:25 น.", completed: true },
-      ]
-    },
-    "TX-8811": {
-      id: "TX-8811",
-      status: "success",
-      amount: "1,500.00",
-      date: "12 ก.พ. 2026",
-      time: "14:05 น.",
-      paymentMethod: "TrueMoney Wallet",
-      customer: {
-        name: "Cat Lover",
-        email: "cat@example.com",
-        phone: "088-777-6666",
-        id: "User #8811"
-      },
-      items: [
-        { name: "Cat Expo 10", type: "Early Bird", price: "1,500.00", qty: 1 }
-      ],
-      fees: {
-        subtotal: "1,500.00",
-        serviceFee: "0.00",
-        vat: "0.00",
-        total: "1,500.00"
-      },
-      timeline: [
-        { status: "ทำรายการสั่งซื้อ", time: "14:00 น.", completed: true },
-        { status: "ชำระเงินสำเร็จ", time: "14:05 น.", completed: true },
-        { status: "ส่ง E-Ticket ทางอีเมล", time: "14:05 น.", completed: true },
-      ]
-    },
+    // Fallback data กรณีหา ID ไม่เจอ
     "default": {
       id: "TX-????",
       status: "pending",
@@ -153,6 +98,7 @@ export default function TransactionDetailPage() {
     }
   };
 
+  // ดึงข้อมูลตาม ID หรือใช้ Default ถ้าไม่เจอ
   const data = transactions[(id as string)] || transactions["default"];
 
   const getStatusColor = (status: string) => {
@@ -182,7 +128,7 @@ export default function TransactionDetailPage() {
                 </span>
             </div>
             <p className="text-gray-400 text-sm mt-1 flex items-center gap-2">
-                Transaction ID: <span className="font-mono text-white bg-white/10 px-2 rounded">{id}</span>
+                Transaction ID: <span className="font-mono text-white bg-white/10 px-2 rounded">{data.id}</span>
             </p>
           </div>
         </div>

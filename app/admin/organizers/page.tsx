@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { 
   Building2, Search, CheckCircle, XCircle, 
-  User, Phone, Mail, MoreHorizontal, ShieldAlert, X // ✅ เพิ่ม X ตรงนี้ครับ
+  User, Phone, Mail, MoreHorizontal, ShieldAlert, X 
 } from "lucide-react";
 
 // Interface
@@ -20,13 +20,18 @@ interface OrganizerType {
 
 export default function OrganizersPage() {
   
-  // Mock Data
+  // ✅ Mock Data: เหลือไว้ 1 ตัวอย่าง
   const [organizers, setOrganizers] = useState<OrganizerType[]>([
-    { id: 1, personName: "คุณสมชาย ใจดี", companyName: "GMM Grammy", email: "contact@gmm.com", phone: "02-669-9000", status: "Active", events: 12, joined: "12 Jan 2024" },
-    { id: 2, personName: "คุณวิชัย รักดนตรี", companyName: "RS Group", email: "info@rs.co.th", phone: "02-511-0555", status: "Active", events: 8, joined: "15 Jan 2024" },
-    { id: 3, personName: "คุณกานดา มาหา", companyName: "Indie Music TH", email: "booking@indie.th", phone: "089-123-4567", status: "Pending", events: 0, joined: "Yesterday" },
-    { id: 4, personName: "นายสมศักดิ์ ขี้โกง", companyName: "Scammer Fest", email: "fake@scam.com", phone: "099-999-9999", status: "Suspended", events: 0, joined: "2 Days ago" },
-    { id: 5, personName: "แอดมินเพจ", companyName: "Love Is Ent", email: "contact@loveis.com", phone: "02-123-4567", status: "Pending", events: 0, joined: "Today" },
+    { 
+      id: 1, 
+      personName: "คุณสมชาย ใจดี", 
+      companyName: "GMM Grammy", 
+      email: "contact@gmm.com", 
+      phone: "02-669-9000", 
+      status: "Active", 
+      events: 12, 
+      joined: "12 Jan 2024" 
+    }
   ]);
 
   const [filterStatus, setFilterStatus] = useState("All");
@@ -184,7 +189,7 @@ export default function OrganizersPage() {
         </div>
       </div>
 
-      {/* ✅ Modal ตรวจสอบข้อมูล */}
+      {/* Modal ตรวจสอบข้อมูล */}
       {selectedOrg && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="absolute inset-0" onClick={() => setSelectedOrg(null)}></div>
@@ -206,7 +211,6 @@ export default function OrganizersPage() {
                              <Building2 size={14} className="text-pink-500"/> {selectedOrg.companyName}
                         </p>
                     </div>
-                    {/* ✅ ใช้ X ที่ import มาแล้ว */}
                     <button onClick={() => setSelectedOrg(null)} className="p-2 text-gray-500 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors">
                         <X size={20}/>
                     </button>

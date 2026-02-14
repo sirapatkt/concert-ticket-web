@@ -11,6 +11,8 @@ import {
   Settings, 
   LogOut 
 } from 'lucide-react';
+// ✅ Import ปุ่ม Dropdown
+import UserDropdown from '@/components/UserDropdown'; 
 
 export default function OrganizerLayout({
   children,
@@ -31,7 +33,7 @@ export default function OrganizerLayout({
   return (
     <div className="flex bg-[#020617] min-h-screen font-sans text-white">
       {/* --- ส่วน Sidebar (เมนูซ้าย) --- */}
-      <div className="w-64 min-h-screen bg-[#020617] border-r border-slate-800 flex flex-col sticky top-0 shrink-0">
+      <div className="w-64 min-h-screen bg-[#020617] border-r border-slate-800 flex flex-col sticky top-0 shrink-0 z-20">
         <div className="p-6 mb-2">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent cursor-default">
             BEATPASS
@@ -67,9 +69,20 @@ export default function OrganizerLayout({
         </div>
       </div>
 
-      {/* --- ส่วนเนื้อหา (Content) --- */}
-      <main className="flex-1 overflow-y-auto h-screen p-8">
-        {children}
+      {/* --- ส่วนเนื้อหาหลัก (Main Content) --- */}
+      {/* เพิ่ม relative เข้าไปเพื่อให้ปุ่ม absolute อ้างอิงตำแหน่งจากตรงนี้ */}
+      <main className="flex-1 flex flex-col min-h-screen bg-[#020617] relative">
+        
+        {/* ✅ วางปุ่ม Dropdown ไว้ตรงนี้ เพื่อให้ลอยอยู่มุมขวาบนของเนื้อหา */}
+        <div className="absolute top-8 right-8 z-50">
+           <UserDropdown />
+        </div>
+
+        {/* พื้นที่แสดงเนื้อหาของแต่ละหน้า */}
+        <div className="p-8 flex-1 overflow-y-auto">
+          {children}
+        </div>
+        
       </main>
     </div>
   );

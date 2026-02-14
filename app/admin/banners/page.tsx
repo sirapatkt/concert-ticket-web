@@ -6,7 +6,7 @@ import {
   Eye, EyeOff, Link as LinkIcon, UploadCloud 
 } from "lucide-react";
 
-// Mock Data
+// ✅ Mock Data: เหลือไว้ 1 ตัวอย่าง เพื่อเป็น Template โครงสร้างข้อมูล
 const initialBanners = [
   { 
     id: 1, 
@@ -15,23 +15,7 @@ const initialBanners = [
     link: "/event/jeff-satur-space-shuttle", 
     status: "active",
     order: 1
-  },
-  { 
-    id: 2, 
-    title: "Summer Sonic Bangkok 2024", 
-    image: "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=1000", 
-    link: "/event/summer-sonic-bkk", 
-    status: "active",
-    order: 2
-  },
-  { 
-    id: 3, 
-    title: "Early Bird Promotion -50% Off All Tickets", 
-    image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1000", 
-    link: "/promotion/earlybird", 
-    status: "inactive",
-    order: 3
-  },
+  }
 ];
 
 export default function BannerManagementPage() {
@@ -104,7 +88,7 @@ export default function BannerManagementPage() {
                   </div>
                 </div>
 
-                {/* Buttons Group: แก้ตรงนี้ครับ ให้เรียงกัน 3 ปุ่มสวยๆ */}
+                {/* Buttons Group */}
                 <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-white/5 mt-auto">
                     {/* ปุ่ม 1: ซ่อน/แสดง */}
                     <button 
@@ -123,10 +107,9 @@ export default function BannerManagementPage() {
                         <Edit2 size={14}/> แก้ไข
                     </button>
                     
-                    {/* ปุ่ม 3: ลบ (ปรับให้เหมือนเพื่อนแล้ว!) */}
+                    {/* ปุ่ม 3: ลบ */}
                     <button 
                         onClick={() => handleDelete(banner.id)}
-                        // เอา sm:ml-auto ออก และใส่ flex-1 sm:flex-none เข้าไปแทน
                         className="flex-1 sm:flex-none justify-center h-9 px-4 rounded-lg text-xs font-bold flex items-center gap-2 bg-red-500/10 text-red-400 hover:bg-red-600 hover:text-white transition-all"
                     >
                         <Trash2 size={14}/> ลบ
