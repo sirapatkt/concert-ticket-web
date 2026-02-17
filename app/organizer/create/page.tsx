@@ -5,7 +5,7 @@ import Link from "next/link";
 import { 
   AlignLeft, Image as ImageIcon, 
   Trash2, Save, Ticket, ChevronDown, Grid3X3,
-  Map, Plus
+  Map, Plus, Calendar, Clock, AlertCircle
 } from "lucide-react";
 
 const CAPACITY_PER_BLOCK = 50; 
@@ -18,11 +18,10 @@ const GRID_SIZES = {
 };
 
 type VenueSize = keyof typeof GRID_SIZES; 
-
 type CellType = "empty" | "stageMain" | "stageSub" | "catwalk" | "zoneA" | "zoneB" | "zoneC";
 
 interface TicketTier {
-  name: string;
+  zoneName: string;
   price: number;
   quantity: number;
 }
@@ -32,15 +31,28 @@ interface Hall {
   hallName: string;
 }
 
+interface ShowRound {
+  roundNumber: number;
+  startDT: string;
+  endDT: string;
+  saleStart: string;
+  saleEnd: string;
+}
+
 export default function CreateEventPage() {
   // --- State สำหรับข้อมูลหลัก ---
   const [eventName, setEventName] = useState("");
   const [description, setDescription] = useState("");
-  const [eventDate, setEventDate] = useState("");
-  const [saleStartDate, setSaleStartDate] = useState(""); 
+  const [showRounds, setShowRounds] = useState<ShowRound[]>([
+    { roundNumber: 1, startDT: "", endDT: "", saleStart: "", saleEnd: "" }
+  ]);
+
   const [posterImage, setPosterImage] = useState<string | null>(null);
   const [venuePlanImage, setVenuePlanImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // ✅ 1. เพิ่ม State สำหรับแจ้งเตือนบันทึกสำเร็จ
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // --- State สำหรับสถานที่ ---
   const [halls, setHalls] = useState<Hall[]>([]);
@@ -49,12 +61,32 @@ export default function CreateEventPage() {
   // --- State สำหรับบัตรและ Grid ---
   const [venueSize, setVenueSize] = useState<VenueSize>("Medium");
   const [tickets, setTickets] = useState<TicketTier[]>([
-    { name: "", price: 0, quantity: 0 }
+    { zoneName: "", price: 0, quantity: 0 }
   ]);
   const [stageGrid, setStageGrid] = useState<CellType[]>(Array(GRID_SIZES["Medium"].total).fill("empty"));
   const [activeTool, setActiveTool] = useState<CellType>("stageMain");
 
-  // 1. กำหนดสถานที่จัดงานแบบล็อกตายตัว 3 ที่
+  // --- ✅ 2. ฟังก์ชันเคลียร์หน้าจอ (Reset Form) ---
+  const resetForm = () => {
+    setEventName("");
+    setDescription("");
+    setShowRounds([{ roundNumber: 1, startDT: "", endDT: "", saleStart: "", saleEnd: "" }]);
+    setPosterImage(null);
+    setVenuePlanImage(null);
+    setSelectedHallId("");
+    setVenueSize("Medium");
+    setTickets([{ zoneName: "", price: 0, quantity: 0 }]);
+    setStageGrid(Array(GRID_SIZES["Medium"].total).fill("empty"));
+    setActiveTool("stageMain");
+  };
+
+  // --- ✅ 3. ฟังก์ชันปิด Modal และสั่ง Reset ---
+  const handleCloseModal = () => {
+    setShowSuccessModal(false);
+    resetForm();
+  };
+
+  // 1. ดึงข้อมูลสถานที่จัดงาน
   useEffect(() => {
     const specificHalls = [
       { Hall_id: 1, hallName: "อิมแพคอารีน่า (Impact Arena)" },
@@ -64,7 +96,37 @@ export default function CreateEventPage() {
     setHalls(specificHalls);
   }, []);
 
-  // 2. ระบบ Grid Helpers
+  // --- Functions จัดการรอบการแสดง ---
+  const addRound = () => {
+    const lastRound = showRounds[showRounds.length - 1];
+    setShowRounds([...showRounds, {
+        roundNumber: showRounds.length + 1,
+        startDT: lastRound ? lastRound.startDT : "", 
+        endDT: lastRound ? lastRound.endDT : "", 
+        saleStart: lastRound ? lastRound.saleStart : "", 
+        saleEnd: lastRound ? lastRound.saleEnd : "" 
+    }]);
+  };
+
+  const removeRound = (index: number) => {
+    if (showRounds.length > 1) {
+        const newRounds = showRounds.filter((_, i) => i !== index).map((r, i) => ({
+            ...r,
+            roundNumber: i + 1 
+        }));
+        setShowRounds(newRounds);
+    } else {
+        alert("ต้องมีรอบการแสดงอย่างน้อย 1 รอบ");
+    }
+  };
+
+  const updateRound = (index: number, field: keyof ShowRound, value: string) => {
+    const newRounds = [...showRounds];
+    newRounds[index] = { ...newRounds[index], [field]: value };
+    setShowRounds(newRounds);
+  };
+
+  // --- Grid Logic ---
   const getCellColor = (type: CellType) => {
     switch (type) {
       case "stageMain": return "bg-slate-200 border-white shadow-lg"; 
@@ -84,12 +146,8 @@ export default function CreateEventPage() {
   const handleSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newSize = e.target.value as VenueSize;
     setVenueSize(newSize);
-    
-    // Reset Grid ตามขนาดใหม่
-    const newTotal = GRID_SIZES[newSize].total;
-    const newGrid = Array(newTotal).fill("empty");
+    const newGrid = Array(GRID_SIZES[newSize].total).fill("empty");
     setStageGrid(newGrid);
-    
     updateTicketsFromGrid(newGrid); 
   };
 
@@ -97,8 +155,6 @@ export default function CreateEventPage() {
     const newGrid = [...stageGrid];
     newGrid[index] = newGrid[index] === activeTool ? "empty" : activeTool;
     setStageGrid(newGrid);
-
-    // อัปเดตตั๋วเฉพาะเมื่อมีการเปลี่ยนแปลงโซนที่นั่ง (A, B, C)
     if (["zoneA", "zoneB", "zoneC"].includes(activeTool) || ["zoneA", "zoneB", "zoneC"].includes(stageGrid[index])) {
        updateTicketsFromGrid(newGrid);
     }
@@ -111,19 +167,18 @@ export default function CreateEventPage() {
 
     setTickets(prev => {
         let newTickets = [...prev];
-        const syncZone = (zoneName: string, count: number, defaultPrice: number) => {
-            const idx = newTickets.findIndex(t => t.name === zoneName);
+        const syncZone = (zName: string, count: number, defaultPrice: number) => {
+            const idx = newTickets.findIndex(t => t.zoneName === zName);
             if (count > 0) {
                 if (idx >= 0) {
                     newTickets[idx] = { ...newTickets[idx], quantity: count };
                 } else {
-                    newTickets.unshift({ name: zoneName, price: defaultPrice, quantity: count });
+                    newTickets.unshift({ zoneName: zName, price: defaultPrice, quantity: count });
                 }
             } else if (idx >= 0) {
-                 newTickets = newTickets.filter(t => t.name !== zoneName);
+                 newTickets = newTickets.filter(t => t.zoneName !== zName);
             }
         };
-        
         syncZone("Zone A (Grid)", countA, 6000);
         syncZone("Zone B (Grid)", countB, 4500);
         syncZone("Zone C (Grid)", countC, 2500);
@@ -137,7 +192,7 @@ export default function CreateEventPage() {
     updateTicketsFromGrid(emptyGrid);
   };
 
-  const addTicketTier = () => setTickets([...tickets, { name: "", price: 0, quantity: 0 }]);
+  const addTicketTier = () => setTickets([...tickets, { zoneName: "", price: 0, quantity: 0 }]);
   
   const removeTicketTier = (index: number) => {
      if (tickets.length > 1) setTickets(tickets.filter((_, i) => i !== index));
@@ -146,8 +201,12 @@ export default function CreateEventPage() {
 
   const updateTicket = (index: number, field: keyof TicketTier, value: string | number) => {
     const newTickets = [...tickets];
-    if (field === "name") newTickets[index].name = String(value);
-    else newTickets[index][field] = Number(value);
+    if (field === "zoneName") {
+       newTickets[index].zoneName = String(value);
+    } else {
+       // @ts-ignore
+       newTickets[index][field] = Number(value);
+    }
     setTickets(newTickets);
   };
 
@@ -169,10 +228,13 @@ export default function CreateEventPage() {
     }
   };
 
-  // 3. ส่งข้อมูลไป Backend Laravel
+  // --- Submit ไปยัง Backend Laravel ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedHallId) return alert("กรุณาเลือกสถานที่");
+    
+    const isTicketsValid = tickets.every(t => t.zoneName.trim() !== "");
+    if (!isTicketsValid) return alert("กรุณากรอกชื่อโซนบัตรให้ครบถ้วน");
 
     setLoading(true);
     const token = localStorage.getItem("token");
@@ -181,8 +243,7 @@ export default function CreateEventPage() {
       eventName,
       eventDescription: description,
       Hall_id: Number(selectedHallId),
-      eventDate,
-      saleStartDate,
+      show_rounds: showRounds, 
       posterImage,
       venuePlanImage,
       venueSize,
@@ -201,8 +262,8 @@ export default function CreateEventPage() {
       });
 
       if (res.ok) {
-        alert("✅ บันทึกคอนเสิร์ตเรียบร้อย!");
-        window.location.href = "/organizer/dashboard";
+        // ✅ 4. สั่งเปิด Modal เมื่อบันทึกสำเร็จ
+        setShowSuccessModal(true);
       } else {
         const err = await res.json();
         alert("❌ Error: " + (err.message || "Something went wrong"));
@@ -216,6 +277,7 @@ export default function CreateEventPage() {
 
   return (
     <div className="min-h-screen bg-[#020617] text-white p-6 pb-20 font-sans">
+      {/* ส่วนหัวหน้าเว็บ */}
       <div className="max-w-7xl mx-auto mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">สร้างอีเวนต์ใหม่</h1>
@@ -223,7 +285,7 @@ export default function CreateEventPage() {
         </div>
         <div className="flex gap-3">
           <Link href="/organizer" className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800">ยกเลิก</Link>
-          <button onClick={handleSubmit} disabled={loading} className="px-6 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 font-bold flex items-center gap-2">
+          <button onClick={handleSubmit} disabled={loading} className="px-6 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 font-bold flex items-center gap-2 transition-all hover:scale-105 active:scale-95">
             <Save size={18} /> {loading ? "กำลังบันทึก..." : "บันทึกและส่งอนุมัติ"}
           </button>
         </div>
@@ -231,184 +293,144 @@ export default function CreateEventPage() {
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-6">
-          {/* Section 1: Details */}
+          {/* Section 1: รายละเอียดงาน */}
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
             <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-blue-400"><AlignLeft size={20} /> รายละเอียดงาน</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm text-slate-400 mb-1">ชื่องานอีเวนต์</label>
-                <input type="text" value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="ชื่องานคอนเสิร์ต..." className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 focus:border-blue-500 outline-none" />
+                <input type="text" value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="ชื่องานคอนเสิร์ต..." className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 focus:border-blue-500 outline-none transition-colors" />
               </div>
-              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* เลือก Hall จาก Database */}
                 <div>
                    <label className="block text-sm text-slate-400 mb-1">สถานที่จัดงาน (Venue)</label>
                    <div className="relative">
-                    <select value={selectedHallId} onChange={(e) => setSelectedHallId(e.target.value)} className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 appearance-none outline-none focus:border-blue-500">
+                    <select value={selectedHallId} onChange={(e) => setSelectedHallId(e.target.value)} className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 appearance-none outline-none focus:border-blue-500 cursor-pointer">
                       <option value="">เลือกสถานที่จัดงาน...</option>
                       {halls.map((h) => <option key={h.Hall_id} value={h.Hall_id}>{h.hallName}</option>)}
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={20}/>
                    </div>
                 </div>
-
-                {/* เลือก Size ของ Grid (แก้ไขแล้ว: ล็อกถ้าไม่เลือกสถานที่) */}
                 <div>
                   <label className={`block text-sm mb-1 flex items-center gap-1 ${!selectedHallId ? "text-slate-600" : "text-slate-400"}`}>
                       <Grid3X3 size={14} /> ขนาดพื้นที่ (Grid Size)
                   </label>
                   <div className="relative">
-                    <select 
-                        value={venueSize}
-                        onChange={handleSizeChange} 
-                        disabled={!selectedHallId}
-                        className={`w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 outline-none appearance-none
-                          ${!selectedHallId ? "opacity-50 cursor-not-allowed bg-slate-800" : "cursor-pointer"} 
-                        `}
-                    >
+                    <select value={venueSize} onChange={handleSizeChange} disabled={!selectedHallId} className={`w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 appearance-none ${!selectedHallId ? "opacity-50 cursor-not-allowed bg-slate-800" : "cursor-pointer"}`}>
                         {Object.entries(GRID_SIZES).map(([key, config]) => (
                             <option key={key} value={key}>{config.label}</option>
                         ))}
                     </select>
                     <ChevronDown className={`absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none ${!selectedHallId ? "text-slate-600" : "text-slate-500"}`} size={20} />
                   </div>
-                  {!selectedHallId && (
-                    <p className="text-xs text-red-400 mt-1">* กรุณาเลือกสถานที่ก่อน</p>
-                  )}
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div>
-                    <label className="block text-sm text-slate-400 mb-1">วันเวลาแสดง</label>
-                    <input type="datetime-local" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 [color-scheme:dark]" />
-                 </div>
-                 <div>
-                    <label className="block text-sm text-slate-400 mb-1">วันเวลาเปิดขายบัตร</label>
-                    <input type="datetime-local" value={saleStartDate} onChange={(e) => setSaleStartDate(e.target.value)} className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 [color-scheme:dark]" />
-                 </div>
-              </div>
-
               <div>
                 <label className="block text-sm text-slate-400 mb-1">รายละเอียดเพิ่มเติม</label>
-                <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="รายละเอียดงาน..." className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 resize-none outline-none focus:border-blue-500" />
+                <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="รายละเอียดงาน..." className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 resize-none outline-none focus:border-blue-500 transition-colors" />
               </div>
             </div>
           </div>
 
-          {/* Section 2: Grid Editor */}
+          {/* Section 2: รอบการแสดง */}
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
-             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-slate-700 pb-4 gap-4">
-               <div>
-                 <h2 className="text-xl font-bold flex items-center gap-2 text-purple-400">
-                    <Grid3X3 size={20} /> ออกแบบผังเวที (Standing Grid)
-                 </h2>
-                 <p className="text-xs text-slate-500 mt-1">
-                     ขนาดปัจจุบัน: <span className="text-white font-bold">{GRID_SIZES[venueSize].label}</span> ({GRID_SIZES[venueSize].cols} คอลัมน์)
-                 </p>
-               </div>
-               
-               {/* Toolbar */}
-               <div className="flex flex-wrap gap-2">
-                 <div className="flex bg-[#1E293B] p-1 rounded-lg border border-slate-700">
-                     <button onClick={()=>setActiveTool("stageMain")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="stageMain" ? "bg-slate-200 text-black shadow" : "text-slate-400 hover:text-white"}`}>Main</button>
-                     <button onClick={()=>setActiveTool("catwalk")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="catwalk" ? "bg-slate-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>Catwalk</button>
-                     <button onClick={()=>setActiveTool("stageSub")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="stageSub" ? "bg-slate-400 text-black shadow" : "text-slate-400 hover:text-white"}`}>Mini</button>
-                 </div>
-                 <div className="flex bg-[#1E293B] p-1 rounded-lg border border-slate-700">
-                     <button onClick={()=>setActiveTool("zoneA")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="zoneA" ? "bg-purple-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>A</button>
-                     <button onClick={()=>setActiveTool("zoneB")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="zoneB" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>B</button>
-                     <button onClick={()=>setActiveTool("zoneC")} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 transition-all ${activeTool==="zoneC" ? "bg-green-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>C</button>
-                 </div>
-               </div>
-            </div>
+             <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold flex items-center gap-2 text-pink-400"><Calendar size={20} /> รอบการแสดง & การขายบัตร</h2>
+                <button onClick={addRound} type="button" className="text-sm bg-pink-500/10 text-pink-400 border border-pink-500/50 hover:bg-pink-500 hover:text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"><Plus size={16} /> เพิ่มรอบ</button>
+             </div>
+             <div className="space-y-4">
+                {showRounds.map((round, index) => (
+                    <div key={index} className="bg-[#1E293B]/50 p-4 rounded-xl border border-slate-700 relative group">
+                        <div className="absolute -left-3 -top-3 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border border-slate-600 font-bold text-sm shadow-md z-10">{index + 1}</div>
+                        {showRounds.length > 1 && (<button onClick={() => removeRound(index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 p-2"><Trash2 size={16}/></button>)}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+                            <div className="space-y-3">
+                                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2 border-b border-slate-700 pb-1"><Clock size={14} /> วันที่แสดงจริง</h3>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div><label className="text-[10px] text-slate-500 block mb-1">เริ่มแสดง</label><input type="datetime-local" value={round.startDT} onChange={(e)=>updateRound(index, 'startDT', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-white [color-scheme:dark]" /></div>
+                                    <div><label className="text-[10px] text-slate-500 block mb-1">จบการแสดง</label><input type="datetime-local" value={round.endDT} onChange={(e)=>updateRound(index, 'endDT', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-white [color-scheme:dark]" /></div>
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2 border-b border-slate-700 pb-1"><Ticket size={14} /> ช่วงเวลาขายบัตร</h3>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div><label className="text-[10px] text-slate-500 block mb-1">เปิดขาย</label><input type="datetime-local" value={round.saleStart} onChange={(e)=>updateRound(index, 'saleStart', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-yellow-400 [color-scheme:dark]" /></div>
+                                    <div><label className="text-[10px] text-slate-500 block mb-1">ปิดขาย</label><input type="datetime-local" value={round.saleEnd} onChange={(e)=>updateRound(index, 'saleEnd', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-red-400 [color-scheme:dark]" /></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+             </div>
+          </div>
 
-            <div className="flex flex-col md:flex-row gap-6">
-                {/* Grid */}
+          {/* Section 3: Grid Editor */}
+          <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-slate-700 pb-4 gap-4">
+                <div><h2 className="text-xl font-bold flex items-center gap-2 text-purple-400"><Grid3X3 size={20} /> ออกแบบผังเวที</h2><p className="text-xs text-slate-500 mt-1">ขนาดปัจจุบัน: <span className="text-white font-bold">{GRID_SIZES[venueSize].label}</span></p></div>
+                <div className="flex flex-wrap gap-2">
+                  <div className="flex bg-[#1E293B] p-1 rounded-lg border border-slate-700">
+                      <button onClick={()=>setActiveTool("stageMain")} className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${activeTool==="stageMain" ? "bg-slate-200 text-black shadow" : "text-slate-400 hover:text-white"}`}>Main</button>
+                      <button onClick={()=>setActiveTool("catwalk")} className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${activeTool==="catwalk" ? "bg-slate-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>Catwalk</button>
+                  </div>
+                  <div className="flex bg-[#1E293B] p-1 rounded-lg border border-slate-700">
+                      <button onClick={()=>setActiveTool("zoneA")} className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${activeTool==="zoneA" ? "bg-purple-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>A</button>
+                      <button onClick={()=>setActiveTool("zoneB")} className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${activeTool==="zoneB" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>B</button>
+                      <button onClick={()=>setActiveTool("zoneC")} className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${activeTool==="zoneC" ? "bg-green-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>C</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-6">
                 <div className="flex-1 flex justify-center bg-[#020617] p-6 rounded-xl border-2 border-dashed border-slate-700 relative select-none overflow-x-auto">
-                    <div className="absolute top-2 text-slate-600 text-[10px] uppercase font-bold tracking-widest">FRONT STAGE</div>
-                    
+                    <div className="absolute top-2 text-slate-600 text-[10px] uppercase font-bold tracking-widest font-mono">FRONT STAGE</div>
                     <div className={`grid gap-1.5 w-full transition-all duration-300 ${GRID_SIZES[venueSize].css}`}>
                         {stageGrid.map((type, index) => (
-                           <div key={index} onClick={() => toggleCell(index)} className={`aspect-square rounded-sm cursor-pointer transition-all duration-150 border ${getCellColor(type)} ${activeTool === type ? 'ring-2 ring-white/50 scale-95' : ''} flex items-center justify-center text-[9px] font-bold hover:brightness-110`}>
-                              {type === 'stageMain' && 'M'}
-                              {type === 'stageSub' && 'S'}
-                              {type === 'catwalk' && '•'}
-                              {type === 'zoneA' && 'A'}
-                              {type === 'zoneB' && 'B'}
-                              {type === 'zoneC' && 'C'}
+                           <div key={index} onClick={() => toggleCell(index)} className={`aspect-square rounded-sm cursor-pointer transition-all duration-150 border ${getCellColor(type)} flex items-center justify-center text-[9px] font-bold hover:brightness-110 active:scale-90`}>
+                              {type === 'stageMain' && 'M'}{type === 'catwalk' && '•'}{type === 'zoneA' && 'A'}{type === 'zoneB' && 'B'}{type === 'zoneC' && 'C'}
                            </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Capacity Summary */}
                 <div className="w-full md:w-56 space-y-4">
-                   <h3 className="text-sm font-bold text-slate-300 border-b border-slate-700 pb-2">ความจุ (Grid)</h3>
-                   {[
-                     { id: "zoneA", name: "Zone A", color: "text-purple-400", bg: "bg-purple-500" },
-                     { id: "zoneB", name: "Zone B", color: "text-blue-400", bg: "bg-blue-500" },
-                     { id: "zoneC", name: "Zone C", color: "text-green-400", bg: "bg-green-500" }
-                   ].map((zone) => {
+                    <h3 className="text-sm font-bold text-slate-300 border-b border-slate-700 pb-2">ความจุ (Grid)</h3>
+                    {[{ id: "zoneA", name: "Zone A", color: "text-purple-400", bg: "bg-purple-500" },{ id: "zoneB", name: "Zone B", color: "text-blue-400", bg: "bg-blue-500" },{ id: "zoneC", name: "Zone C", color: "text-green-400", bg: "bg-green-500" }].map((zone) => {
                       const count = calculateZoneCapacity(stageGrid, zone.id as CellType);
                       return (
                         <div key={zone.id} className="bg-[#1E293B] p-3 rounded-lg border border-slate-700">
-                            <div className="flex justify-between text-xs mb-1">
-                              <span className={zone.color}>{zone.name}</span>
-                              <span className="font-bold">{count} คน</span>
-                            </div>
+                            <div className="flex justify-between text-xs mb-1"><span className={zone.color}>{zone.name}</span><span className="font-bold">{count} คน</span></div>
                             <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
                               <div className={`${zone.bg} h-full transition-all duration-500`} style={{ width: `${Math.min((count / 3000) * 100, 100)}%` }}></div>
                             </div>
                         </div>
                       )
-                   })}
-                   <button onClick={clearGrid} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 w-full justify-center pt-2">
-                      <Trash2 size={12} /> ล้างผังทั้งหมด
-                   </button>
+                    })}
+                    <button onClick={clearGrid} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 w-full justify-center pt-2 transition-colors"><Trash2 size={12} /> ล้างผังทั้งหมด</button>
                 </div>
-            </div>
+              </div>
           </div>
 
-          {/* Section 3: Tickets + Venue Plan Image */}
+          {/* Section 4: โซนบัตร */}
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold flex items-center gap-2 text-purple-400">
-                <Ticket size={20} /> โซนและราคาบัตร
-              </h2>
-              <button onClick={addTicketTier} type="button" className="text-sm bg-purple-500/10 text-purple-400 border border-purple-500/50 hover:bg-purple-500 hover:text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1">
-                <Plus size={16} /> เพิ่มโซน
-              </button>
+              <h2 className="text-xl font-bold flex items-center gap-2 text-purple-400"><Ticket size={20} /> โซนและราคาบัตร</h2>
+              <button onClick={addTicketTier} type="button" className="text-sm bg-purple-500/10 text-purple-400 border border-purple-500/50 hover:bg-purple-500 hover:text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"><Plus size={16} /> เพิ่มโซน</button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               {/* Left: Image Plan (อัปโหลดเองได้) */}
                <label className="border border-slate-700 rounded-xl bg-[#1E293B]/30 p-4 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden group cursor-pointer hover:border-blue-500 transition-colors">
-                   {venuePlanImage ? (
-                       <>
-                           <img src={venuePlanImage} alt="Seating Plan" className="w-full h-auto rounded-lg shadow-lg object-contain" />
-                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                               <p className="text-white text-sm font-bold">เปลี่ยนรูปผัง</p>
-                           </div>
-                       </>
-                   ) : (
-                       <div className="text-center text-slate-500">
-                           <Map size={48} className="mx-auto mb-2 opacity-20"/>
-                           <p className="text-sm">คลิกเพื่ออัปโหลดรูปผังที่นั่ง</p>
-                           <p className="text-xs">(ถ้ามี)</p>
-                       </div>
-                   )}
+                   {venuePlanImage ? (<img src={venuePlanImage} alt="Seating Plan" className="w-full h-auto rounded-lg shadow-lg object-contain" />) : (<div className="text-center text-slate-500"><Map size={48} className="mx-auto mb-2 opacity-20"/><p className="text-sm">อัปโหลดรูปผังที่นั่ง (ถ้ามี)</p></div>)}
                    <input type="file" className="hidden" accept="image/*" onChange={handlePlanImageUpload} />
                </label>
 
-               {/* Right: Ticket Inputs */}
                <div className="space-y-2 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
                    {tickets.map((ticket, index) => (
                        <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 bg-[#1E293B]/50 rounded-lg border border-slate-700 hover:border-purple-500/30 transition-colors">
                            <div className="col-span-5">
                                <label className="text-[10px] text-slate-500 mb-0.5 block">โซน</label>
-                               <input type="text" value={ticket.name} onChange={(e) => updateTicket(index, 'name', e.target.value)} placeholder="Zone A" className={`w-full bg-[#0F172A] border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none ${ticket.name.includes("(Grid)") ? "text-yellow-400 font-bold" : ""}`} />
+                               <input type="text" value={ticket.zoneName} onChange={(e) => updateTicket(index, 'zoneName', e.target.value)} placeholder="Zone A" className="w-full bg-[#0F172A] border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none transition-colors" />
                            </div>
                            <div className="col-span-3">
                                <label className="text-[10px] text-slate-500 mb-0.5 block">ราคา</label>
@@ -416,11 +438,9 @@ export default function CreateEventPage() {
                            </div>
                            <div className="col-span-3">
                                <label className="text-[10px] text-slate-500 mb-0.5 block">จำนวน</label>
-                               <input type="number" value={ticket.quantity} onChange={(e) => updateTicket(index, 'quantity', e.target.value)} readOnly={ticket.name.includes("(Grid)")} className={`w-full bg-[#0F172A] border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none ${ticket.name.includes("(Grid)") ? "opacity-60 cursor-not-allowed" : ""}`} />
+                               <input type="number" value={ticket.quantity} onChange={(e) => updateTicket(index, 'quantity', e.target.value)} readOnly={ticket.zoneName.includes("(Grid)")} className="w-full bg-[#0F172A] border border-slate-700 rounded px-2 py-1.5 text-xs text-white opacity-80" />
                            </div>
-                           <div className="col-span-1 flex justify-center pt-4">
-                               <button onClick={() => removeTicketTier(index)} className="text-slate-600 hover:text-red-500 transition-colors p-1"><Trash2 size={16} /></button>
-                           </div>
+                           <div className="col-span-1 flex justify-center pt-4"><button onClick={() => removeTicketTier(index)} className="text-slate-600 hover:text-red-500 p-1 transition-colors"><Trash2 size={16} /></button></div>
                        </div>
                    ))}
                </div>
@@ -428,34 +448,52 @@ export default function CreateEventPage() {
           </div>
         </div>
 
-        {/* Right Sidebar: Poster */}
+        {/* Sidebar Poster */}
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl sticky top-6">
              <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-cyan-400"><ImageIcon size={20} /> โปสเตอร์งาน</h2>
-             <label className="w-full aspect-[3/4] rounded-xl border-2 border-dashed border-slate-700 bg-[#1E293B]/30 flex flex-col items-center justify-center text-slate-500 hover:border-cyan-500 hover:text-cyan-500 hover:bg-[#1E293B]/50 transition-all cursor-pointer group overflow-hidden">
-                {posterImage ? (
-                    <img src={posterImage} alt="Preview" className="w-full h-full object-cover" />
-                ) : (
-                    <>
-                        <div className="p-4 bg-slate-800 rounded-full mb-3 group-hover:scale-110 transition-transform"><ImageIcon size={32} /></div>
-                        <p className="font-medium text-sm">คลิกเพื่ออัปโหลด</p>
-                        <p className="text-xs opacity-60 mt-1">รองรับ JPG, PNG (Max 5MB)</p>
-                    </>
-                )}
+             <label className="w-full aspect-[3/4] rounded-xl border-2 border-dashed border-slate-700 bg-[#1E293B]/30 flex flex-col items-center justify-center text-slate-500 hover:border-cyan-500 hover:text-cyan-500 cursor-pointer overflow-hidden transition-all shadow-inner">
+                {posterImage ? (<img src={posterImage} alt="Preview" className="w-full h-full object-cover" />) : (<div className="text-center"><ImageIcon size={32} className="mx-auto mb-2 opacity-50"/><p className="text-sm">คลิกเพื่ออัปโหลด</p></div>)}
                 <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
              </label>
 
              <div className="mt-6 pt-6 border-t border-slate-800">
-              <h3 className="text-sm font-semibold text-slate-300 mb-3">สรุปข้อมูลเบื้องต้น</h3>
+              <h3 className="text-sm font-semibold text-slate-300 mb-3">สรุปข้อมูล</h3>
               <ul className="space-y-2 text-sm text-slate-400">
-                <li className="flex justify-between"><span>สถานที่ (Hall ID):</span><span className="text-white text-right">{selectedHallId || "-"}</span></li>
-                <li className="flex justify-between"><span>ขนาด Grid:</span><span className="text-cyan-400 text-right">{GRID_SIZES[venueSize].label}</span></li>
-                <li className="flex justify-between border-t border-slate-800 pt-2 mt-2"><span>จำนวนบัตรทั้งหมด:</span><span className="text-white">{tickets.reduce((sum, t) => sum + Number(t.quantity), 0)} ใบ</span></li>
+                <li className="flex justify-between"><span>สถานที่ (ID):</span><span className="text-white font-mono">{selectedHallId || "-"}</span></li>
+                <li className="flex justify-between"><span>ขนาดผัง:</span><span className="text-cyan-400">{GRID_SIZES[venueSize].label}</span></li>
+                <li className="flex justify-between border-t border-slate-800 pt-2 mt-2"><span>จำนวนรอบ:</span><span className="text-pink-400">{showRounds.length} รอบ</span></li>
+                <li className="flex justify-between font-bold"><span>บัตรทั้งหมด:</span><span className="text-white">{tickets.reduce((sum, t) => sum + Number(t.quantity), 0)} ใบ</span></li>
               </ul>
             </div>
           </div>
         </div>
       </div>
+
+      {/* ✅ 5. โค้ดส่วนหน้าตาของ Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+          <div className="bg-[#0F172A] border border-slate-800 w-full max-w-sm rounded-3xl p-8 shadow-2xl text-center animate-in fade-in zoom-in duration-300">
+            {/* ไอคอนความสำเร็จ */}
+            <div className="w-20 h-20 bg-green-500/10 text-green-400 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/20 shadow-lg shadow-green-500/5">
+              <Save size={40} />
+            </div>
+            
+            <h3 className="text-2xl font-bold text-white mb-3">บันทึกข้อมูลเรียบร้อย</h3>
+            <p className="text-slate-400 text-sm leading-relaxed mb-8">
+              แอดมินกำลังตรวจสอบข้อมูลของคุณ <br /> 
+              <span className="text-cyan-400 font-bold tracking-wide">รอการตรวจสอบภายใน 2 วัน</span>
+            </p>
+
+            <button 
+              onClick={handleCloseModal}
+              className="w-full py-4 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl font-bold text-white hover:brightness-110 active:scale-95 transition-all shadow-xl shadow-blue-500/20"
+            >
+              รับทราบ
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
