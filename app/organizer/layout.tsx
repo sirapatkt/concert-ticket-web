@@ -3,15 +3,23 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
-  Home, LayoutList, PlusCircle, Ticket, Users, Settings, LogOut, 
-  Bell, HelpCircle, ChevronRight // ✅ import ไอคอนเพิ่ม
+  Home, 
+  LayoutList, 
+  PlusCircle, 
+  Ticket, 
+  Users, 
+  Settings, 
+  LogOut, 
+  ChevronRight // ✅ เหลือแค่ ChevronRight ที่ยังใช้ตรงนี้ ส่วน Bell/Help ย้ายไปอยู่ใน HeaderActions แล้ว
 } from 'lucide-react';
+
 import UserDropdown from '@/components/UserDropdown'; 
+import HeaderActions from '@/components/HeaderActions'; // ✅ Import ตัวใหม่เข้ามา
 
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // --- 1. สร้าง Map ชื่อหน้าเว็บ (Title Mapping) ---
+  // --- Map ชื่อหน้าเว็บ (Title Mapping) ---
   const getPageTitle = (path: string) => {
     if (path === '/organizer') return 'หน้าหลัก';
     if (path.includes('/create')) return 'สร้างอีเวนต์ใหม่';
@@ -34,7 +42,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex bg-[#020617] h-screen font-sans text-white overflow-hidden">
       
-      {/* --- Sidebar (เหมือนเดิม) --- */}
+      {/* --- Sidebar --- */}
       <aside className="w-64 bg-[#020617] border-r border-slate-800 flex flex-col shrink-0 z-20">
         <div className="p-6 mb-2">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent cursor-default">
@@ -64,11 +72,10 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
       {/* --- Main Content --- */}
       <div className="flex-1 flex flex-col min-w-0 relative">
         
-        {/* ✅ HEADER BAR: ปรับให้มีของมากขึ้น */}
-        {/* justify-between: ดันของไปซ้ายสุด และ ขวาสุด */}
+        {/* ✅ HEADER BAR */}
         <header className="h-16 bg-[#020617] border-b border-slate-800 flex items-center justify-between px-8 shrink-0">
            
-           {/* ฝั่งซ้าย: Breadcrumbs (บอกตำแหน่งหน้า) */}
+           {/* ฝั่งซ้าย: Breadcrumbs */}
            <div className="flex items-center gap-2 text-sm text-slate-400">
               <span className="hover:text-white cursor-pointer transition-colors">Organizer</span>
               <ChevronRight size={16} />
@@ -79,16 +86,9 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
 
            {/* ฝั่งขวา: Icons + User Profile */}
            <div className="flex items-center gap-4">
-              {/* ปุ่ม Help */}
-              <button className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-all">
-                <HelpCircle size={20} />
-              </button>
               
-              {/* ปุ่ม Notification พร้อมจุดแดงแจ้งเตือน */}
-              <button className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-all relative">
-                <Bell size={20} />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-[#020617]"></span>
-              </button>
+              {/* ✅ ส่วนที่แก้: ใส่ HeaderActions แทนปุ่มเดิม */}
+              <HeaderActions />
               
               {/* ขีดคั่นแนวตั้ง */}
               <div className="h-6 w-[1px] bg-slate-700 mx-1"></div>
