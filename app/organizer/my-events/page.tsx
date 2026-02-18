@@ -177,7 +177,7 @@ export default function MyEventsPage() {
                     style={{ width: `${event.capacity > 0 ? ((event.sold || 0) / event.capacity) * 100 : 0}%` }}
                   ></div>
                 </div>
-              </div>
+              </div>1
             </div>
 
             {/* Action Buttons */}
