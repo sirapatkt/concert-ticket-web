@@ -4,21 +4,254 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   AlignLeft, Image as ImageIcon, 
-  Trash2, Save, Ticket, ChevronDown, Grid3X3,
-  Map, Plus, Calendar, Clock, AlertCircle
+  Trash2, Save, Ticket, ChevronDown,
+  Map, Plus, Calendar, Clock, Grid3X3
 } from "lucide-react";
-
-const CAPACITY_PER_BLOCK = 50; 
 
 // --- Constants & Types ---
 const GRID_SIZES = {
-  Small:  { label: "เล็ก (Small Hall)",  total: 48,  cols: 6,  css: "grid-cols-6 max-w-[280px]" },
-  Medium: { label: "กลาง (Medium Hall)", total: 80,  cols: 8,  css: "grid-cols-8 max-w-[380px]" },
-  Large:  { label: "ใหญ่ (Grand Hall)",  total: 120, cols: 10, css: "grid-cols-10 max-w-[480px]" }
+  Small:  { label: "เล็ก (Small Hall)" },
+  Medium: { label: "กลาง (Medium Hall)" },
+  Large:  { label: "ใหญ่ (Grand Hall)" }
 };
 
 type VenueSize = keyof typeof GRID_SIZES; 
-type CellType = "empty" | "stageMain" | "stageSub" | "catwalk" | "zoneA" | "zoneB" | "zoneC";
+
+// ✅ 1. ชุดข้อมูลแผนผังที่นั่งอัตโนมัติ (เชื่อมลิงก์ Cloudinary เรียบร้อย)
+const PREDEFINED_PLANS: Record<string, Record<VenueSize, string>> = {
+  "1": { // อิมแพคอารีน่า
+    "Small": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1771491663/IM-small_dl59ai.jpg",
+    "Medium": "/images/plans/MT-medium.jpg",
+    "Large": "/images/plans/MT-big.jpg",
+  },
+  "2": { // มหิดลฮอล์
+    "Small": "/images/plans/MT-small.jpg",
+    "Medium": "/images/plans/MT-medium.jpg",
+    "Large": "/images/plans/MT-big.jpg",
+  },
+  "3": { // เมืองไทยรัชดาลัย
+    "Small": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1771487600/MT-small_k9ktvy.jpg",
+    "Medium": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1771487591/MT-medium_tt4yyk.jpg",
+    "Large": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1771487582/MT-big_fofs8k.jpg",
+  }
+};
+
+// ✅ 2. ชุดข้อมูลโซนและจำนวนที่นั่งอัตโนมัติ (อัปเดตตัวเลขตามรูปภาพเป๊ะๆ)
+const PREDEFINED_ZONES: Record<string, Record<VenueSize, TicketTier[]>> = {
+  "1": { // อิมแพคอารีน่า
+    "Small": [
+      { zoneName: "A1", price: 0, quantity: 500  },
+      { zoneName: "A2", price: 0, quantity: 500 },
+      { zoneName: "A3", price: 0, quantity: 500 },
+      { zoneName: "A4", price: 0, quantity: 500 },
+      { zoneName: "A5", price: 0, quantity: 500 },
+      { zoneName: "A6", price: 0, quantity: 500 },
+      { zoneName: "A7", price: 0, quantity: 500 },
+    ],
+    "Medium": [
+      { zoneName: "A1", price: 0, quantity: 500  },
+      { zoneName: "A2", price: 0, quantity: 500 },
+      { zoneName: "A3", price: 0, quantity: 500 },
+      { zoneName: "A4", price: 0, quantity: 500 },
+      { zoneName: "A5", price: 0, quantity: 500 },
+      { zoneName: "A6", price: 0, quantity: 500 },
+      { zoneName: "A7", price: 0, quantity: 500 },
+      { zoneName: "SB", price: 0, quantity: 160 },
+      { zoneName: "SC", price: 0, quantity: 160 },
+      { zoneName: "SD", price: 0, quantity: 160 },
+      { zoneName: "SE", price: 0, quantity: 216 },
+      { zoneName: "SF", price: 0, quantity: 160 },
+      { zoneName: "SG", price: 0, quantity: 136 },
+      { zoneName: "SH", price: 0, quantity: 152 },
+      { zoneName: "SI", price: 0, quantity: 136 },
+      { zoneName: "SJ", price: 0, quantity: 160 },
+      { zoneName: "SK", price: 0, quantity: 216 },
+      { zoneName: "SL", price: 0, quantity: 160 },
+      { zoneName: "SM", price: 0, quantity: 160 },
+      { zoneName: "SN", price: 0, quantity: 160 },
+    ],
+    "Large": [
+      { zoneName: "A1", price: 0, quantity: 500  },
+      { zoneName: "A2", price: 0, quantity: 500 },
+      { zoneName: "A3", price: 0, quantity: 500 },
+      { zoneName: "A4", price: 0, quantity: 500 },
+      { zoneName: "A5", price: 0, quantity: 500 },
+      { zoneName: "A6", price: 0, quantity: 500 },
+      { zoneName: "A7", price: 0, quantity: 500 },
+      { zoneName: "SB", price: 0, quantity: 160 },
+      { zoneName: "SC", price: 0, quantity: 160 },
+      { zoneName: "SD", price: 0, quantity: 160 },
+      { zoneName: "SE", price: 0, quantity: 216 },
+      { zoneName: "SF", price: 0, quantity: 160 },
+      { zoneName: "SG", price: 0, quantity: 136 },
+      { zoneName: "SH", price: 0, quantity: 152 },
+      { zoneName: "SI", price: 0, quantity: 136 },
+      { zoneName: "SJ", price: 0, quantity: 160 },
+      { zoneName: "SK", price: 0, quantity: 216 },
+      { zoneName: "SL", price: 0, quantity: 160 },
+      { zoneName: "SM", price: 0, quantity: 160 },
+      { zoneName: "SN", price: 0, quantity: 160 },
+      { zoneName: "B ", price: 0, quantity: 151 },
+      { zoneName: "C ", price: 0, quantity: 297 },
+      { zoneName: "D", price: 0, quantity: 297 },
+      { zoneName: "E", price: 0, quantity: 306 },
+      { zoneName: "F", price: 0, quantity: 258 },
+      { zoneName: "G", price: 0, quantity: 258 },
+      { zoneName: "H", price: 0, quantity: 272 },
+      { zoneName: "I", price: 0, quantity: 276 },
+      { zoneName: "J", price: 0, quantity: 260 },
+      { zoneName: "K", price: 0, quantity: 198 },
+      { zoneName: "L", price: 0, quantity: 260 },
+      { zoneName: "M", price: 0, quantity: 276 },
+      { zoneName: "N", price: 0, quantity: 272 },
+      { zoneName: "O", price: 0, quantity: 258 },
+      { zoneName: "P", price: 0, quantity: 285 },
+      { zoneName: "Q", price: 0, quantity: 306 },
+      { zoneName: "R", price: 0, quantity: 297 },
+      { zoneName: "S", price: 0, quantity: 297 },
+      { zoneName: "T", price: 0, quantity: 151 },
+    ]
+  },
+  "2": { // มหิดลฮอล์ (เผื่อไว้)
+    "Small": [
+      { zoneName: "LM1", price: 0, quantity: 79  },
+      { zoneName: "LM2", price: 0, quantity: 128 },
+      { zoneName: "LM3", price: 0, quantity: 79 },
+      { zoneName: "LM4", price: 0, quantity: 61 },
+      { zoneName: "LM5", price: 0, quantity: 128 },
+      { zoneName: "LM6", price: 0, quantity: 61 },
+      { zoneName: "UM1", price: 0, quantity: 48 },
+      { zoneName: "UM2", price: 0, quantity: 120 },
+      { zoneName: "UM3", price: 0, quantity: 48 },
+      { zoneName: "UM4", price: 0, quantity: 17 },
+      { zoneName: "UM5", price: 0, quantity: 57 },
+      { zoneName: "UM6", price: 0, quantity: 17 },
+      { zoneName: "LTL", price: 0, quantity: 34 },
+      { zoneName: "UTL", price: 0, quantity: 71 },
+      { zoneName: "LTR", price: 0, quantity: 34 },
+      { zoneName: "UTR", price: 0, quantity: 71 },
+    ],
+    "Medium": [
+      { zoneName: "LM1", price: 0, quantity: 79  },
+      { zoneName: "LM2", price: 0, quantity: 128 },
+      { zoneName: "LM3", price: 0, quantity: 79 },
+      { zoneName: "LM4", price: 0, quantity: 61 },
+      { zoneName: "LM5", price: 0, quantity: 128 },
+      { zoneName: "LM6", price: 0, quantity: 61 },
+      { zoneName: "UM1", price: 0, quantity: 48 },
+      { zoneName: "UM2", price: 0, quantity: 120 },
+      { zoneName: "UM3", price: 0, quantity: 48 },
+      { zoneName: "UM4", price: 0, quantity: 17 },
+      { zoneName: "UM5", price: 0, quantity: 57 },
+      { zoneName: "UM6", price: 0, quantity: 17 },
+      { zoneName: "LTL", price: 0, quantity: 34 },
+      { zoneName: "UTL", price: 0, quantity: 71 },
+      { zoneName: "LTR", price: 0, quantity: 34 },
+      { zoneName: "UTR", price: 0, quantity: 71 },
+      { zoneName: "BXA", price: 0, quantity: 7 },
+      { zoneName: "BXB", price: 0, quantity: 7 },
+      { zoneName: "BXC", price: 0, quantity: 7 },
+      { zoneName: "LB1", price: 0, quantity: 86 },
+      { zoneName: "LB2", price: 0, quantity: 105 },
+      { zoneName: "LB3", price: 0, quantity: 86 },
+      { zoneName: "FBA", price: 0, quantity: 14 },
+      { zoneName: "FBB", price: 0, quantity: 20 },
+      { zoneName: "FBC", price: 0, quantity: 14 },
+      { zoneName: "BXF", price: 0, quantity: 7 },
+      { zoneName: "BXE", price: 0, quantity: 7 },
+      { zoneName: "BXD", price: 0, quantity: 7 },
+    ],
+    "Large": [
+      { zoneName: "LM1", price: 0, quantity: 79  },
+      { zoneName: "LM2", price: 0, quantity: 128 },
+      { zoneName: "LM3", price: 0, quantity: 79 },
+      { zoneName: "LM4", price: 0, quantity: 61 },
+      { zoneName: "LM5", price: 0, quantity: 128 },
+      { zoneName: "LM6", price: 0, quantity: 61 },
+      { zoneName: "UM1", price: 0, quantity: 48 },
+      { zoneName: "UM2", price: 0, quantity: 120 },
+      { zoneName: "UM3", price: 0, quantity: 48 },
+      { zoneName: "UM4", price: 0, quantity: 17 },
+      { zoneName: "UM5", price: 0, quantity: 57 },
+      { zoneName: "UM6", price: 0, quantity: 17 },
+      { zoneName: "LTL", price: 0, quantity: 34 },
+      { zoneName: "UTL", price: 0, quantity: 71 },
+      { zoneName: "LTR", price: 0, quantity: 34 },
+      { zoneName: "UTR", price: 0, quantity: 71 },
+      { zoneName: "BXA", price: 0, quantity: 7 },
+      { zoneName: "BXB", price: 0, quantity: 7 },
+      { zoneName: "BXC", price: 0, quantity: 7 },
+      { zoneName: "LB1", price: 0, quantity: 86 },
+      { zoneName: "LB2", price: 0, quantity: 105 },
+      { zoneName: "LB3", price: 0, quantity: 86 },
+      { zoneName: "FBA", price: 0, quantity: 14 },
+      { zoneName: "FBB", price: 0, quantity: 20 },
+      { zoneName: "FBC", price: 0, quantity: 14 },
+      { zoneName: "BXF", price: 0, quantity: 7 },
+      { zoneName: "BXE", price: 0, quantity: 7 },
+      { zoneName: "BXD", price: 0, quantity: 7 },
+      { zoneName: "BXG", price: 0, quantity: 7 },
+      { zoneName: "BXH", price: 0, quantity: 6 },
+      { zoneName: "BXJ", price: 0, quantity: 6 },
+      { zoneName: "BXN", price: 0, quantity: 7 },
+      { zoneName: "SBL", price: 0, quantity: 17 },
+      { zoneName: "UB1", price: 0, quantity: 105 },
+      { zoneName: "UB2", price: 0, quantity: 176 },
+      { zoneName: "UB3", price: 0, quantity: 105 },
+      { zoneName: "BXK", price: 0, quantity: 6 },
+      { zoneName: "BXL", price: 0, quantity: 6 },
+      { zoneName: "BXM", price: 0, quantity: 7 },
+      { zoneName: "BXP", price: 0, quantity: 7 },
+      { zoneName: "SBR", price: 0, quantity: 17 },
+    ]
+  },
+
+
+  "3": { // เมืองไทยรัชดาลัย (ชื่อโซนตรงตามข้อความในผัง)
+    "Small": [
+      { zoneName: "L1", price: 0, quantity: 71 },
+      { zoneName: "L2", price: 0, quantity: 96 },
+      { zoneName: "C1", price: 0, quantity: 120 },
+      { zoneName: "C2", price: 0, quantity: 120 },
+      { zoneName: "R1", price: 0, quantity: 71 },
+      { zoneName: "R2", price: 0, quantity: 96 }
+    ],
+    "Medium": [
+      { zoneName: "L1", price: 0, quantity: 71 },
+      { zoneName: "L2", price: 0, quantity: 96 },
+      { zoneName: "L3", price: 0, quantity: 48 },
+      { zoneName: "L4", price: 0, quantity: 69 },
+      { zoneName: "C1", price: 0, quantity: 120 },
+      { zoneName: "C2", price: 0, quantity: 120 },
+      { zoneName: "C3", price: 0, quantity: 60 },
+      { zoneName: "C4", price: 0, quantity: 45 },
+      { zoneName: "R1", price: 0, quantity: 71 },
+      { zoneName: "R2", price: 0, quantity: 96 },
+      { zoneName: "R3", price: 0, quantity: 48 },
+      { zoneName: "R4", price: 0, quantity: 68 },
+    ],
+    "Large": [
+      { zoneName: "L1", price: 0, quantity: 71 },
+      { zoneName: "L2", price: 0, quantity: 96 },
+      { zoneName: "L3", price: 0, quantity: 48 },
+      { zoneName: "L4", price: 0, quantity: 69 },
+      { zoneName: "L5", price: 0, quantity: 44 },
+      { zoneName: "L6", price: 0, quantity: 77 },
+      { zoneName: "C1", price: 0, quantity: 120 },
+      { zoneName: "C2", price: 0, quantity: 120 },
+      { zoneName: "C3", price: 0, quantity: 60 },
+      { zoneName: "C4", price: 0, quantity: 45 },
+      { zoneName: "C5", price: 0, quantity: 60 },
+      { zoneName: "C6", price: 0, quantity: 105 },
+      { zoneName: "R1", price: 0, quantity: 71 },
+      { zoneName: "R2", price: 0, quantity: 96 },
+      { zoneName: "R3", price: 0, quantity: 48 },
+      { zoneName: "R4", price: 0, quantity: 68 },
+      { zoneName: "R5", price: 0, quantity: 46 },
+      { zoneName: "R6", price: 0, quantity: 80 },
+    ]
+  }
+};
 
 interface TicketTier {
   zoneName: string;
@@ -47,46 +280,39 @@ export default function CreateEventPage() {
     { roundNumber: 1, startDT: "", endDT: "", saleStart: "", saleEnd: "" }
   ]);
 
-  const [posterImage, setPosterImage] = useState<string | null>(null);
+  const [posterImages, setPosterImages] = useState<string[]>([]); 
   const [venuePlanImage, setVenuePlanImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // ✅ 1. เพิ่ม State สำหรับแจ้งเตือนบันทึกสำเร็จ
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // --- State สำหรับสถานที่ ---
+  // --- State สำหรับสถานที่และขนาด ---
   const [halls, setHalls] = useState<Hall[]>([]);
   const [selectedHallId, setSelectedHallId] = useState<string>("");
+  const [venueSize, setVenueSize] = useState<VenueSize>("Medium"); 
 
-  // --- State สำหรับบัตรและ Grid ---
-  const [venueSize, setVenueSize] = useState<VenueSize>("Medium");
+  // --- State สำหรับบัตร ---
   const [tickets, setTickets] = useState<TicketTier[]>([
     { zoneName: "", price: 0, quantity: 0 }
   ]);
-  const [stageGrid, setStageGrid] = useState<CellType[]>(Array(GRID_SIZES["Medium"].total).fill("empty"));
-  const [activeTool, setActiveTool] = useState<CellType>("stageMain");
 
-  // --- ✅ 2. ฟังก์ชันเคลียร์หน้าจอ (Reset Form) ---
+  // --- ฟังก์ชันเคลียร์หน้าจอ (Reset Form) ---
   const resetForm = () => {
     setEventName("");
     setDescription("");
     setShowRounds([{ roundNumber: 1, startDT: "", endDT: "", saleStart: "", saleEnd: "" }]);
-    setPosterImage(null);
+    setPosterImages([]); 
     setVenuePlanImage(null);
     setSelectedHallId("");
-    setVenueSize("Medium");
+    setVenueSize("Medium"); 
     setTickets([{ zoneName: "", price: 0, quantity: 0 }]);
-    setStageGrid(Array(GRID_SIZES["Medium"].total).fill("empty"));
-    setActiveTool("stageMain");
   };
 
-  // --- ✅ 3. ฟังก์ชันปิด Modal และสั่ง Reset ---
   const handleCloseModal = () => {
     setShowSuccessModal(false);
     resetForm();
   };
 
-  // 1. ดึงข้อมูลสถานที่จัดงาน
   useEffect(() => {
     const specificHalls = [
       { Hall_id: 1, hallName: "อิมแพคอารีน่า (Impact Arena)" },
@@ -96,7 +322,31 @@ export default function CreateEventPage() {
     setHalls(specificHalls);
   }, []);
 
-  // --- Functions จัดการรอบการแสดง ---
+  // ✅ 3. ปรับ useEffect เพื่อดึงรูปและดึงโซนมาแสดงพร้อมกัน
+  useEffect(() => {
+    if (selectedHallId && venueSize) {
+      // 3.1 ดึงรูปภาพ
+      const autoPlanImg = PREDEFINED_PLANS[selectedHallId]?.[venueSize];
+      if (autoPlanImg) {
+        setVenuePlanImage(autoPlanImg); 
+      } else {
+        setVenuePlanImage(null);
+      }
+
+      // 3.2 ดึงข้อมูลโซน
+      const autoZones = PREDEFINED_ZONES[selectedHallId]?.[venueSize];
+      if (autoZones && autoZones.length > 0) {
+        setTickets(JSON.parse(JSON.stringify(autoZones))); // clone array ป้องกันบั๊ก
+      } else {
+        setTickets([{ zoneName: "", price: 0, quantity: 0 }]); // ถ้าไม่มีข้อมูล คืนค่าเป็น 1 แถวว่างๆ
+      }
+
+    } else {
+      setVenuePlanImage(null);
+      setTickets([{ zoneName: "", price: 0, quantity: 0 }]);
+    }
+  }, [selectedHallId, venueSize]);
+
   const addRound = () => {
     const lastRound = showRounds[showRounds.length - 1];
     setShowRounds([...showRounds, {
@@ -110,10 +360,7 @@ export default function CreateEventPage() {
 
   const removeRound = (index: number) => {
     if (showRounds.length > 1) {
-        const newRounds = showRounds.filter((_, i) => i !== index).map((r, i) => ({
-            ...r,
-            roundNumber: i + 1 
-        }));
+        const newRounds = showRounds.filter((_, i) => i !== index).map((r, i) => ({ ...r, roundNumber: i + 1 }));
         setShowRounds(newRounds);
     } else {
         alert("ต้องมีรอบการแสดงอย่างน้อย 1 รอบ");
@@ -124,72 +371,6 @@ export default function CreateEventPage() {
     const newRounds = [...showRounds];
     newRounds[index] = { ...newRounds[index], [field]: value };
     setShowRounds(newRounds);
-  };
-
-  // --- Grid Logic ---
-  const getCellColor = (type: CellType) => {
-    switch (type) {
-      case "stageMain": return "bg-slate-200 border-white shadow-lg"; 
-      case "stageSub": return "bg-slate-400 border-slate-300"; 
-      case "catwalk": return "bg-slate-600 border-slate-500"; 
-      case "zoneA": return "bg-purple-500/80 border-purple-400 text-white";
-      case "zoneB": return "bg-blue-500/80 border-blue-400 text-white";
-      case "zoneC": return "bg-green-500/80 border-green-400 text-white";
-      default: return "bg-[#0B0F19] border-slate-800 hover:border-slate-600";
-    }
-  };
-
-  const calculateZoneCapacity = (grid: CellType[], zoneType: CellType) => {
-    return grid.filter((c) => c === zoneType).length * CAPACITY_PER_BLOCK;
-  };
-
-  const handleSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newSize = e.target.value as VenueSize;
-    setVenueSize(newSize);
-    const newGrid = Array(GRID_SIZES[newSize].total).fill("empty");
-    setStageGrid(newGrid);
-    updateTicketsFromGrid(newGrid); 
-  };
-
-  const toggleCell = (index: number) => {
-    const newGrid = [...stageGrid];
-    newGrid[index] = newGrid[index] === activeTool ? "empty" : activeTool;
-    setStageGrid(newGrid);
-    if (["zoneA", "zoneB", "zoneC"].includes(activeTool) || ["zoneA", "zoneB", "zoneC"].includes(stageGrid[index])) {
-       updateTicketsFromGrid(newGrid);
-    }
-  };
-
-  const updateTicketsFromGrid = (grid: CellType[]) => {
-    const countA = grid.filter(c => c === "zoneA").length * CAPACITY_PER_BLOCK;
-    const countB = grid.filter(c => c === "zoneB").length * CAPACITY_PER_BLOCK;
-    const countC = grid.filter(c => c === "zoneC").length * CAPACITY_PER_BLOCK;
-
-    setTickets(prev => {
-        let newTickets = [...prev];
-        const syncZone = (zName: string, count: number, defaultPrice: number) => {
-            const idx = newTickets.findIndex(t => t.zoneName === zName);
-            if (count > 0) {
-                if (idx >= 0) {
-                    newTickets[idx] = { ...newTickets[idx], quantity: count };
-                } else {
-                    newTickets.unshift({ zoneName: zName, price: defaultPrice, quantity: count });
-                }
-            } else if (idx >= 0) {
-                 newTickets = newTickets.filter(t => t.zoneName !== zName);
-            }
-        };
-        syncZone("Zone A (Grid)", countA, 6000);
-        syncZone("Zone B (Grid)", countB, 4500);
-        syncZone("Zone C (Grid)", countC, 2500);
-        return newTickets;
-    });
-  };
-
-  const clearGrid = () => {
-    const emptyGrid = Array(GRID_SIZES[venueSize].total).fill("empty");
-    setStageGrid(emptyGrid);
-    updateTicketsFromGrid(emptyGrid);
   };
 
   const addTicketTier = () => setTickets([...tickets, { zoneName: "", price: 0, quantity: 0 }]);
@@ -210,25 +391,24 @@ export default function CreateEventPage() {
     setTickets(newTickets);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setPosterImage(reader.result as string);
-      reader.readAsDataURL(file);
+  const handleMultipleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPosterImages(prev => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
     }
   };
 
-  const handlePlanImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setVenuePlanImage(reader.result as string);
-      reader.readAsDataURL(file);
-    }
+  const removePosterImage = (indexToRemove: number) => {
+    setPosterImages(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  // --- Submit ไปยัง Backend Laravel ---
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedHallId) return alert("กรุณาเลือกสถานที่");
@@ -243,12 +423,11 @@ export default function CreateEventPage() {
       eventName,
       eventDescription: description,
       Hall_id: Number(selectedHallId),
+      venueSize, 
       show_rounds: showRounds, 
-      posterImage,
+      posterImages, 
       venuePlanImage,
-      venueSize,
-      tickets,
-      stageGrid: JSON.stringify(stageGrid)
+      tickets
     };
 
     try {
@@ -262,7 +441,6 @@ export default function CreateEventPage() {
       });
 
       if (res.ok) {
-        // ✅ 4. สั่งเปิด Modal เมื่อบันทึกสำเร็จ
         setShowSuccessModal(true);
       } else {
         const err = await res.json();
@@ -277,11 +455,10 @@ export default function CreateEventPage() {
 
   return (
     <div className="min-h-screen bg-[#020617] text-white p-6 pb-20 font-sans">
-      {/* ส่วนหัวหน้าเว็บ */}
       <div className="max-w-7xl mx-auto mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">สร้างอีเวนต์ใหม่</h1>
-          <p className="text-slate-400 mt-1">ดีไซน์ผังเวทีและกำหนดราคาบัตรได้ตามต้องการ</p>
+          <p className="text-slate-400 mt-1">กำหนดราคาบัตรและอัปโหลดผังที่นั่งได้ตามต้องการ</p>
         </div>
         <div className="flex gap-3">
           <Link href="/organizer" className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800">ยกเลิก</Link>
@@ -293,7 +470,7 @@ export default function CreateEventPage() {
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-6">
-          {/* Section 1: รายละเอียดงาน */}
+          
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
             <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-blue-400"><AlignLeft size={20} /> รายละเอียดงาน</h2>
             <div className="space-y-4">
@@ -301,9 +478,10 @@ export default function CreateEventPage() {
                 <label className="block text-sm text-slate-400 mb-1">ชื่องานอีเวนต์</label>
                 <input type="text" value={eventName} onChange={(e) => setEventName(e.target.value)} placeholder="ชื่องานคอนเสิร์ต..." className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 focus:border-blue-500 outline-none transition-colors" />
               </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                   <label className="block text-sm text-slate-400 mb-1">สถานที่จัดงาน (Venue)</label>
+                   <label className="block text-sm text-slate-400 mb-1">สถานที่จัดงาน (Hall)</label>
                    <div className="relative">
                     <select value={selectedHallId} onChange={(e) => setSelectedHallId(e.target.value)} className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 appearance-none outline-none focus:border-blue-500 cursor-pointer">
                       <option value="">เลือกสถานที่จัดงาน...</option>
@@ -314,10 +492,15 @@ export default function CreateEventPage() {
                 </div>
                 <div>
                   <label className={`block text-sm mb-1 flex items-center gap-1 ${!selectedHallId ? "text-slate-600" : "text-slate-400"}`}>
-                      <Grid3X3 size={14} /> ขนาดพื้นที่ (Grid Size)
+                      <Grid3X3 size={14} /> ขนาดพื้นที่
                   </label>
                   <div className="relative">
-                    <select value={venueSize} onChange={handleSizeChange} disabled={!selectedHallId} className={`w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 appearance-none ${!selectedHallId ? "opacity-50 cursor-not-allowed bg-slate-800" : "cursor-pointer"}`}>
+                    <select 
+                      value={venueSize} 
+                      onChange={(e) => setVenueSize(e.target.value as VenueSize)} 
+                      disabled={!selectedHallId} 
+                      className={`w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 appearance-none ${!selectedHallId ? "opacity-50 cursor-not-allowed bg-slate-800" : "cursor-pointer"}`}
+                    >
                         {Object.entries(GRID_SIZES).map(([key, config]) => (
                             <option key={key} value={key}>{config.label}</option>
                         ))}
@@ -326,6 +509,7 @@ export default function CreateEventPage() {
                   </div>
                 </div>
               </div>
+
               <div>
                 <label className="block text-sm text-slate-400 mb-1">รายละเอียดเพิ่มเติม</label>
                 <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="รายละเอียดงาน..." className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 resize-none outline-none focus:border-blue-500 transition-colors" />
@@ -333,7 +517,6 @@ export default function CreateEventPage() {
             </div>
           </div>
 
-          {/* Section 2: รอบการแสดง */}
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
              <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold flex items-center gap-2 text-pink-400"><Calendar size={20} /> รอบการแสดง & การขายบัตร</h2>
@@ -365,54 +548,7 @@ export default function CreateEventPage() {
              </div>
           </div>
 
-          {/* Section 3: Grid Editor */}
-          <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-slate-700 pb-4 gap-4">
-                <div><h2 className="text-xl font-bold flex items-center gap-2 text-purple-400"><Grid3X3 size={20} /> ออกแบบผังเวที</h2><p className="text-xs text-slate-500 mt-1">ขนาดปัจจุบัน: <span className="text-white font-bold">{GRID_SIZES[venueSize].label}</span></p></div>
-                <div className="flex flex-wrap gap-2">
-                  <div className="flex bg-[#1E293B] p-1 rounded-lg border border-slate-700">
-                      <button onClick={()=>setActiveTool("stageMain")} className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${activeTool==="stageMain" ? "bg-slate-200 text-black shadow" : "text-slate-400 hover:text-white"}`}>Main</button>
-                      <button onClick={()=>setActiveTool("catwalk")} className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${activeTool==="catwalk" ? "bg-slate-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>Catwalk</button>
-                  </div>
-                  <div className="flex bg-[#1E293B] p-1 rounded-lg border border-slate-700">
-                      <button onClick={()=>setActiveTool("zoneA")} className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${activeTool==="zoneA" ? "bg-purple-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>A</button>
-                      <button onClick={()=>setActiveTool("zoneB")} className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${activeTool==="zoneB" ? "bg-blue-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>B</button>
-                      <button onClick={()=>setActiveTool("zoneC")} className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${activeTool==="zoneC" ? "bg-green-600 text-white shadow" : "text-slate-400 hover:text-white"}`}>C</button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col md:flex-row gap-6">
-                <div className="flex-1 flex justify-center bg-[#020617] p-6 rounded-xl border-2 border-dashed border-slate-700 relative select-none overflow-x-auto">
-                    <div className="absolute top-2 text-slate-600 text-[10px] uppercase font-bold tracking-widest font-mono">FRONT STAGE</div>
-                    <div className={`grid gap-1.5 w-full transition-all duration-300 ${GRID_SIZES[venueSize].css}`}>
-                        {stageGrid.map((type, index) => (
-                           <div key={index} onClick={() => toggleCell(index)} className={`aspect-square rounded-sm cursor-pointer transition-all duration-150 border ${getCellColor(type)} flex items-center justify-center text-[9px] font-bold hover:brightness-110 active:scale-90`}>
-                              {type === 'stageMain' && 'M'}{type === 'catwalk' && '•'}{type === 'zoneA' && 'A'}{type === 'zoneB' && 'B'}{type === 'zoneC' && 'C'}
-                           </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="w-full md:w-56 space-y-4">
-                    <h3 className="text-sm font-bold text-slate-300 border-b border-slate-700 pb-2">ความจุ (Grid)</h3>
-                    {[{ id: "zoneA", name: "Zone A", color: "text-purple-400", bg: "bg-purple-500" },{ id: "zoneB", name: "Zone B", color: "text-blue-400", bg: "bg-blue-500" },{ id: "zoneC", name: "Zone C", color: "text-green-400", bg: "bg-green-500" }].map((zone) => {
-                      const count = calculateZoneCapacity(stageGrid, zone.id as CellType);
-                      return (
-                        <div key={zone.id} className="bg-[#1E293B] p-3 rounded-lg border border-slate-700">
-                            <div className="flex justify-between text-xs mb-1"><span className={zone.color}>{zone.name}</span><span className="font-bold">{count} คน</span></div>
-                            <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden">
-                              <div className={`${zone.bg} h-full transition-all duration-500`} style={{ width: `${Math.min((count / 3000) * 100, 100)}%` }}></div>
-                            </div>
-                        </div>
-                      )
-                    })}
-                    <button onClick={clearGrid} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 w-full justify-center pt-2 transition-colors"><Trash2 size={12} /> ล้างผังทั้งหมด</button>
-                </div>
-              </div>
-          </div>
-
-          {/* Section 4: โซนบัตร */}
+          {/* Section บัตร */}
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold flex items-center gap-2 text-purple-400"><Ticket size={20} /> โซนและราคาบัตร</h2>
@@ -420,27 +556,38 @@ export default function CreateEventPage() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <label className="border border-slate-700 rounded-xl bg-[#1E293B]/30 p-4 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden group cursor-pointer hover:border-blue-500 transition-colors">
-                   {venuePlanImage ? (<img src={venuePlanImage} alt="Seating Plan" className="w-full h-auto rounded-lg shadow-lg object-contain" />) : (<div className="text-center text-slate-500"><Map size={48} className="mx-auto mb-2 opacity-20"/><p className="text-sm">อัปโหลดรูปผังที่นั่ง (ถ้ามี)</p></div>)}
-                   <input type="file" className="hidden" accept="image/*" onChange={handlePlanImageUpload} />
-               </label>
+               <div className="border border-slate-700 rounded-xl bg-[#1E293B]/30 p-4 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden">
+                   {venuePlanImage ? (
+                     <img src={venuePlanImage} alt="Seating Plan" className="w-full h-auto rounded-lg shadow-lg object-contain" />
+                   ) : (
+                     <div className="text-center text-slate-500">
+                       <Map size={48} className="mx-auto mb-2 opacity-20"/>
+                       <p className="text-sm">กรุณาเลือกสถานที่และขนาดพื้นที่<br/>เพื่อดูผังที่นั่ง</p>
+                     </div>
+                   )}
+               </div>
 
-               <div className="space-y-2 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
+               {/* ✅ ส่วน UI โซนที่จัดใหม่ตามรูปภาพ */}
+               <div className="space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
                    {tickets.map((ticket, index) => (
-                       <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 bg-[#1E293B]/50 rounded-lg border border-slate-700 hover:border-purple-500/30 transition-colors">
-                           <div className="col-span-5">
-                               <label className="text-[10px] text-slate-500 mb-0.5 block">โซน</label>
-                               <input type="text" value={ticket.zoneName} onChange={(e) => updateTicket(index, 'zoneName', e.target.value)} placeholder="Zone A" className="w-full bg-[#0F172A] border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none transition-colors" />
+                       <div key={index} className="flex gap-4 items-center p-4 rounded-xl border border-slate-700 bg-transparent hover:border-purple-500/50 transition-colors">
+                           <div className="flex-1">
+                               <label className="text-xs text-slate-500 mb-1.5 block">โซน</label>
+                               <input type="text" value={ticket.zoneName} onChange={(e) => updateTicket(index, 'zoneName', e.target.value)} placeholder="Zone A" className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors" />
                            </div>
-                           <div className="col-span-3">
-                               <label className="text-[10px] text-slate-500 mb-0.5 block">ราคา</label>
-                               <input type="number" value={ticket.price} onChange={(e) => updateTicket(index, 'price', e.target.value)} className="w-full bg-[#0F172A] border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:border-purple-500 outline-none" />
+                           <div className="flex-1">
+                               <label className="text-xs text-slate-500 mb-1.5 block">ราคา</label>
+                               <input type="number" value={ticket.price} onChange={(e) => updateTicket(index, 'price', e.target.value)} className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors" />
                            </div>
-                           <div className="col-span-3">
-                               <label className="text-[10px] text-slate-500 mb-0.5 block">จำนวน</label>
-                               <input type="number" value={ticket.quantity} onChange={(e) => updateTicket(index, 'quantity', e.target.value)} readOnly={ticket.zoneName.includes("(Grid)")} className="w-full bg-[#0F172A] border border-slate-700 rounded px-2 py-1.5 text-xs text-white opacity-80" />
+                           <div className="flex-1">
+                               <label className="text-xs text-slate-500 mb-1.5 block">จำนวน</label>
+                               <input type="number" value={ticket.quantity} onChange={(e) => updateTicket(index, 'quantity', e.target.value)} className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors" />
                            </div>
-                           <div className="col-span-1 flex justify-center pt-4"><button onClick={() => removeTicketTier(index)} className="text-slate-600 hover:text-red-500 p-1 transition-colors"><Trash2 size={16} /></button></div>
+                           <div className="pt-6 flex items-center justify-center">
+                               <button onClick={() => removeTicketTier(index)} className="text-slate-600 hover:text-red-500 p-1.5 transition-colors">
+                                   <Trash2 size={20} />
+                               </button>
+                           </div>
                        </div>
                    ))}
                </div>
@@ -451,17 +598,39 @@ export default function CreateEventPage() {
         {/* Sidebar Poster */}
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl sticky top-6">
-             <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-cyan-400"><ImageIcon size={20} /> โปสเตอร์งาน</h2>
-             <label className="w-full aspect-[3/4] rounded-xl border-2 border-dashed border-slate-700 bg-[#1E293B]/30 flex flex-col items-center justify-center text-slate-500 hover:border-cyan-500 hover:text-cyan-500 cursor-pointer overflow-hidden transition-all shadow-inner">
-                {posterImage ? (<img src={posterImage} alt="Preview" className="w-full h-full object-cover" />) : (<div className="text-center"><ImageIcon size={32} className="mx-auto mb-2 opacity-50"/><p className="text-sm">คลิกเพื่ออัปโหลด</p></div>)}
-                <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+             <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-cyan-400">
+               <ImageIcon size={20} /> รูปโปสเตอร์งาน
+             </h2>
+
+             {posterImages.length > 0 && (
+               <div className={`grid gap-2 mb-4 ${posterImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                 {posterImages.map((img, index) => (
+                   <div key={index} className="relative group aspect-[3/4] rounded-lg overflow-hidden border border-slate-700 shadow-md">
+                     <img src={img} alt={`Poster ${index}`} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                     <button 
+                       type="button"
+                       onClick={() => removePosterImage(index)}
+                       className="absolute top-2 right-2 bg-red-500/80 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                     >
+                       <Trash2 size={14} />
+                     </button>
+                   </div>
+                 ))}
+               </div>
+             )}
+
+             <label className="w-full py-4 rounded-xl border-2 border-dashed border-slate-700 bg-[#1E293B]/30 flex flex-col items-center justify-center text-slate-500 hover:border-cyan-500 hover:text-cyan-500 cursor-pointer transition-all shadow-inner">
+                <ImageIcon size={28} className="mb-2 opacity-50"/>
+                <p className="text-sm font-semibold">{posterImages.length > 0 ? "+ เพิ่มรูปอีก" : "คลิกเลือกรูปโปสเตอร์"}</p>
+                <p className="text-xs text-slate-600 mt-1">(เลือกได้หลายไฟล์พร้อมกัน)</p>
+                <input type="file" multiple className="hidden" accept="image/*" onChange={handleMultipleImageUpload} />
              </label>
 
              <div className="mt-6 pt-6 border-t border-slate-800">
               <h3 className="text-sm font-semibold text-slate-300 mb-3">สรุปข้อมูล</h3>
               <ul className="space-y-2 text-sm text-slate-400">
                 <li className="flex justify-between"><span>สถานที่ (ID):</span><span className="text-white font-mono">{selectedHallId || "-"}</span></li>
-                <li className="flex justify-between"><span>ขนาดผัง:</span><span className="text-cyan-400">{GRID_SIZES[venueSize].label}</span></li>
+                <li className="flex justify-between"><span>ขนาดพื้นที่:</span><span className="text-cyan-400">{GRID_SIZES[venueSize].label}</span></li>
                 <li className="flex justify-between border-t border-slate-800 pt-2 mt-2"><span>จำนวนรอบ:</span><span className="text-pink-400">{showRounds.length} รอบ</span></li>
                 <li className="flex justify-between font-bold"><span>บัตรทั้งหมด:</span><span className="text-white">{tickets.reduce((sum, t) => sum + Number(t.quantity), 0)} ใบ</span></li>
               </ul>
@@ -470,11 +639,9 @@ export default function CreateEventPage() {
         </div>
       </div>
 
-      {/* ✅ 5. โค้ดส่วนหน้าตาของ Success Modal */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
           <div className="bg-[#0F172A] border border-slate-800 w-full max-w-sm rounded-3xl p-8 shadow-2xl text-center animate-in fade-in zoom-in duration-300">
-            {/* ไอคอนความสำเร็จ */}
             <div className="w-20 h-20 bg-green-500/10 text-green-400 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/20 shadow-lg shadow-green-500/5">
               <Save size={40} />
             </div>
