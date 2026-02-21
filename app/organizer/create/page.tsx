@@ -36,7 +36,7 @@ const PREDEFINED_PLANS: Record<string, Record<VenueSize, string>> = {
   }
 };
 
-// ✅ 2. ชุดข้อมูลโซนและจำนวนที่นั่งอัตโนมัติ (อัปเดตตัวเลขตามรูปภาพเป๊ะๆ)
+// ✅ 2. ชุดข้อมูลโซนและจำนวนที่นั่งอัตโนมัติ
 const PREDEFINED_ZONES: Record<string, Record<VenueSize, TicketTier[]>> = {
   "1": { // อิมแพคอารีน่า
     "Small": [
@@ -112,7 +112,7 @@ const PREDEFINED_ZONES: Record<string, Record<VenueSize, TicketTier[]>> = {
       { zoneName: "T", price: 0, quantity: 151 },
     ]
   },
-  "2": { // มหิดลฮอล์ (เผื่อไว้)
+  "2": { // มหิดลฮอล์ 
     "Small": [
       { zoneName: "LM1", price: 0, quantity: 79  },
       { zoneName: "LM2", price: 0, quantity: 128 },
@@ -205,9 +205,7 @@ const PREDEFINED_ZONES: Record<string, Record<VenueSize, TicketTier[]>> = {
       { zoneName: "SBR", price: 0, quantity: 17 },
     ]
   },
-
-
-  "3": { // เมืองไทยรัชดาลัย (ชื่อโซนตรงตามข้อความในผัง)
+  "3": { // เมืองไทยรัชดาลัย 
     "Small": [
       { zoneName: "L1", price: 0, quantity: 71 },
       { zoneName: "L2", price: 0, quantity: 96 },
@@ -325,7 +323,6 @@ export default function CreateEventPage() {
   // ✅ 3. ปรับ useEffect เพื่อดึงรูปและดึงโซนมาแสดงพร้อมกัน
   useEffect(() => {
     if (selectedHallId && venueSize) {
-      // 3.1 ดึงรูปภาพ
       const autoPlanImg = PREDEFINED_PLANS[selectedHallId]?.[venueSize];
       if (autoPlanImg) {
         setVenuePlanImage(autoPlanImg); 
@@ -333,14 +330,12 @@ export default function CreateEventPage() {
         setVenuePlanImage(null);
       }
 
-      // 3.2 ดึงข้อมูลโซน
       const autoZones = PREDEFINED_ZONES[selectedHallId]?.[venueSize];
       if (autoZones && autoZones.length > 0) {
-        setTickets(JSON.parse(JSON.stringify(autoZones))); // clone array ป้องกันบั๊ก
+        setTickets(JSON.parse(JSON.stringify(autoZones))); // clone array
       } else {
-        setTickets([{ zoneName: "", price: 0, quantity: 0 }]); // ถ้าไม่มีข้อมูล คืนค่าเป็น 1 แถวว่างๆ
+        setTickets([{ zoneName: "", price: 0, quantity: 0 }]);
       }
-
     } else {
       setVenuePlanImage(null);
       setTickets([{ zoneName: "", price: 0, quantity: 0 }]);
@@ -412,11 +407,78 @@ export default function CreateEventPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedHallId) return alert("กรุณาเลือกสถานที่");
+
+    const now = new Date(); 
+
+    for (let i = 0; i < showRounds.length; i++) {
+      const round = showRounds[i];
+      if (!round.startDT || !round.endDT || !round.saleStart || !round.saleEnd) {
+        return alert(`รอบที่ ${round.roundNumber}: กรุณากรอกรายละเอียดวันจัดงานและวันขายบัตรให้ครบถ้วนนะคะ`);
+      }
+      const startConcert = new Date(round.startDT);
+      const endSale = new Date(round.saleEnd);
+      const startSale = new Date(round.saleStart);
+      
+      if (startConcert < now || startSale < now) {
+        return alert(`รอบที่ ${round.roundNumber}: ไม่สามารถลงวันที่จัดงานหรือเปิดขายบัตรย้อนหลังได้นะคะ`);
+      }
+      if (endSale < startSale) {
+        return alert(`รอบที่ ${round.roundNumber}: วันปิดขายบัตรห้ามอยู่ก่อนวันเปิดขายบัตรค่ะ`);
+      }
+      
+      const limitTime = new Date(startConcert.getTime() + 60 * 60 * 1000); 
+      if (endSale > limitTime) {
+        return alert(`รอบที่ ${round.roundNumber}: วันปิดขายบัตรสามารถปิดได้ช้าที่สุดไม่เกิน 1 ชม. หลังจากเริ่มการแสดง (ไม่เกิน ${limitTime.toLocaleString('th-TH')})`);
+      }
+      
+      if (i > 0) {
+        const prevRoundEnd = new Date(showRounds[i - 1].endDT);
+        if (startConcert < prevRoundEnd) {
+          return alert(`ข้อมูลรอบที่ ${round.roundNumber} ไม่ถูกต้อง: เวลาเริ่มแสดงต้องอยู่หลังจากรอบที่ ${i} (รอบก่อนหน้า) จบลงค่ะ`);
+        }
+      }
+    }
     
     const isTicketsValid = tickets.every(t => t.zoneName.trim() !== "");
     if (!isTicketsValid) return alert("กรุณากรอกชื่อโซนบัตรให้ครบถ้วน");
 
     setLoading(true);
+
+    // -------------------------------------------------------------
+    // ✅ 1. ยิงรูปไปฝากไว้ที่ Cloudinary พร้อมแยกโฟลเดอร์
+    // -------------------------------------------------------------
+    let cloudinaryUrl = null;
+    
+    if (posterImages.length > 0) {
+      try {
+        const formData = new FormData();
+        formData.append("file", posterImages[0]); 
+        formData.append("upload_preset", "bannerImage"); 
+        formData.append("cloud_name", "de7ml7aeb"); 
+        formData.append("folder", "event_posters"); // จัดเก็บในโฟลเดอร์ event_posters
+
+        const cloudRes = await fetch("https://api.cloudinary.com/v1_1/de7ml7aeb/image/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const cloudData = await cloudRes.json();
+        if (cloudData.secure_url) {
+            cloudinaryUrl = cloudData.secure_url; 
+        } else {
+            throw new Error("อัปโหลดรูปไม่สำเร็จ");
+        }
+      } catch (error) {
+        console.error("Cloudinary Error:", error);
+        alert("❌ อัปโหลดรูปภาพไม่สำเร็จ กรุณาลองใหม่");
+        setLoading(false);
+        return; 
+      }
+    }
+
+    // -------------------------------------------------------------
+    // ✅ 2. ส่งลิงก์ Cloudinary (และข้อมูลอื่นๆ) ไปให้ Backend
+    // -------------------------------------------------------------
     const token = localStorage.getItem("token");
 
     const payload = {
@@ -425,7 +487,7 @@ export default function CreateEventPage() {
       Hall_id: Number(selectedHallId),
       venueSize, 
       show_rounds: showRounds, 
-      posterImages, 
+      posterImage: cloudinaryUrl, 
       venuePlanImage,
       tickets
     };
@@ -435,6 +497,7 @@ export default function CreateEventPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': `Bearer ${token}` 
         },
         body: JSON.stringify(payload)
@@ -444,6 +507,14 @@ export default function CreateEventPage() {
         setShowSuccessModal(true);
       } else {
         const err = await res.json();
+        
+        if (err.code === "VENUE_UNAVAILABLE") {
+            const lastBooked = new Date(err.lastBookedDate); 
+            const nextAvailable = new Date(lastBooked);
+            nextAvailable.setDate(lastBooked.getDate() + 3); 
+            const hallName = halls.find(h => h.Hall_id === Number(selectedHallId))?.hallName || "สถานที่นี้";
+            return alert(`${hallName} วันนี้เต็มแล้วค่ะ ว่างอีกทีคือหลังจากวันที่ ${lastBooked.toLocaleDateString('th-TH')} +2 วัน (เคลียร์พื้นที่) คือวันที่ ${nextAvailable.toLocaleDateString('th-TH')} รบกวนคุณลูกค้าติดต่อประสานงานกับทางฮอลล์อีกทีนะคะ`);
+        }
         alert("❌ Error: " + (err.message || "Something went wrong"));
       }
     } catch (error) {
@@ -452,6 +523,11 @@ export default function CreateEventPage() {
       setLoading(false);
     }
   };
+
+  // ✅ เสริม: สร้างตัวแปรเวลาปัจจุบัน (แปลงเป็นเวลา Local ของไทย) ไว้สำหรับล็อคปฏิทินฝั่ง UI
+  const nowForInput = new Date();
+  nowForInput.setMinutes(nowForInput.getMinutes() - nowForInput.getTimezoneOffset());
+  const nowISO = nowForInput.toISOString().slice(0, 16);
 
   return (
     <div className="min-h-screen bg-[#020617] text-white p-6 pb-20 font-sans">
@@ -528,21 +604,23 @@ export default function CreateEventPage() {
                         <div className="absolute -left-3 -top-3 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border border-slate-600 font-bold text-sm shadow-md z-10">{index + 1}</div>
                         {showRounds.length > 1 && (<button onClick={() => removeRound(index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 p-2"><Trash2 size={16}/></button>)}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
-                            <div className="space-y-3">
-                                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2 border-b border-slate-700 pb-1"><Clock size={14} /> วันที่แสดงจริง</h3>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div><label className="text-[10px] text-slate-500 block mb-1">เริ่มแสดง</label><input type="datetime-local" value={round.startDT} onChange={(e)=>updateRound(index, 'startDT', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-white [color-scheme:dark]" /></div>
-                                    <div><label className="text-[10px] text-slate-500 block mb-1">จบการแสดง</label><input type="datetime-local" value={round.endDT} onChange={(e)=>updateRound(index, 'endDT', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-white [color-scheme:dark]" /></div>
-                                </div>
-                            </div>
-                            <div className="space-y-3">
-                                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2 border-b border-slate-700 pb-1"><Ticket size={14} /> ช่วงเวลาขายบัตร</h3>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div><label className="text-[10px] text-slate-500 block mb-1">เปิดขาย</label><input type="datetime-local" value={round.saleStart} onChange={(e)=>updateRound(index, 'saleStart', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-yellow-400 [color-scheme:dark]" /></div>
-                                    <div><label className="text-[10px] text-slate-500 block mb-1">ปิดขาย</label><input type="datetime-local" value={round.saleEnd} onChange={(e)=>updateRound(index, 'saleEnd', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-red-400 [color-scheme:dark]" /></div>
-                                </div>
-                            </div>
-                        </div>
+              <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2 border-b border-slate-700 pb-1"><Clock size={14} /> วันที่แสดงจริง</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                      <div><label className="text-[10px] text-slate-500 block mb-1">เริ่มแสดง</label><input type="datetime-local" min={nowISO} value={round.startDT} onChange={(e)=>updateRound(index, 'startDT', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-white [color-scheme:dark]" /></div>
+                      
+                      <div><label className="text-[10px] text-slate-500 block mb-1">จบการแสดง</label><input type="datetime-local" min={nowISO} value={round.endDT} onChange={(e)=>updateRound(index, 'endDT', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-white [color-scheme:dark]" /></div>
+                  </div>
+              </div>
+              <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2 border-b border-slate-700 pb-1"><Ticket size={14} /> ช่วงเวลาขายบัตร</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                      <div><label className="text-[10px] text-slate-500 block mb-1">เปิดขาย</label><input type="datetime-local" min={nowISO} value={round.saleStart} onChange={(e)=>updateRound(index, 'saleStart', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-yellow-400 [color-scheme:dark]" /></div>
+                      
+                      <div><label className="text-[10px] text-slate-500 block mb-1">ปิดขาย</label><input type="datetime-local" min={nowISO} value={round.saleEnd} onChange={(e)=>updateRound(index, 'saleEnd', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-red-400 [color-scheme:dark]" /></div>
+                  </div>
+              </div>
+          </div>
                     </div>
                 ))}
              </div>
