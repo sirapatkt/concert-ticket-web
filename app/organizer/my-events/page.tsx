@@ -182,9 +182,12 @@ export default function MyEventsPage() {
 
             {/* Action Buttons */}
             <div className="hidden md:flex flex-col justify-center gap-2 pl-6 border-l border-slate-800 min-w-[150px]">
-              <button className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-600 hover:text-white transition-all text-xs font-bold border border-blue-500/20">
+             <Link 
+                href={`/organizer/detail?id=${event.id}`} 
+                className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-600 hover:text-white transition-all text-xs font-bold border border-blue-500/20"
+              >
                 <Eye size={14} /> ดูข้อมูล
-              </button>
+              </Link>
               <button className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-all text-xs font-bold border border-slate-700">
                 <Edit size={14} /> แก้ไขงาน
               </button>
