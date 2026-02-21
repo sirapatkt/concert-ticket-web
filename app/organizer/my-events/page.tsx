@@ -62,6 +62,35 @@ export default function MyEventsPage() {
     }
   };
 
+  // ✅ ฟังก์ชันลบงาน
+  const handleDelete = async (id: number) => {
+    // โชว์หน้าต่างยืนยันก่อนลบ
+    const confirmDelete = window.confirm("⚠️ คุณแน่ใจหรือไม่ที่จะลบอีเวนต์นี้?\nข้อมูลจะถูกลบถาวรและไม่สามารถกู้คืนได้");
+    if (!confirmDelete) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://127.0.0.1:8000/api/events/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (res.ok) {
+        alert("ลบข้อมูลสำเร็จ!");
+        fetchEvents(); // ลบเสร็จให้โหลดข้อมูลใหม่ทันที เพื่อให้งานหายไปจากหน้าจอ
+      } else {
+        const err = await res.json();
+        alert("เกิดข้อผิดพลาด: " + (err.message || "ไม่สามารถลบได้"));
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      alert("❌ เชื่อมต่อ Server ไม่ได้");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#020617] text-white p-6 pb-20 font-sans">
       
@@ -188,10 +217,27 @@ export default function MyEventsPage() {
               >
                 <Eye size={14} /> ดูข้อมูล
               </Link>
-              <button className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-all text-xs font-bold border border-slate-700">
-                <Edit size={14} /> แก้ไขงาน
-              </button>
-              <button className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-red-500/5 text-red-400 hover:bg-red-500 hover:text-white transition-all text-xs font-bold border border-red-500/10">
+              {/* เปลี่ยนปุ่มแก้ไขเดิม เป็นโค้ดชุดนี้ครับ */}
+                {event.status === 'กำลังเตรียม' || event.status === 'รอตรวจสอบ' ? (
+                  <Link 
+                    href={`/organizer/edit-event?id=${event.id}`} 
+                    className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-all text-xs font-bold border border-slate-700"
+                  >
+                    <Edit size={14} /> แก้ไขงาน
+                  </Link>
+                ) : (
+                  <button 
+                    disabled 
+                    className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-slate-800/50 text-slate-500 cursor-not-allowed text-xs font-bold border border-slate-700/50"
+                    title="งานนี้เปิดขายบัตรหรือจัดไปแล้ว ไม่สามารถแก้ไขได้"
+                  >
+                    <Edit size={14} /> แก้ไขไม่ได้แล้ว
+                  </button>
+                )}
+              <button 
+                onClick={() => handleDelete(event.id)} 
+                className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-red-500/5 text-red-400 hover:bg-red-500 hover:text-white transition-all text-xs font-bold border border-red-500/10"
+              >
                 <Trash2 size={14} /> ลบ
               </button>
             </div>

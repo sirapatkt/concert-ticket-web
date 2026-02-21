@@ -608,7 +608,19 @@ export default function CreateEventPage() {
                   <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2 border-b border-slate-700 pb-1"><Clock size={14} /> วันที่แสดงจริง</h3>
                   <div className="grid grid-cols-2 gap-2">
                       <div><label className="text-[10px] text-slate-500 block mb-1">เริ่มแสดง</label><input type="datetime-local" min={nowISO} value={round.startDT} onChange={(e)=>updateRound(index, 'startDT', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-white [color-scheme:dark]" /></div>
-                      
+
+                  {/* 🟢 เพิ่มกล่องข้อความแจ้งเตือนตรงนี้ (ต่อท้ายวงเล็บปิดของลูป) 🟢 */}
+           <div className="mt-4 bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
+             <div className="text-blue-400 mt-0.5">ℹ️</div>
+             <div>
+               <h4 className="text-blue-400 font-bold text-sm">การล็อกคิวสถานที่ (Rental Period)</h4>
+               <p className="text-slate-400 text-xs mt-1 leading-relaxed">
+                 เพื่อความสะดวกในการปฏิบัติงาน <span className="text-white font-semibold">ระบบจะทำการจองฮอลล์ล่วงหน้า 2 วัน (สำหรับเซ็ตอัปเวที) และเผื่อเวลาหลังจบงาน 2 วัน (สำหรับรื้อถอน) โดยอัตโนมัติ</span> โดยอ้างอิงจากรอบการแสดงแรกและรอบสุดท้ายของคุณ
+               </p>
+             </div>
+           </div>
+
+
                       <div><label className="text-[10px] text-slate-500 block mb-1">จบการแสดง</label><input type="datetime-local" min={nowISO} value={round.endDT} onChange={(e)=>updateRound(index, 'endDT', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-white [color-scheme:dark]" /></div>
                   </div>
               </div>
