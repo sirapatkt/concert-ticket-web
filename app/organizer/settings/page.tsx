@@ -1,41 +1,115 @@
-// 📂 ไฟล์: app/organizer/settings/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Save, User, Building, CreditCard, Lock, Bell, 
-  Camera, CheckCircle 
+  Camera, CheckCircle, Loader2 
 } from "lucide-react";
 
 export default function SettingsPage() {
-  // State จำลองข้อมูลผู้ใช้
-  const [profile, setProfile] = useState({
-    companyName: "GMM Grammy",
-    contactName: "คุณสมชาย ใจดี",
-    email: "contact@gmm.com",
-    phone: "02-669-9000",
-    website: "https://www.gmmgrammy.com",
-    bio: "บริษัทบันเทิงครบวงจร อันดับ 1 ของประเทศไทย",
-  });
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
-  const [bankInfo, setBankInfo] = useState({
+  // ✅ รวม State ให้ตรงกับ Database (organizers table)
+  const [profile, setProfile] = useState({
+    compName: "",
+    firstnameOG: "",
+    lastnameOG: "",
+    telOG: "",
+    emailOG: "",
+    bio: "", // หมายเหตุ: ถ้าใน DB ไม่มี column bio ให้ระวังตรงนี้
+    
+    // ส่วนบัญชีธนาคาร (ถ้า DB ยังไม่มีตารางแยก ให้เก็บเป็น JSON หรือ mock ไว้ก่อน)
     bankName: "KBANK",
-    accountName: "บจก. จีเอ็มเอ็ม แกรมมี่",
-    accountNumber: "123-4-56789-0"
+    accountName: "",
+    accountNumber: ""
   });
 
   const [notifications, setNotifications] = useState({
     emailAlert: true,
-    smsAlert: false,
     saleSummary: true
   });
 
-  // ฟังก์ชันบันทึกข้อมูล
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Saved:", { profile, bankInfo, notifications });
-    alert("บันทึกข้อมูลเรียบร้อยแล้ว!");
+  // ✅ 1. ดึงข้อมูล Profile จาก API เมื่อเปิดหน้า
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      try {
+        const res = await fetch("http://127.0.0.1:8000/api/organizer/profile", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          // Map ข้อมูลจาก API เข้า State
+          setProfile(prev => ({
+            ...prev,
+            compName: data.compName || "",
+            firstnameOG: data.firstnameOG || "",
+            lastnameOG: data.lastnameOG || "",
+            telOG: data.telOG || "",
+            emailOG: data.emailOG || "",
+            bio: data.bio || "", // ถ้ามี
+            // ถ้า Database มีเก็บเลขบัญชี ก็ดึงมาใส่ตรงนี้ได้เลย
+          }));
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  // ✅ 2. ฟังก์ชันบันทึกข้อมูลลง Database
+  const handleSave = async () => {
+    setLoading(true);
+    const token = localStorage.getItem("token");
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/organizer/profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          compName: profile.compName,
+          firstnameOG: profile.firstnameOG,
+          lastnameOG: profile.lastnameOG,
+          telOG: profile.telOG,
+          bio: profile.bio,
+          // bankInfo: ... (ถ้า Backend รองรับการบันทึกธนาคาร ให้ส่งไปด้วย)
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        alert("✅ บันทึกข้อมูลเรียบร้อยแล้ว!");
+        // อัปเดตชื่อใน LocalStorage เผื่อ Header เรียกใช้
+        localStorage.setItem("user_name", profile.compName || profile.firstnameOG);
+      } else {
+        alert("❌ บันทึกไม่สำเร็จ");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (initialLoading) {
+    return (
+        <div className="min-h-screen bg-[#020617] flex items-center justify-center text-slate-400">
+            <Loader2 className="animate-spin mr-2" /> กำลังโหลดข้อมูล...
+        </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#020617] text-white p-6 pb-20">
@@ -50,15 +124,17 @@ export default function SettingsPage() {
         </div>
         <button 
           onClick={handleSave}
-          className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all"
+          disabled={loading}
+          className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all disabled:opacity-50"
         >
-          <Save size={18} /> บันทึกการแก้ไข
+          {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} 
+          {loading ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}
         </button>
       </div>
 
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* คอลัมน์ซ้าย: เมนูย่อย (แบบจำลอง UI) */}
+        {/* คอลัมน์ซ้าย: เมนูย่อย */}
         <div className="space-y-6">
           <div className="bg-[#0F172A] p-4 rounded-xl border border-slate-800 shadow-lg">
             <div className="flex flex-col items-center py-6 border-b border-slate-800 mb-4">
@@ -72,7 +148,7 @@ export default function SettingsPage() {
                   <Camera size={24} className="text-white" />
                 </div>
               </div>
-              <h2 className="text-lg font-bold text-white">{profile.companyName}</h2>
+              <h2 className="text-lg font-bold text-white">{profile.compName || profile.firstnameOG}</h2>
               <p className="text-sm text-slate-400">Organizer Account</p>
             </div>
             
@@ -111,26 +187,38 @@ export default function SettingsPage() {
                 <label className="text-sm text-slate-400 mb-1 block">ชื่อบริษัท / ทีมผู้จัด</label>
                 <input 
                   type="text" 
-                  value={profile.companyName}
-                  onChange={(e) => setProfile({...profile, companyName: e.target.value})}
+                  value={profile.compName}
+                  onChange={(e) => setProfile({...profile, compName: e.target.value})}
+                  className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+              
+              {/* แยกชื่อ-นามสกุล เพื่อให้ตรง DB */}
+              <div>
+                <label className="text-sm text-slate-400 mb-1 block">ชื่อจริง</label>
+                <input 
+                  type="text" 
+                  value={profile.firstnameOG}
+                  onChange={(e) => setProfile({...profile, firstnameOG: e.target.value})}
                   className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:border-blue-500 outline-none"
                 />
               </div>
               <div>
-                <label className="text-sm text-slate-400 mb-1 block">ชื่อผู้ติดต่อหลัก</label>
+                <label className="text-sm text-slate-400 mb-1 block">นามสกุล</label>
                 <input 
                   type="text" 
-                  value={profile.contactName}
-                  onChange={(e) => setProfile({...profile, contactName: e.target.value})}
+                  value={profile.lastnameOG}
+                  onChange={(e) => setProfile({...profile, lastnameOG: e.target.value})}
                   className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:border-blue-500 outline-none"
                 />
               </div>
+
               <div>
                 <label className="text-sm text-slate-400 mb-1 block">เบอร์โทรศัพท์</label>
                 <input 
                   type="text" 
-                  value={profile.phone}
-                  onChange={(e) => setProfile({...profile, phone: e.target.value})}
+                  value={profile.telOG}
+                  onChange={(e) => setProfile({...profile, telOG: e.target.value})}
                   className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:border-blue-500 outline-none"
                 />
               </div>
@@ -138,9 +226,9 @@ export default function SettingsPage() {
                 <label className="text-sm text-slate-400 mb-1 block">อีเมล (สำหรับติดต่องาน)</label>
                 <input 
                   type="email" 
-                  value={profile.email}
-                  onChange={(e) => setProfile({...profile, email: e.target.value})}
-                  className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:border-blue-500 outline-none"
+                  value={profile.emailOG}
+                  disabled // ไม่ให้แก้ email
+                  className="w-full bg-[#1E293B]/50 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-500 cursor-not-allowed"
                 />
               </div>
               <div className="col-span-2">
@@ -155,7 +243,7 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          {/* 2. ข้อมูลบัญชีรับเงิน */}
+          {/* 2. ข้อมูลบัญชีรับเงิน (ส่วนนี้ยัง Mockup เพราะ DB อาจยังไม่มีตารางเก็บเลขบัญชี) */}
           <section className="bg-[#0F172A] p-6 rounded-xl border border-slate-800 shadow-lg">
             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
               <CreditCard size={20} className="text-green-400" /> บัญชีรับเงิน (Revenue)
@@ -171,8 +259,8 @@ export default function SettingsPage() {
               <div>
                 <label className="text-sm text-slate-400 mb-1 block">ธนาคาร</label>
                 <select 
-                  value={bankInfo.bankName}
-                  onChange={(e) => setBankInfo({...bankInfo, bankName: e.target.value})}
+                  value={profile.bankName}
+                  onChange={(e) => setProfile({...profile, bankName: e.target.value})}
                   className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:border-green-500 outline-none"
                 >
                   <option value="KBANK">กสิกรไทย (KBANK)</option>
@@ -184,8 +272,8 @@ export default function SettingsPage() {
                 <label className="text-sm text-slate-400 mb-1 block">เลขที่บัญชี</label>
                 <input 
                   type="text" 
-                  value={bankInfo.accountNumber}
-                  onChange={(e) => setBankInfo({...bankInfo, accountNumber: e.target.value})}
+                  value={profile.accountNumber}
+                  onChange={(e) => setProfile({...profile, accountNumber: e.target.value})}
                   className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:border-green-500 outline-none font-mono"
                 />
               </div>
@@ -193,15 +281,15 @@ export default function SettingsPage() {
                 <label className="text-sm text-slate-400 mb-1 block">ชื่อบัญชี</label>
                 <input 
                   type="text" 
-                  value={bankInfo.accountName}
-                  onChange={(e) => setBankInfo({...bankInfo, accountName: e.target.value})}
+                  value={profile.accountName}
+                  onChange={(e) => setProfile({...profile, accountName: e.target.value})}
                   className="w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:border-green-500 outline-none"
                 />
               </div>
             </div>
           </section>
 
-          {/* 3. การแจ้งเตือน */}
+          {/* 3. การแจ้งเตือน (UI เท่านั้น ยังไม่เชื่อม DB) */}
           <section className="bg-[#0F172A] p-6 rounded-xl border border-slate-800 shadow-lg">
             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
               <Bell size={20} className="text-yellow-400" /> การแจ้งเตือน

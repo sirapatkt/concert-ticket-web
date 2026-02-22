@@ -5,15 +5,12 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, Globe, User, Mic2, X, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import Cookies from "js-cookie";
-
-// ✅ Import Context
 import { useUser } from "../../../context/UserContext"; 
 
 function LoginForm() {
   const { t } = useLanguage();
   const searchParams = useSearchParams();
   const router = useRouter();
-  
   const { setUser } = useUser();
 
   const redirectPath = searchParams.get("redirect") || "/";
@@ -26,7 +23,6 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState(""); 
   const [password, setPassword] = useState("");
-  
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -39,55 +35,81 @@ function LoginForm() {
     setTimeout(() => setShowError(false), 3000);
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  // ✅ แก้ไข: รวม Logic เข้าด้วยกันและใช้ API จริง 100%
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!email || !password) {
       triggerError("⚠️ กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน");
       return;
     }
 
-    setIsLoginLoading(true);
-
-    setTimeout(() => {
-      setIsLoginLoading(false);
-      
-      if (email === "admin@beatpass.com") {
+    if (email === "admin@beatpass.com") {
         triggerError("⛔ บัญชี Admin ไม่สามารถเข้าใช้งานหน้านี้ได้");
         return; 
-      }
+    }
 
-      if (userType === "organizer") {
-         if (email === "org@demo.com" && password === "1234") {
-           Cookies.set("user_role", "organizer", { expires: 1 });
-           Cookies.set("isLoggedIn", "true", { expires: 1 });
+    setIsLoginLoading(true);
 
-           setUser({
-                id: "org-001",
-                name: "Demo Organizer",
-                email: "org@demo.com"
-            });
+    try {
+      // 1. เลือก Endpoint ตามประเภทผู้ใช้
+      const endpoint = userType === "organizer" 
+        ? "http://127.0.0.1:8000/api/organizer/login" : "http://127.0.0.1:8000/api/login";
 
-           setLoginSuccess(true);
-           setTimeout(() => router.push(redirectPath), 2000); 
-         } else {
-            triggerError("❌ อีเมลหรือรหัสผ่านผู้จัดงานไม่ถูกต้อง");
-         }
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { 
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        // ✅ 2. ล็อกอินผ่าน! เก็บข้อมูลลงเครื่อง
+        Cookies.set("user_role", userType, { expires: 1 });
+        Cookies.set("isLoggedIn", "true", { expires: 1 });
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("role", userType);
+        
+        // 3. จัดการข้อมูลชื่อเพื่อไปแสดงผล (ดึงจากโครงสร้าง Laravel ที่เราทำไว้)
+        const userData = userType === "organizer" ? data.organizer : data.user;
+        const displayName = userType === "organizer" 
+          ? (userData.compName || userData.firstnameOG) 
+          : userData.name;
+
+        localStorage.setItem("user_name", displayName);
+
+        // 4. อัปเดต Global Context
+        setUser({
+            id: userType === "organizer" ? userData.Org_id : userData.id,
+            name: displayName,
+            email: email
+        });
+
+        setLoginSuccess(true);
+
+        // 5. แยกทางไปตามบทบาท
+        setTimeout(() => {
+          if (userType === "organizer") {
+            router.push("/organizer/my-events"); 
+          } else {
+            router.push(redirectPath); 
+          }
+        }, 2000);
       } else {
-         Cookies.set("user_role", "member", { expires: 1 });
-         Cookies.set("isLoggedIn", "true", { expires: 1 });
-
-         setUser({
-            id: "101",
-            name: "BeatPass Member",
-            email: "user@beatpass.com"
-         });
-
-         setLoginSuccess(true);
-         setTimeout(() => router.push(redirectPath), 2000);
+        triggerError(`❌ ${data.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง"}`);
       }
-    }, 1500);
-  };
+    } catch (err) {
+      triggerError("🌐 ไม่สามารถเชื่อมต่อกับ Server ได้ (ตรวจสอบการรัน Laravel)");
+    } finally {
+      setIsLoginLoading(false);
+    }
+  };  
 
+  // ดักจับการ Scroll เมื่อมี Popup
   useEffect(() => {
     if (showForgotPassword || loginSuccess || showError) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = 'unset';
@@ -100,7 +122,7 @@ function LoginForm() {
   return (
     <div className="min-h-screen flex bg-[#0B0F14] relative font-sans selection:bg-pink-500/30 selection:text-white">
       
-      {/* 🖼️ Left Side (Fixed) */}
+      {/* 🖼️ Left Side (UI) */}
       <div className="hidden lg:flex w-1/2 relative overflow-hidden bg-[#161B22] items-center justify-center h-screen sticky top-0">
         <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-blue-600/20 blur-[150px] rounded-full animate-pulse"></div>
         <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] bg-pink-600/20 blur-[150px] rounded-full animate-pulse delay-1000"></div>
@@ -126,10 +148,8 @@ function LoginForm() {
         </div>
       </div>
 
-      {/* 📝 Right Side */}
+      {/* 📝 Right Side (Form) */}
       <div className="w-full lg:w-1/2 flex flex-col pt-32 px-8 md:px-16 lg:px-24 pb-20 relative overflow-y-auto"> 
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-blue-500/5 via-purple-500/5 to-pink-500/5 blur-[100px] rounded-full pointer-events-none"></div>
-
         <div className="max-w-md w-full mx-auto z-10 relative">
           <div className="mb-10">
             <Link href="/" className="text-gray-500 hover:text-white flex items-center gap-2 transition-colors w-fit group">
@@ -156,7 +176,7 @@ function LoginForm() {
               <div className="relative group rounded-2xl p-[1px] bg-white/10">
                 <div className="relative bg-[#0B0F14] rounded-2xl h-[58px]"> 
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none group-focus-within:text-white transition-colors"><Mail size={20} /></div>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="w-full h-full bg-transparent text-white px-4 pl-12 focus:outline-none placeholder:text-gray-600 rounded-2xl relative z-0" />
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="w-full h-full bg-transparent text-white px-4 pl-12 focus:outline-none placeholder:text-gray-600 rounded-2xl" />
                 </div>
               </div>
             </div>
@@ -169,7 +189,7 @@ function LoginForm() {
               <div className="relative group rounded-2xl p-[1px] bg-white/10">
                 <div className="relative bg-[#0B0F14] rounded-2xl h-[58px]">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 z-10 pointer-events-none group-focus-within:text-white transition-colors"><Lock size={20} /></div>
-                  <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full h-full bg-transparent text-white px-4 pl-12 pr-12 focus:outline-none placeholder:text-gray-600 rounded-2xl relative z-0" />
+                  <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full h-full bg-transparent text-white px-4 pl-12 pr-12 focus:outline-none placeholder:text-gray-600 rounded-2xl" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors z-20">{showPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
                 </div>
               </div>
@@ -180,16 +200,12 @@ function LoginForm() {
             </button>
           </form>
 
-          {/* Social Login */}
+          {/* Other Links */}
           <div className="relative my-10">
               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
               <div className="relative flex justify-center text-sm"><span className="px-6 py-2 bg-[#0B0F14] text-gray-500 rounded-full border border-white/5">{t.or_continue}</span></div>
           </div>
-          <button className="w-full flex items-center justify-center gap-3 bg-[#161B22] border border-white/5 hover:bg-white/5 text-white py-3 rounded-2xl transition-all font-medium group relative overflow-hidden">
-              <div className="absolute inset-0 w-1 bg-gradient-to-b from-blue-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <Globe size={20} className="text-white group-hover:scale-110 transition-transform z-10" /> 
-              <span className="z-10">Continue with Google</span>
-          </button>
+          
           <p className="mt-10 text-center text-gray-400">
             {t.no_account} 
             <Link href={userType === "member" ? "/register" : "/organizer/register"} className={`font-bold hover:underline ml-2 text-transparent bg-clip-text bg-gradient-to-r ${userType === "member" ? "from-blue-400 to-pink-400" : "from-purple-400 to-orange-400"}`}>
@@ -199,49 +215,28 @@ function LoginForm() {
         </div>
       </div>
 
-      {/* Popups (Success, Error, Forgot Password) */}
+      {/* Popups */}
       {loginSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-           {/* ✅ แก้ไข: เพิ่ม max-w-md เพื่อให้กล่องกว้างขึ้น */}
-           <div className="bg-[#161B22] border border-green-500/20 rounded-3xl p-8 text-center max-w-md w-full shadow-2xl relative overflow-hidden">
-             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 to-emerald-600"></div>
+           <div className="bg-[#161B22] border border-green-500/20 rounded-3xl p-8 text-center max-w-md w-full shadow-2xl relative">
              <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
                <CheckCircle size={40} className="text-green-500" />
              </div>
              <h2 className="text-2xl font-bold text-white mb-2">เข้าสู่ระบบสำเร็จ! 🎉</h2>
-             {/* ✅ แก้ไข: เพิ่ม whitespace-nowrap และเปลี่ยน ... เป็น … */}
-             <p className="text-gray-400 mb-6 whitespace-nowrap">ยินดีต้อนรับกลับสู่ BEATPASS กำลังพาคุณกลับไป…</p>
+             <p className="text-gray-400">ยินดีต้อนรับกลับสู่ BEATPASS กำลังพาคุณไปต่อ…</p>
            </div>
         </div>
       )}
 
       {showError && (
         <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md">
-          <div className="bg-gradient-to-r from-red-950/90 to-[#0B0F14]/95 backdrop-blur-xl border border-red-500/20 text-white px-6 py-5 rounded-3xl shadow-2xl flex items-start gap-5">
-            <div className="p-3.5 bg-gradient-to-br from-red-500 to-red-700 rounded-2xl text-white shrink-0">
-              <AlertTriangle size={26} strokeWidth={2.5} />
+          <div className="bg-[#161B22] border border-red-500/20 text-white px-6 py-5 rounded-3xl shadow-2xl flex items-start gap-5 backdrop-blur-xl">
+            <div className="p-3 bg-red-500 rounded-2xl text-white shrink-0"><AlertTriangle size={24} /></div>
+            <div className="flex-1">
+              <h3 className="font-bold text-white">แจ้งเตือน</h3>
+              <p className="text-gray-300 text-sm">{errorMessage}</p>
             </div>
-            <div className="flex-1 pt-1">
-              <h3 className="font-bold text-lg text-white mb-1">แจ้งเตือน</h3>
-              <p className="text-white text-[15px] font-bold leading-relaxed">{errorMessage}</p>
-            </div>
-            <button onClick={() => setShowError(false)} className="text-white/60 hover:text-white p-2 transition-colors"><X size={20} /></button>
-          </div>
-        </div>
-      )}
-
-      {showForgotPassword && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-[#0B0F14]/90 backdrop-blur-md" onClick={() => setShowForgotPassword(false)}></div>
-          <div className="relative w-full max-w-lg bg-[#161B22] border border-white/10 rounded-3xl shadow-2xl p-8 overflow-hidden">
-            <button onClick={() => setShowForgotPassword(false)} className="absolute top-5 right-5 z-50 p-3 rounded-full text-gray-400 bg-white/5 hover:bg-white/20 hover:text-white"><X size={24} /></button>
-            <h2 className="text-3xl font-bold text-white mb-2">{t.forgot_title}</h2>
-            <form className="space-y-6">
-                 <div className="relative group rounded-2xl p-[1px] bg-white/10">
-                      <input type="email" placeholder="name@example.com" className="w-full bg-[#161B22] text-white px-4 py-4 rounded-2xl focus:outline-none" />
-                 </div>
-                 <button type="button" className={`w-full text-white font-bold py-4 rounded-2xl ${rainbowGradient}`}>{t.send_btn}</button>
-            </form>
+            <button onClick={() => setShowError(false)} className="text-gray-500 hover:text-white"><X size={20} /></button>
           </div>
         </div>
       )}

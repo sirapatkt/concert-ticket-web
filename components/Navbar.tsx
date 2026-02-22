@@ -405,8 +405,8 @@ export default function Navbar() {
             <Link 
               href="/login" 
               className="hidden md:block px-6 py-2 text-sm font-bold text-white border-2 border-blue-500 rounded-lg hover:bg-blue-500 hover:text-white hover:shadow-[0_0_20px_rgba(59,130,246,0.6)] transition-all active:scale-95"
-            >
-              เข้าสู่ระบบ / สมัครสมาชิก
+            >   
+              เข้าสู่ระบบ  m,.                                / สมัครสมาชิก
             </Link>
           )}
         </div>
