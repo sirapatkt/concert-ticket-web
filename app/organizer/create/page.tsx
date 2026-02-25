@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
-  AlignLeft, Image as ImageIcon, 
+import {
+  AlignLeft, Image as ImageIcon,
   Trash2, Save, Ticket, ChevronDown,
-  Map, Plus, Calendar, Clock, Grid3X3
+  Map, Plus, Calendar, Clock, Grid3X3, Eye
 } from "lucide-react";
+
+// 🌟 Import ตัว Modal ที่เราแยกไฟล์ไว้ 🌟
+import SeatPreviewModal from "@/components/SeatPreviewModal";
 
 // --- Constants & Types ---
 const GRID_SIZES = {
@@ -15,9 +18,8 @@ const GRID_SIZES = {
   Large:  { label: "ใหญ่ (Grand Hall)" }
 };
 
-type VenueSize = keyof typeof GRID_SIZES; 
+type VenueSize = keyof typeof GRID_SIZES;
 
-// ✅ 1. ชุดข้อมูลแผนผังที่นั่งอัตโนมัติ (เชื่อมลิงก์ Cloudinary เรียบร้อย)
 const PREDEFINED_PLANS: Record<string, Record<VenueSize, string>> = {
   "1": { // อิมแพคอารีน่า
     "Small": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1771491663/IM-small_dl59ai.jpg",
@@ -36,7 +38,14 @@ const PREDEFINED_PLANS: Record<string, Record<VenueSize, string>> = {
   }
 };
 
-// ✅ 2. ชุดข้อมูลโซนและจำนวนที่นั่งอัตโนมัติ
+// 🌟 เพิ่ม maxQuantity ใน Interface เพื่อให้ระบบจำค่าเริ่มต้นได้ 🌟
+interface TicketTier {
+  zoneName: string;
+  price: number;
+  quantity: number;
+  maxQuantity?: number; 
+}
+
 const PREDEFINED_ZONES: Record<string, Record<VenueSize, TicketTier[]>> = {
   "1": { // อิมแพคอารีน่า
     "Small": [
@@ -112,7 +121,7 @@ const PREDEFINED_ZONES: Record<string, Record<VenueSize, TicketTier[]>> = {
       { zoneName: "T", price: 0, quantity: 151 },
     ]
   },
-  "2": { // มหิดลฮอล์ 
+  "2": { // มหิดลฮอล์
     "Small": [
       { zoneName: "LM1", price: 0, quantity: 79  },
       { zoneName: "LM2", price: 0, quantity: 128 },
@@ -205,7 +214,7 @@ const PREDEFINED_ZONES: Record<string, Record<VenueSize, TicketTier[]>> = {
       { zoneName: "SBR", price: 0, quantity: 17 },
     ]
   },
-  "3": { // เมืองไทยรัชดาลัย 
+  "3": { // เมืองไทยรัชดาลัย
     "Small": [
       { zoneName: "L1", price: 0, quantity: 71 },
       { zoneName: "L2", price: 0, quantity: 96 },
@@ -251,12 +260,6 @@ const PREDEFINED_ZONES: Record<string, Record<VenueSize, TicketTier[]>> = {
   }
 };
 
-interface TicketTier {
-  zoneName: string;
-  price: number;
-  quantity: number;
-}
-
 interface Hall {
   Hall_id: number;
   hallName: string;
@@ -271,38 +274,37 @@ interface ShowRound {
 }
 
 export default function CreateEventPage() {
-  // --- State สำหรับข้อมูลหลัก ---
   const [eventName, setEventName] = useState("");
   const [description, setDescription] = useState("");
   const [showRounds, setShowRounds] = useState<ShowRound[]>([
     { roundNumber: 1, startDT: "", endDT: "", saleStart: "", saleEnd: "" }
   ]);
 
-  const [posterImages, setPosterImages] = useState<string[]>([]); 
+  const [posterImages, setPosterImages] = useState<string[]>([]);
   const [venuePlanImage, setVenuePlanImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // --- State สำหรับสถานที่และขนาด ---
   const [halls, setHalls] = useState<Hall[]>([]);
   const [selectedHallId, setSelectedHallId] = useState<string>("");
-  const [venueSize, setVenueSize] = useState<VenueSize>("Medium"); 
+  const [venueSize, setVenueSize] = useState<VenueSize>("Medium");
 
-  // --- State สำหรับบัตร ---
   const [tickets, setTickets] = useState<TicketTier[]>([
     { zoneName: "", price: 0, quantity: 0 }
   ]);
 
-  // --- ฟังก์ชันเคลียร์หน้าจอ (Reset Form) ---
+  // 🌟 State ควบคุมการเปิด/ปิด Modal พรีวิวที่นั่ง 🌟
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+
   const resetForm = () => {
     setEventName("");
     setDescription("");
     setShowRounds([{ roundNumber: 1, startDT: "", endDT: "", saleStart: "", saleEnd: "" }]);
-    setPosterImages([]); 
+    setPosterImages([]);
     setVenuePlanImage(null);
     setSelectedHallId("");
-    setVenueSize("Medium"); 
+    setVenueSize("Medium");
     setTickets([{ zoneName: "", price: 0, quantity: 0 }]);
   };
 
@@ -313,26 +315,31 @@ export default function CreateEventPage() {
 
   useEffect(() => {
     const specificHalls = [
-      { Hall_id: 1, hallName: "อิมแพคอารีน่า (Impact Arena)" },
-      { Hall_id: 2, hallName: "มหิดลฮอล์ (Prince Mahidol Hall)" },
-      { Hall_id: 3, hallName: "เมืองไทยรัชดาลัยเธียร์เตอร์" }
+      { Hall_id: 1, hallName: "อิมแพ็ค อารีน่า เมืองทองธานี (IMPACT Arena, Muang Thong Thani)" },
+      { Hall_id: 2, hallName: "มหิดลสิทธาคาร (Prince Mahidol Hall)" },
+      { Hall_id: 3, hallName: "เมืองไทยรัชดาลัย เธียเตอร์ (Muangthai Rachadalai Theatre)" }
     ];
     setHalls(specificHalls);
   }, []);
 
-  // ✅ 3. ปรับ useEffect เพื่อดึงรูปและดึงโซนมาแสดงพร้อมกัน
+  // ✅ ฝัง maxQuantity ให้โซนอัตโนมัติ
   useEffect(() => {
     if (selectedHallId && venueSize) {
       const autoPlanImg = PREDEFINED_PLANS[selectedHallId]?.[venueSize];
       if (autoPlanImg) {
-        setVenuePlanImage(autoPlanImg); 
+        setVenuePlanImage(autoPlanImg);
       } else {
         setVenuePlanImage(null);
       }
 
       const autoZones = PREDEFINED_ZONES[selectedHallId]?.[venueSize];
       if (autoZones && autoZones.length > 0) {
-        setTickets(JSON.parse(JSON.stringify(autoZones))); // clone array
+        // เพิ่ม maxQuantity ให้แต่ละโซน
+        const zonesWithMax = autoZones.map(zone => ({
+          ...zone,
+          maxQuantity: zone.quantity
+        }));
+        setTickets(JSON.parse(JSON.stringify(zonesWithMax)));
       } else {
         setTickets([{ zoneName: "", price: 0, quantity: 0 }]);
       }
@@ -346,10 +353,10 @@ export default function CreateEventPage() {
     const lastRound = showRounds[showRounds.length - 1];
     setShowRounds([...showRounds, {
         roundNumber: showRounds.length + 1,
-        startDT: lastRound ? lastRound.startDT : "", 
-        endDT: lastRound ? lastRound.endDT : "", 
-        saleStart: lastRound ? lastRound.saleStart : "", 
-        saleEnd: lastRound ? lastRound.saleEnd : "" 
+        startDT: lastRound ? lastRound.startDT : "",
+        endDT: lastRound ? lastRound.endDT : "",
+        saleStart: lastRound ? lastRound.saleStart : "",
+        saleEnd: lastRound ? lastRound.saleEnd : ""
     }]);
   };
 
@@ -360,6 +367,28 @@ export default function CreateEventPage() {
     } else {
         alert("ต้องมีรอบการแสดงอย่างน้อย 1 รอบ");
     }
+  };
+
+  // ✅ ปรับปรุงให้ไม่สามารถกรอกเกิน maxQuantity ได้
+  const updateTicket = (index: number, field: keyof TicketTier, value: string | number) => {
+    const newTickets = [...tickets];
+    
+    if (field === "zoneName") {
+        newTickets[index].zoneName = String(value);
+    } else if (field === "price") {
+        newTickets[index].price = Math.max(0, Number(value));
+    } else if (field === "quantity") {
+        let val = Math.max(0, Number(value));
+        const max = newTickets[index].maxQuantity;
+        
+        if (max !== undefined && val > max) {
+            alert(`โซน ${newTickets[index].zoneName} รองรับคนได้สูงสุด ${max} ที่นั่งตามมาตรฐานสถานที่จริงครับ 🏢`);
+            val = max;
+        }
+        newTickets[index].quantity = val;
+    }
+    
+    setTickets(newTickets);
   };
 
   const updateRound = (index: number, field: keyof ShowRound, value: string) => {
@@ -373,19 +402,6 @@ export default function CreateEventPage() {
   const removeTicketTier = (index: number) => {
      if (tickets.length > 1) setTickets(tickets.filter((_, i) => i !== index));
      else alert("ต้องมีบัตรอย่างน้อย 1 ประเภทครับ");
-  };
-
-  const updateTicket = (index: number, field: keyof TicketTier, value: string | number) => {
-    const newTickets = [...tickets];
-    
-    if (field === "zoneName") {
-        newTickets[index].zoneName = String(value);
-    } else if (field === "price" || field === "quantity") {
-        // แก้ไขไม่ใช้ @ts-ignore แล้ว
-        newTickets[index][field] = Number(value);
-    }
-    
-    setTickets(newTickets);
   };
 
   const handleMultipleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -410,7 +426,7 @@ export default function CreateEventPage() {
     e.preventDefault();
     if (!selectedHallId) return alert("กรุณาเลือกสถานที่");
 
-    const now = new Date(); 
+    const now = new Date();
 
     for (let i = 0; i < showRounds.length; i++) {
       const round = showRounds[i];
@@ -428,7 +444,7 @@ export default function CreateEventPage() {
         return alert(`รอบที่ ${round.roundNumber}: วันปิดขายบัตรห้ามอยู่ก่อนวันเปิดขายบัตรค่ะ`);
       }
       
-      const limitTime = new Date(startConcert.getTime() + 60 * 60 * 1000); 
+      const limitTime = new Date(startConcert.getTime() + 60 * 60 * 1000);
       if (endSale > limitTime) {
         return alert(`รอบที่ ${round.roundNumber}: วันปิดขายบัตรสามารถปิดได้ช้าที่สุดไม่เกิน 1 ชม. หลังจากเริ่มการแสดง (ไม่เกิน ${limitTime.toLocaleString('th-TH')})`);
       }
@@ -446,18 +462,15 @@ export default function CreateEventPage() {
 
     setLoading(true);
 
-    // -------------------------------------------------------------
-    // ✅ 1. ยิงรูปไปฝากไว้ที่ Cloudinary พร้อมแยกโฟลเดอร์
-    // -------------------------------------------------------------
     let cloudinaryUrl = null;
     
     if (posterImages.length > 0) {
       try {
         const formData = new FormData();
-        formData.append("file", posterImages[0]); 
-        formData.append("upload_preset", "bannerImage"); 
-        formData.append("cloud_name", "de7ml7aeb"); 
-        formData.append("folder", "event_posters"); // จัดเก็บในโฟลเดอร์ event_posters
+        formData.append("file", posterImages[0]);
+        formData.append("upload_preset", "bannerImage");
+        formData.append("cloud_name", "de7ml7aeb");
+        formData.append("folder", "event_posters"); 
 
         const cloudRes = await fetch("https://api.cloudinary.com/v1_1/de7ml7aeb/image/upload", {
           method: "POST",
@@ -466,7 +479,7 @@ export default function CreateEventPage() {
 
         const cloudData = await cloudRes.json();
         if (cloudData.secure_url) {
-            cloudinaryUrl = cloudData.secure_url; 
+            cloudinaryUrl = cloudData.secure_url;
         } else {
             throw new Error("อัปโหลดรูปไม่สำเร็จ");
         }
@@ -474,22 +487,19 @@ export default function CreateEventPage() {
         console.error("Cloudinary Error:", error);
         alert("❌ อัปโหลดรูปภาพไม่สำเร็จ กรุณาลองใหม่");
         setLoading(false);
-        return; 
+        return;
       }
     }
 
-    // -------------------------------------------------------------
-    // ✅ 2. ส่งลิงก์ Cloudinary (และข้อมูลอื่นๆ) ไปให้ Backend
-    // -------------------------------------------------------------
     const token = localStorage.getItem("token");
 
     const payload = {
       eventName,
       eventDescription: description,
       Hall_id: Number(selectedHallId),
-      venueSize, 
-      show_rounds: showRounds, 
-      posterImage: cloudinaryUrl, 
+      venueSize,
+      show_rounds: showRounds,
+      posterImage: cloudinaryUrl,
       venuePlanImage,
       tickets
     };
@@ -500,7 +510,7 @@ export default function CreateEventPage() {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': `Bearer ${token}` 
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(payload)
       });
@@ -511,9 +521,9 @@ export default function CreateEventPage() {
         const err = await res.json();
         
         if (err.code === "VENUE_UNAVAILABLE") {
-            const lastBooked = new Date(err.lastBookedDate); 
+            const lastBooked = new Date(err.lastBookedDate);
             const nextAvailable = new Date(lastBooked);
-            nextAvailable.setDate(lastBooked.getDate() + 3); 
+            nextAvailable.setDate(lastBooked.getDate() + 3);
             const hallName = halls.find(h => h.Hall_id === Number(selectedHallId))?.hallName || "สถานที่นี้";
             return alert(`${hallName} วันนี้เต็มแล้วค่ะ ว่างอีกทีคือหลังจากวันที่ ${lastBooked.toLocaleDateString('th-TH')} +2 วัน (เคลียร์พื้นที่) คือวันที่ ${nextAvailable.toLocaleDateString('th-TH')} รบกวนคุณลูกค้าติดต่อประสานงานกับทางฮอลล์อีกทีนะคะ`);
         }
@@ -526,7 +536,6 @@ export default function CreateEventPage() {
     }
   };
 
-  // ✅ เสริม: สร้างตัวแปรเวลาปัจจุบัน (แปลงเป็นเวลา Local ของไทย) ไว้สำหรับล็อคปฏิทินฝั่ง UI
   const nowForInput = new Date();
   nowForInput.setMinutes(nowForInput.getMinutes() - nowForInput.getTimezoneOffset());
   const nowISO = nowForInput.toISOString().slice(0, 16);
@@ -573,10 +582,10 @@ export default function CreateEventPage() {
                       <Grid3X3 size={14} /> ขนาดพื้นที่
                   </label>
                   <div className="relative">
-                    <select 
-                      value={venueSize} 
-                      onChange={(e) => setVenueSize(e.target.value as VenueSize)} 
-                      disabled={!selectedHallId} 
+                    <select
+                      value={venueSize}
+                      onChange={(e) => setVenueSize(e.target.value as VenueSize)}
+                      disabled={!selectedHallId}
                       className={`w-full bg-[#1E293B] border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 appearance-none ${!selectedHallId ? "opacity-50 cursor-not-allowed bg-slate-800" : "cursor-pointer"}`}
                     >
                         {Object.entries(GRID_SIZES).map(([key, config]) => (
@@ -600,41 +609,54 @@ export default function CreateEventPage() {
                 <h2 className="text-xl font-bold flex items-center gap-2 text-pink-400"><Calendar size={20} /> รอบการแสดง & การขายบัตร</h2>
                 <button onClick={addRound} type="button" className="text-sm bg-pink-500/10 text-pink-400 border border-pink-500/50 hover:bg-pink-500 hover:text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"><Plus size={16} /> เพิ่มรอบ</button>
              </div>
+
+             <div className="mb-6 bg-blue-900/30 border border-blue-500/30 rounded-xl p-4 flex items-start gap-3">
+               <div className="text-blue-400 mt-0.5">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+               </div>
+               <div>
+                 <h4 className="text-blue-400 font-bold text-sm mb-1">การล็อกคิวสถานที่ (Rental Period)</h4>
+                 <p className="text-slate-300 text-sm leading-relaxed">
+                   เพื่อความสะดวกในการปฏิบัติงาน <span className="text-white font-semibold">ระบบจะทำการจองฮอลล์ล่วงหน้า 2 วัน (สำหรับเซ็ตอัปเวที) และเผื่อเวลาหลังจบงาน 2 วัน (สำหรับรื้อถอน) โดยอัตโนมัติ</span> โดยอ้างอิงจากรอบการแสดงแรกและรอบสุดท้ายของคุณ
+                 </p>
+               </div>
+             </div>
+
              <div className="space-y-4">
                 {showRounds.map((round, index) => (
                     <div key={index} className="bg-[#1E293B]/50 p-4 rounded-xl border border-slate-700 relative group">
                         <div className="absolute -left-3 -top-3 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border border-slate-600 font-bold text-sm shadow-md z-10">{index + 1}</div>
                         {showRounds.length > 1 && (<button onClick={() => removeRound(index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 p-2"><Trash2 size={16}/></button>)}
+                        
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
-              <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2 border-b border-slate-700 pb-1"><Clock size={14} /> วันที่แสดงจริง</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                      <div><label className="text-[10px] text-slate-500 block mb-1">เริ่มแสดง</label><input type="datetime-local" min={nowISO} value={round.startDT} onChange={(e)=>updateRound(index, 'startDT', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-white [color-scheme:dark]" /></div>
-
-                  {/* 🟢 เพิ่มกล่องข้อความแจ้งเตือนตรงนี้ (ต่อท้ายวงเล็บปิดของลูป) 🟢 */}
-           <div className="mt-4 bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex items-start gap-3">
-             <div className="text-blue-400 mt-0.5">ℹ️</div>
-             <div>
-               <h4 className="text-blue-400 font-bold text-sm">การล็อกคิวสถานที่ (Rental Period)</h4>
-               <p className="text-slate-400 text-xs mt-1 leading-relaxed">
-                 เพื่อความสะดวกในการปฏิบัติงาน <span className="text-white font-semibold">ระบบจะทำการจองฮอลล์ล่วงหน้า 2 วัน (สำหรับเซ็ตอัปเวที) และเผื่อเวลาหลังจบงาน 2 วัน (สำหรับรื้อถอน) โดยอัตโนมัติ</span> โดยอ้างอิงจากรอบการแสดงแรกและรอบสุดท้ายของคุณ
-               </p>
-             </div>
-           </div>
-
-
-                      <div><label className="text-[10px] text-slate-500 block mb-1">จบการแสดง</label><input type="datetime-local" min={nowISO} value={round.endDT} onChange={(e)=>updateRound(index, 'endDT', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-white [color-scheme:dark]" /></div>
-                  </div>
-              </div>
-              <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2 border-b border-slate-700 pb-1"><Ticket size={14} /> ช่วงเวลาขายบัตร</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                      <div><label className="text-[10px] text-slate-500 block mb-1">เปิดขาย</label><input type="datetime-local" min={nowISO} value={round.saleStart} onChange={(e)=>updateRound(index, 'saleStart', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-yellow-400 [color-scheme:dark]" /></div>
-                      
-                      <div><label className="text-[10px] text-slate-500 block mb-1">ปิดขาย</label><input type="datetime-local" min={nowISO} value={round.saleEnd} onChange={(e)=>updateRound(index, 'saleEnd', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-red-400 [color-scheme:dark]" /></div>
-                  </div>
-              </div>
-          </div>
+                          <div className="space-y-3">
+                              <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2 border-b border-slate-700 pb-1"><Clock size={14} /> วันที่แสดงจริง</h3>
+                              <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="text-[10px] text-slate-500 block mb-1">เริ่มแสดง</label>
+                                    <input type="datetime-local" min={nowISO} value={round.startDT} onChange={(e)=>updateRound(index, 'startDT', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-white [color-scheme:dark]" />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] text-slate-500 block mb-1">จบการแสดง</label>
+                                    <input type="datetime-local" min={nowISO} value={round.endDT} onChange={(e)=>updateRound(index, 'endDT', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-white [color-scheme:dark]" />
+                                  </div>
+                              </div>
+                          </div>
+                          
+                          <div className="space-y-3">
+                              <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2 border-b border-slate-700 pb-1"><Ticket size={14} /> ช่วงเวลาขายบัตร</h3>
+                              <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="text-[10px] text-slate-500 block mb-1">เปิดขาย</label>
+                                    <input type="datetime-local" min={nowISO} value={round.saleStart} onChange={(e)=>updateRound(index, 'saleStart', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-yellow-400 [color-scheme:dark]" />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] text-slate-500 block mb-1">ปิดขาย</label>
+                                    <input type="datetime-local" min={nowISO} value={round.saleEnd} onChange={(e)=>updateRound(index, 'saleEnd', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-2 py-1.5 text-xs text-red-400 [color-scheme:dark]" />
+                                  </div>
+                              </div>
+                          </div>
+                        </div>
                     </div>
                 ))}
              </div>
@@ -644,7 +666,19 @@ export default function CreateEventPage() {
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold flex items-center gap-2 text-purple-400"><Ticket size={20} /> โซนและราคาบัตร</h2>
-              <button onClick={addTicketTier} type="button" className="text-sm bg-purple-500/10 text-purple-400 border border-purple-500/50 hover:bg-purple-500 hover:text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"><Plus size={16} /> เพิ่มโซน</button>
+              
+              {/* 🌟 ปุ่มกดเปิด Modal อยู่ตรงนี้ 🌟 */}
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setIsPreviewModalOpen(true)} 
+                  type="button" 
+                  className="text-sm bg-cyan-500/10 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500 hover:text-white px-4 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-sm"
+                >
+                  <Eye size={16} /> ดูตัวอย่างผังที่นั่ง
+                </button>
+                <button onClick={addTicketTier} type="button" className="text-sm bg-purple-500/10 text-purple-400 border border-purple-500/50 hover:bg-purple-500 hover:text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"><Plus size={16} /> เพิ่มโซน</button>
+              </div>
+
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -659,7 +693,6 @@ export default function CreateEventPage() {
                    )}
                </div>
 
-               {/* ✅ ส่วน UI โซนที่จัดใหม่ตามรูปภาพ */}
                <div className="space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
                    {tickets.map((ticket, index) => (
                        <div key={index} className="flex gap-4 items-center p-4 rounded-xl border border-slate-700 bg-transparent hover:border-purple-500/50 transition-colors">
@@ -669,11 +702,17 @@ export default function CreateEventPage() {
                            </div>
                            <div className="flex-1">
                                <label className="text-xs text-slate-500 mb-1.5 block">ราคา</label>
-                               <input type="number" value={ticket.price} onChange={(e) => updateTicket(index, 'price', e.target.value)} className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors" />
+                               <input type="number" min="0" value={ticket.price} onChange={(e) => updateTicket(index, 'price', e.target.value)} className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors" />
                            </div>
                            <div className="flex-1">
-                               <label className="text-xs text-slate-500 mb-1.5 block">จำนวน</label>
-                               <input type="number" value={ticket.quantity} onChange={(e) => updateTicket(index, 'quantity', e.target.value)} className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors" />
+                               {/* 🌟 แสดงข้อความเตือน maxQuantity 🌟 */}
+                               <label className="text-xs text-slate-500 mb-1.5 flex justify-between">
+                                 <span>จำนวน</span>
+                                 {ticket.maxQuantity !== undefined && (
+                                   <span className="text-red-400 text-[9px]">(สูงสุด {ticket.maxQuantity})</span>
+                                 )}
+                               </label>
+                               <input type="number" min="0" max={ticket.maxQuantity} value={ticket.quantity} onChange={(e) => updateTicket(index, 'quantity', e.target.value)} className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors" />
                            </div>
                            <div className="pt-6 flex items-center justify-center">
                                <button onClick={() => removeTicketTier(index)} className="text-slate-600 hover:text-red-500 p-1.5 transition-colors">
@@ -699,7 +738,7 @@ export default function CreateEventPage() {
                  {posterImages.map((img, index) => (
                    <div key={index} className="relative group aspect-[3/4] rounded-lg overflow-hidden border border-slate-700 shadow-md">
                      <img src={img} alt={`Poster ${index}`} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                     <button 
+                     <button
                        type="button"
                        onClick={() => removePosterImage(index)}
                        className="absolute top-2 right-2 bg-red-500/80 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
@@ -722,7 +761,7 @@ export default function CreateEventPage() {
               <h3 className="text-sm font-semibold text-slate-300 mb-3">สรุปข้อมูล</h3>
               <ul className="space-y-2 text-sm text-slate-400">
                 <li className="flex justify-between"><span>สถานที่ (ID):</span><span className="text-white font-mono">{selectedHallId || "-"}</span></li>
-                <li className="flex justify-between"><span>ขนาดพื้นที่:</span><span className="text-cyan-400">{GRID_SIZES[venueSize].label}</span></li>
+                <li className="flex justify-between"><span>ขนาดพื้นที่:</span><span className="text-cyan-400">{venueSize ? GRID_SIZES[venueSize].label : "-"}</span></li>
                 <li className="flex justify-between border-t border-slate-800 pt-2 mt-2"><span>จำนวนรอบ:</span><span className="text-pink-400">{showRounds.length} รอบ</span></li>
                 <li className="flex justify-between font-bold"><span>บัตรทั้งหมด:</span><span className="text-white">{tickets.reduce((sum, t) => sum + Number(t.quantity), 0)} ใบ</span></li>
               </ul>
@@ -740,11 +779,11 @@ export default function CreateEventPage() {
             
             <h3 className="text-2xl font-bold text-white mb-3">บันทึกข้อมูลเรียบร้อย</h3>
             <p className="text-slate-400 text-sm leading-relaxed mb-8">
-              แอดมินกำลังตรวจสอบข้อมูลของคุณ <br /> 
+              แอดมินกำลังตรวจสอบข้อมูลของคุณ <br />
               <span className="text-cyan-400 font-bold tracking-wide">รอการตรวจสอบภายใน 2 วัน</span>
             </p>
 
-            <button 
+            <button
               onClick={handleCloseModal}
               className="w-full py-4 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl font-bold text-white hover:brightness-110 active:scale-95 transition-all shadow-xl shadow-blue-500/20"
             >
@@ -753,6 +792,16 @@ export default function CreateEventPage() {
           </div>
         </div>
       )}
+
+      {/* 🌟 วาง Modal ไว้ล่างสุด และส่งค่า hallId กับ venueSize เข้าไปด้วย 🌟 */}
+      <SeatPreviewModal 
+        isOpen={isPreviewModalOpen} 
+        onClose={() => setIsPreviewModalOpen(false)} 
+        tickets={tickets} 
+        hallId={selectedHallId}
+        venueSize={venueSize}
+      />
+
     </div>
   );
 }
