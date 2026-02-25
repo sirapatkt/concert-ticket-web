@@ -610,6 +610,7 @@ export default function CreateEventPage() {
                 <button onClick={addRound} type="button" className="text-sm bg-pink-500/10 text-pink-400 border border-pink-500/50 hover:bg-pink-500 hover:text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"><Plus size={16} /> เพิ่มรอบ</button>
              </div>
 
+             {/* ✅ ย้าย Info Box มาไว้ด้านบนสุดของส่วนนี้ (นอก Loop) และจัดรูปแบบให้สวยงาม ✅ */}
              <div className="mb-6 bg-blue-900/30 border border-blue-500/30 rounded-xl p-4 flex items-start gap-3">
                <div className="text-blue-400 mt-0.5">
                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
@@ -628,6 +629,7 @@ export default function CreateEventPage() {
                         <div className="absolute -left-3 -top-3 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border border-slate-600 font-bold text-sm shadow-md z-10">{index + 1}</div>
                         {showRounds.length > 1 && (<button onClick={() => removeRound(index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 p-2"><Trash2 size={16}/></button>)}
                         
+                        {/* จัด Layout ใหม่อยู่ใน Grid 2 คอลัมน์ซ้ายขวาอย่างสมมาตร */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
                           <div className="space-y-3">
                               <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2 border-b border-slate-700 pb-1"><Clock size={14} /> วันที่แสดงจริง</h3>

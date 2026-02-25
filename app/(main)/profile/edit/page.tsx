@@ -1,38 +1,62 @@
 "use client";
 import { User, Mail, Phone, Save, Pencil, CreditCard, ChevronDown, CheckCircle, X } from "lucide-react";
-import { useState, useRef } from "react";
-// ✅ 1. Import useUser Context เพื่อเชื่อมต่อข้อมูล
+import { useState, useRef, useEffect } from "react";
 import { useUser } from "@/context/UserContext";
 
 export default function EditProfilePage() {
   const [loading, setLoading] = useState(false);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
-  
-  // ✅ 2. ดึงฟังก์ชัน setProfileImage จาก Context
   const { profileImage, setProfileImage } = useUser();
-  
-  // ใช้ State ภายในสำหรับ Preview ก่อนกดบันทึก
-  // ถ้ามีรูปใน Context ให้เอามาแสดงก่อน ถ้าไม่มีให้เป็น null
   const [previewImage, setPreviewImage] = useState<string | null>(profileImage);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
-    email: "user@beatpass.com",
-    firstName: "John",
-    lastName: "Doe",
-    phone: "81 234 5678",
-    birthDay: "11",
-    birthMonth: "เมษายน",
-    birthYear: "2565",
-    gender: "male",
-    idCard: "1-2345-XXXXX-XX-X"
+    email: "",
+    firstName: "",
+    lastName: "",
+    phone: "",
+    gender: "",
+    idCard: ""
   });
+
+  // ✅ 1. ดึงข้อมูลโปรไฟล์ตอนโหลดหน้าเว็บ
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      try {
+        const res = await fetch("http://127.0.0.1:8000/api/profile", {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Accept": "application/json"
+          }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          setFormData({
+            email: data.email || "",
+            firstName: data.firstName || "",
+            lastName: data.lastName || "",
+            phone: data.phone || "",
+            gender: data.gender || "",
+            idCard: data.idCard || ""
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile", error);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const imageUrl = URL.createObjectURL(file);
-      setPreviewImage(imageUrl); // แสดง Preview ในหน้านี้ทันที
+      setPreviewImage(imageUrl); 
     }
   };
 
@@ -40,34 +64,57 @@ export default function EditProfilePage() {
     fileInputRef.current?.click();
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  // ✅ 2. ฟังก์ชันกดปุ่ม "บันทึก" เพื่ออัปเดตข้อมูล
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-        setLoading(false);
-        
-        // ✅ 3. ส่งรูปภาพไปยัง Navbar ผ่าน Context เมื่อบันทึกสำเร็จ
-        if (previewImage) {
-            setProfileImage(previewImage);
-        }
 
-        setShowSuccessAlert(true);
-    }, 1500);
+    const token = localStorage.getItem("token");
+    if (!token) {
+        setLoading(false);
+        return;
+    }
+
+    try {
+        const res = await fetch("http://127.0.0.1:8000/api/profile", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`,
+                "Accept": "application/json"
+            },
+            body: JSON.stringify({
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                phone: formData.phone,
+                gender: formData.gender,
+                idCard: formData.idCard
+            })
+        });
+
+        if (res.ok) {
+            if (previewImage) {
+                setProfileImage(previewImage);
+            }
+            setShowSuccessAlert(true);
+        } else {
+            const errorData = await res.json();
+            alert(`Error: ${errorData.message}`); // กรณีติด Validate
+        }
+    } catch (error) {
+        console.error("Failed to update profile", error);
+    } finally {
+        setLoading(false);
+    }
   };
 
   const closeAlert = () => {
     setShowSuccessAlert(false);
   };
 
-  const days = Array.from({ length: 31 }, (_, i) => i + 1);
-  const months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 100 }, (_, i) => currentYear - i + 543);
-
   return (
     <div className="min-h-screen bg-[#0B0F14] pt-24 pb-12 px-4 md:px-8 font-sans text-white relative">
       
-      {/* ✅ Custom Success Alert (ขนาดใหญ่) */}
       {showSuccessAlert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-[#161B22] border border-white/10 rounded-3xl p-12 max-w-md w-full mx-6 shadow-2xl transform transition-all scale-100 flex flex-col items-center text-center relative">
@@ -95,7 +142,6 @@ export default function EditProfilePage() {
 
         <form onSubmit={handleSave} className="bg-[#161B22] border border-white/10 rounded-2xl p-6 md:p-10 space-y-8 shadow-2xl">
             
-            {/* Upload Profile */}
             <div className="flex flex-col items-center justify-center mb-6">
                 <input 
                     type="file" 
@@ -124,7 +170,6 @@ export default function EditProfilePage() {
             </div>
 
             <div className="space-y-6">
-                {/* Email */}
                 <div className="space-y-2">
                     <label className="text-sm font-bold text-gray-300">อีเมล</label>
                     <div className="relative opacity-60">
@@ -138,7 +183,6 @@ export default function EditProfilePage() {
                     </div>
                 </div>
 
-                {/* Name */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <label className="text-sm font-bold text-gray-300">ชื่อ :</label>
@@ -163,7 +207,6 @@ export default function EditProfilePage() {
                     </div>
                 </div>
 
-                {/* Phone */}
                 <div className="space-y-2">
                     <label className="text-sm font-bold text-gray-300">เบอร์โทรศัพท์มือถือ :</label>
                     <div className="flex gap-4">
@@ -181,41 +224,24 @@ export default function EditProfilePage() {
                     </div>
                 </div>
 
-                {/* Birth Date */}
-                <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-300">วันเกิด ( วัน/เดือน/ปีพ.ศ. ) :</label>
-                    <div className="grid grid-cols-3 gap-4">
-                        <select className="bg-[#0B0F14] border border-white/10 rounded-xl px-4 py-3.5 text-white focus:border-blue-500 focus:outline-none appearance-none cursor-pointer">
-                            <option value="">DD</option>
-                            {days.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                        <select className="bg-[#0B0F14] border border-white/10 rounded-xl px-4 py-3.5 text-white focus:border-blue-500 focus:outline-none appearance-none cursor-pointer">
-                            <option value="">Month</option>
-                            {months.map((m, i) => <option key={i} value={m}>{m}</option>)}
-                        </select>
-                        <select className="bg-[#0B0F14] border border-white/10 rounded-xl px-4 py-3.5 text-white focus:border-blue-500 focus:outline-none appearance-none cursor-pointer">
-                            <option value="">Year</option>
-                            {years.map(y => <option key={y} value={y}>{y}</option>)}
-                        </select>
-                    </div>
-                </div>
-
-                {/* Gender */}
                 <div className="space-y-2">
                     <label className="text-sm font-bold text-gray-300">เพศ :</label>
                     <div className="relative">
                         <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-                        <select className="w-full bg-[#0B0F14] border border-white/10 rounded-xl px-4 py-3.5 pl-12 text-white focus:border-blue-500 focus:outline-none appearance-none cursor-pointer">
+                        <select 
+                            value={formData.gender}
+                            onChange={(e) => setFormData({...formData, gender: e.target.value})}
+                            className="w-full bg-[#0B0F14] border border-white/10 rounded-xl px-4 py-3.5 pl-12 text-white focus:border-blue-500 focus:outline-none appearance-none cursor-pointer"
+                        >
                             <option value="">กรุณาเลือก</option>
-                            <option value="male">ชาย</option>
-                            <option value="female">หญิง</option>
-                            <option value="other">อื่นๆ</option>
+                            <option value="ชาย">ชาย</option>
+                            <option value="หญิง">หญิง</option>
+                            <option value="อื่นๆ">อื่นๆ</option>
                         </select>
                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={18} />
                     </div>
                 </div>
 
-                {/* ID Card */}
                 <div className="space-y-2">
                     <label className="text-sm font-bold text-gray-300">บัตรประชาชน / พาสปอร์ต :</label>
                     <div className="relative">

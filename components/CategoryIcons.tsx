@@ -1,11 +1,10 @@
 "use client";
+
 import Link from "next/link";
 import { Mic2, Music, Users, Drama, Music2 } from "lucide-react";
-// ✅ 1. Import Hook
 import { useLanguage } from "@/context/LanguageContext";
 
 export default function CategoryIcons() {
-  // ✅ 2. เรียกใช้ Hook
   const { t } = useLanguage();
 
   const categories = [
@@ -19,8 +18,7 @@ export default function CategoryIcons() {
         hoverShadow: "group-hover:shadow-[0_0_25px_rgba(59,130,246,0.8)]",
         hoverBg: "group-hover:bg-blue-500/20"
       },
-      // ✅ แก้ลิงก์ให้ไปหน้า Category ตาม slug เพื่อแยกหมวดหมู่
-      link: "/category/concert" 
+      link: "/explore?category=คอนเสิร์ต" 
     },
     { 
       id: "fest", 
@@ -32,7 +30,7 @@ export default function CategoryIcons() {
         hoverShadow: "group-hover:shadow-[0_0_25px_rgba(239,68,68,0.8)]",
         hoverBg: "group-hover:bg-red-500/20"
       },
-      link: "/category/festival" 
+      link: "/explore?category=เทศกาลดนตรี" 
     },
     { 
       id: "fanmeet", 
@@ -44,7 +42,7 @@ export default function CategoryIcons() {
         hoverShadow: "group-hover:shadow-[0_0_25px_rgba(236,72,153,0.8)]",
         hoverBg: "group-hover:bg-pink-500/20"
       },
-      link: "/category/fanmeet" 
+      link: "/explore?category=แฟนมีตติ้ง" 
     },
     { 
       id: "theater", 
@@ -56,7 +54,7 @@ export default function CategoryIcons() {
         hoverShadow: "group-hover:shadow-[0_0_25px_rgba(168,85,247,0.8)]",
         hoverBg: "group-hover:bg-purple-500/20"
       },
-      link: "/category/theater" 
+      link: "/explore?category=ละครเวที" 
     },
     { 
       id: "orch", 
@@ -68,7 +66,7 @@ export default function CategoryIcons() {
         hoverShadow: "group-hover:shadow-[0_0_25px_rgba(6,182,212,0.8)]",
         hoverBg: "group-hover:bg-cyan-500/20"
       },
-      link: "/category/orchestra" 
+      link: "/explore?category=ออร์เคสตรา" 
     },
   ];
 
@@ -79,7 +77,6 @@ export default function CategoryIcons() {
         {t.browse_category} 
       </h3>
       
-      {/* Design เดิมที่คุณต้องการ เป๊ะตามรูปภาพที่ส่งมา */}
       <div className="flex overflow-x-auto pt-10 pb-6 gap-4 md:flex md:justify-center md:gap-12 scrollbar-hide px-4">
         {categories.map((cat) => (
           <Link key={cat.id} href={cat.link} className="flex flex-col items-center gap-4 group min-w-[90px]">

@@ -10,16 +10,13 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // ✅ รวม State ให้ตรงกับ Database (organizers table)
   const [profile, setProfile] = useState({
     compName: "",
     firstnameOG: "",
     lastnameOG: "",
     telOG: "",
     emailOG: "",
-    bio: "", // หมายเหตุ: ถ้าใน DB ไม่มี column bio ให้ระวังตรงนี้
-    
-    // ส่วนบัญชีธนาคาร (ถ้า DB ยังไม่มีตารางแยก ให้เก็บเป็น JSON หรือ mock ไว้ก่อน)
+    bio: "",
     bankName: "KBANK",
     accountName: "",
     accountNumber: ""
@@ -30,7 +27,14 @@ export default function SettingsPage() {
     saleSummary: true
   });
 
-  // ✅ 1. ดึงข้อมูล Profile จาก API เมื่อเปิดหน้า
+  // ✅ ฟังก์ชันสำหรับสั่งให้หน้าจอเลื่อนไปหา ID ที่กำหนด
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   useEffect(() => {
     const fetchProfile = async () => {
       const token = localStorage.getItem("token");
@@ -43,7 +47,6 @@ export default function SettingsPage() {
         
         if (res.ok) {
           const data = await res.json();
-          // Map ข้อมูลจาก API เข้า State
           setProfile(prev => ({
             ...prev,
             compName: data.compName || "",
@@ -51,8 +54,7 @@ export default function SettingsPage() {
             lastnameOG: data.lastnameOG || "",
             telOG: data.telOG || "",
             emailOG: data.emailOG || "",
-            bio: data.bio || "", // ถ้ามี
-            // ถ้า Database มีเก็บเลขบัญชี ก็ดึงมาใส่ตรงนี้ได้เลย
+            bio: data.bio || "",
           }));
         }
       } catch (err) {
@@ -65,7 +67,6 @@ export default function SettingsPage() {
     fetchProfile();
   }, []);
 
-  // ✅ 2. ฟังก์ชันบันทึกข้อมูลลง Database
   const handleSave = async () => {
     setLoading(true);
     const token = localStorage.getItem("token");
@@ -83,14 +84,11 @@ export default function SettingsPage() {
           lastnameOG: profile.lastnameOG,
           telOG: profile.telOG,
           bio: profile.bio,
-          // bankInfo: ... (ถ้า Backend รองรับการบันทึกธนาคาร ให้ส่งไปด้วย)
         })
       });
 
       if (res.ok) {
-        const data = await res.json();
         alert("✅ บันทึกข้อมูลเรียบร้อยแล้ว!");
-        // อัปเดตชื่อใน LocalStorage เผื่อ Header เรียกใช้
         localStorage.setItem("user_name", profile.compName || profile.firstnameOG);
       } else {
         alert("❌ บันทึกไม่สำเร็จ");
@@ -135,7 +133,7 @@ export default function SettingsPage() {
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* คอลัมน์ซ้าย: เมนูย่อย */}
-        <div className="space-y-6">
+        <div className="lg:sticky lg:top-6 h-fit space-y-6">
           <div className="bg-[#0F172A] p-4 rounded-xl border border-slate-800 shadow-lg">
             <div className="flex flex-col items-center py-6 border-b border-slate-800 mb-4">
               <div className="w-24 h-24 bg-slate-700 rounded-full mb-3 overflow-hidden border-2 border-blue-500 relative group cursor-pointer">
@@ -148,24 +146,21 @@ export default function SettingsPage() {
                   <Camera size={24} className="text-white" />
                 </div>
               </div>
-              <h2 className="text-lg font-bold text-white">{profile.compName || profile.firstnameOG}</h2>
+              <h2 className="text-lg font-bold text-white text-center">{profile.compName || profile.firstnameOG}</h2>
               <p className="text-sm text-slate-400">Organizer Account</p>
             </div>
             
             <nav className="space-y-1">
               {[
-                { icon: User, label: "ข้อมูลทั่วไป", active: true },
-                { icon: CreditCard, label: "บัญชีธนาคาร (รับเงิน)", active: false },
-                { icon: Bell, label: "การแจ้งเตือน", active: false },
-                { icon: Lock, label: "รหัสผ่าน & ความปลอดภัย", active: false },
+                { icon: User, label: "ข้อมูลทั่วไป", section: "profile-section" },
+                { icon: CreditCard, label: "บัญชีธนาคาร (รับเงิน)", section: "bank-section" },
+                { icon: Bell, label: "การแจ้งเตือน", section: "noti-section" },
+                { icon: Lock, label: "รหัสผ่าน & ความปลอดภัย", section: "security-section" },
               ].map((item, idx) => (
                 <button 
                   key={idx}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    item.active 
-                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
-                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
-                  }`}
+                  onClick={() => scrollToSection(item.section)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
                 >
                   <item.icon size={18} /> {item.label}
                 </button>
@@ -177,8 +172,8 @@ export default function SettingsPage() {
         {/* คอลัมน์ขวา: ฟอร์มแก้ไข */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* 1. ข้อมูลบริษัท */}
-          <section className="bg-[#0F172A] p-6 rounded-xl border border-slate-800 shadow-lg">
+          {/* ✅ 1. ข้อมูลบริษัท (ใส่ ID) */}
+          <section id="profile-section" className="bg-[#0F172A] p-6 rounded-xl border border-slate-800 shadow-lg scroll-mt-6">
             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
               <Building size={20} className="text-blue-400" /> ข้อมูลบริษัท / ทีมงาน
             </h3>
@@ -193,7 +188,6 @@ export default function SettingsPage() {
                 />
               </div>
               
-              {/* แยกชื่อ-นามสกุล เพื่อให้ตรง DB */}
               <div>
                 <label className="text-sm text-slate-400 mb-1 block">ชื่อจริง</label>
                 <input 
@@ -227,7 +221,7 @@ export default function SettingsPage() {
                 <input 
                   type="email" 
                   value={profile.emailOG}
-                  disabled // ไม่ให้แก้ email
+                  disabled 
                   className="w-full bg-[#1E293B]/50 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-500 cursor-not-allowed"
                 />
               </div>
@@ -243,8 +237,8 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          {/* 2. ข้อมูลบัญชีรับเงิน (ส่วนนี้ยัง Mockup เพราะ DB อาจยังไม่มีตารางเก็บเลขบัญชี) */}
-          <section className="bg-[#0F172A] p-6 rounded-xl border border-slate-800 shadow-lg">
+          {/* ✅ 2. ข้อมูลบัญชีรับเงิน (ใส่ ID) */}
+          <section id="bank-section" className="bg-[#0F172A] p-6 rounded-xl border border-slate-800 shadow-lg scroll-mt-6">
             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
               <CreditCard size={20} className="text-green-400" /> บัญชีรับเงิน (Revenue)
             </h3>
@@ -289,8 +283,8 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          {/* 3. การแจ้งเตือน (UI เท่านั้น ยังไม่เชื่อม DB) */}
-          <section className="bg-[#0F172A] p-6 rounded-xl border border-slate-800 shadow-lg">
+          {/* ✅ 3. การแจ้งเตือน (ใส่ ID) */}
+          <section id="noti-section" className="bg-[#0F172A] p-6 rounded-xl border border-slate-800 shadow-lg scroll-mt-6">
             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
               <Bell size={20} className="text-yellow-400" /> การแจ้งเตือน
             </h3>
@@ -321,6 +315,17 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+          </section>
+
+          {/* ✅ 4. รหัสผ่าน (ใส่ ID) */}
+          <section id="security-section" className="bg-[#0F172A] p-6 rounded-xl border border-slate-800 shadow-lg scroll-mt-6">
+             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+               <Lock size={20} className="text-orange-400" /> รหัสผ่าน & ความปลอดภัย
+             </h3>
+             <p className="text-slate-400 text-sm mb-4">แนะนำให้เปลี่ยนรหัสผ่านทุกๆ 3 เดือน เพื่อความปลอดภัย</p>
+             <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm transition-colors border border-slate-700">
+               เปลี่ยนรหัสผ่านใหม่
+             </button>
           </section>
 
         </div>

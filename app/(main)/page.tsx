@@ -23,7 +23,7 @@ interface ApiEvent {
   }[];
 }
 
-// 2. Interface ของ EventCard (ต้องตรงกับไฟล์ Component EventCard.tsx)
+// 2. Interface ของ EventCard
 interface EventCardProps {
   id: number;
   title: string;
@@ -32,15 +32,13 @@ interface EventCardProps {
   venueEn: string;
   price: string;
   image: string;
-  // ✅ กำหนด Type ให้ตรงเป๊ะๆ (แก้เส้นแดง)
   status: "Available" | "Sold Out" | "Selling Fast"; 
 }
 
-// 3. ฟังก์ชันแปลงสถานะจาก ไทย -> อังกฤษ (แก้เส้นแดง)
+// 3. ฟังก์ชันแปลงสถานะจาก ไทย -> อังกฤษ
 const mapStatusToEnglish = (thaiStatus: string): "Available" | "Sold Out" | "Selling Fast" => {
   const statusMap: Record<string, "Available" | "Sold Out" | "Selling Fast"> = {
     'กำลังจะจัด': 'Available',
-    'กำลังเตรียม': 'Available',
     'On Sale': 'Available',
     'เปิดขายบัตร': 'Available',
     'Available': 'Available',
@@ -53,7 +51,6 @@ const mapStatusToEnglish = (thaiStatus: string): "Available" | "Sold Out" | "Sel
     'จบแล้ว': 'Sold Out'
   };
   
-  // ถ้าไม่เจอคำไหนเลย ให้ Default เป็น Available ไว้ก่อนกัน Error
   return statusMap[thaiStatus] || 'Available'; 
 };
 
@@ -66,43 +63,47 @@ export default function Home() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        // ✅ ตรวจสอบ URL ให้ถูกต้อง (ต้องตรงกับ routes/api.php)
         const res = await fetch("http://127.0.0.1:8000/api/public/events");
         
         if (!res.ok) throw new Error("Failed to fetch");
         
         const data: ApiEvent[] = await res.json();
 
-        // แปลงข้อมูล
-        const formattedEvents: EventCardProps[] = data.map((item) => {
-          // หาบัตรราคาถูกสุด
-          const minPrice = item.ticket_zones?.length 
-            ? Math.min(...item.ticket_zones.map(z => z.priceperTick)) 
-            : 0;
+        // ✅ แปลงข้อมูลและกรองเอาสถานะที่ไม่ต้องการออก
+        const formattedEvents: EventCardProps[] = data
+          .filter((item) => item.eventStatus !== "กำลังเตรียม" && item.eventStatus !== "กำลังจะเตรียม") 
+          .map((item) => {
+            // หาบัตรราคาถูกสุด
+            const minPrice = item.ticket_zones?.length 
+              ? Math.min(...item.ticket_zones.map(z => z.priceperTick)) 
+              : 0;
 
-          // จัดรูปแบบวันที่
-          const dateObj = new Date(item.rental_start);
-          const dateStr = dateObj.toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
+            // จัดรูปแบบวันที่
+            const dateObj = new Date(item.rental_start);
+            const dateStr = dateObj.toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            });
+
+            // จัดการรูปภาพให้ใช้จาก Laravel Storage โดยตรง
+            const imageUrl = item.bannerImage 
+              ? (item.bannerImage.startsWith('http') 
+                  ? item.bannerImage 
+                  : `http://127.0.0.1:8000/storage/${item.bannerImage}`) 
+              : "/images/placeholder.jpg"; 
+
+            return {
+              id: item.Event_id,
+              title: item.eventName,
+              date: dateStr.toUpperCase(),
+              venueTh: item.hall?.Hall_Name || "ไม่ระบุสถานที่",
+              venueEn: item.hall?.Hall_Name || "Venue not specified",
+              price: minPrice > 0 ? `฿${minPrice.toLocaleString()}` : "Coming Soon",
+              image: imageUrl,
+              status: mapStatusToEnglish(item.eventStatus), 
+            };
           });
-
-          return {
-            id: item.Event_id,
-            title: item.eventName,
-            date: dateStr.toUpperCase(),
-            venueTh: item.hall?.Hall_Name || "ไม่ระบุสถานที่",
-            venueEn: item.hall?.Hall_Name || "Venue not specified",
-            price: minPrice > 0 ? `฿${minPrice.toLocaleString()}` : "Coming Soon",
-            image: item.bannerImage 
-              ? `http://127.0.0.1:8000/storage/${item.bannerImage}`
-              : "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400&q=80",
-            
-            // ✅ เรียกฟังก์ชันแปลงสถานะ
-            status: mapStatusToEnglish(item.eventStatus), 
-          };
-        });
 
         setEvents(formattedEvents);
       } catch (error) {
@@ -151,7 +152,6 @@ export default function Home() {
           ) : events.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {events.slice(0, 5).map((event) =>(
-                 // ✅ แก้ไข: ส่ง Props ทีละตัวแทนการใช้ {...event} (แก้ Error เส้นแดง)
                  <EventCard 
                     key={event.id}
                     id={event.id}
@@ -166,7 +166,7 @@ export default function Home() {
               ))}
             </div>
           ) : (
-             <div className="text-gray-500 text-center py-20">ยังไม่มีรายการคอนเสิร์ตในขณะนี้</div>
+              <div className="text-gray-500 text-center py-20">ยังไม่มีรายการคอนเสิร์ตในขณะนี้</div>
           )}
 
           <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-8"></div>

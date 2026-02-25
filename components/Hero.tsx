@@ -1,47 +1,96 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Calendar, MapPin } from "lucide-react";
-// ✅ 1. Import Hook
+import { ChevronLeft, ChevronRight, Calendar, MapPin, Loader2 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+
+// Interface สำหรับข้อมูล API
+interface ApiEvent {
+  Event_id: number;
+  eventName: string;
+  rental_start: string;
+  bannerImage: string | null;
+  eventStatus: string;
+  eventType?: string;
+  hall?: {
+    Hall_Name: string;
+  };
+}
+
+interface SlideData {
+  id: number;
+  image: string;
+  title: string;
+  subtitle: string;
+  date: string;
+  venue: string;
+  category: string;
+}
 
 export default function Hero() {
   const { language } = useLanguage();
   const [current, setCurrent] = useState(0);
+  
+  // State สำหรับเก็บข้อมูลจริงจาก API
+  const [slides, setSlides] = useState<SlideData[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock Data
-  const slides = [
-    {
-      id: 1,
-      image: "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?q=80&w=1920&auto=format&fit=crop",
-      title: { th: "THE GRAND SYMPHONY 2026", en: "THE GRAND SYMPHONY 2026" },
-      subtitle: { th: "สัมผัสประสบการณ์ดนตรีออร์เคสตราสุดยิ่งใหญ่แห่งปี", en: "Experience the greatest orchestral music of the year" },
-      date: "15 JAN 2026",
-      venue: { th: "มหิดลสิทธาคาร", en: "Prince Mahidol Hall" },
-      category: { th: "คลาสสิก", en: "Classical" },
-    },
-    {
-      id: 2,
-      image: "https://images.unsplash.com/photo-1459749411177-d4a428c389f5?q=80&w=1920&auto=format&fit=crop",
-      title: { th: "NEON VIBES FESTIVAL", en: "NEON VIBES FESTIVAL" },
-      subtitle: { th: "ปลดปล่อยความมันส์กับ DJ ระดับโลกตลอด 3 วันเต็ม", en: "Unleash the fun with world-class DJs for 3 full days" },
-      date: "12-14 FEB 2026",
-      venue: { th: "อิมแพ็ค อารีน่า", en: "Impact Arena" },
-      category: { th: "เฟสติวัล", en: "Festival" },
-    },
-    {
-      id: 3,
-      image: "https://images.unsplash.com/photo-1503095392237-5985e5a9536e?q=80&w=1920&auto=format&fit=crop",
-      title: { th: "PHANTOM OF THE OPERA", en: "PHANTOM OF THE OPERA" },
-      subtitle: { th: "ละครเวทีอมตะนิรันดร์กาล กลับมาอีกครั้งที่เมืองไทย", en: "The timeless musical returns to Thailand" },
-      date: "01 MAR 2026",
-      venue: { th: "เมืองไทยรัชดาลัย", en: "Muangthai Rachadalai" },
-      category: { th: "ละครเวที", en: "Musical" },
-    },
-  ];
-
-  // Auto Slide
+  // ดึงข้อมูลจาก API
   useEffect(() => {
+    const fetchHeroEvents = async () => {
+      try {
+        const res = await fetch("http://127.0.0.1:8000/api/public/events");
+        if (!res.ok) throw new Error("Failed to fetch");
+        
+        const data: ApiEvent[] = await res.json();
+
+        // 1. กรองสถานะที่ไม่ต้องการออก (เหมือนที่ทำในหน้า Home)
+        // 2. เลือกมาแค่ 3 งานล่าสุด (.slice(0, 3)) เพื่อทำเป็นแบนเนอร์สไลด์
+        const validEvents = data
+          .filter((item) => item.eventStatus !== "กำลังเตรียม" && item.eventStatus !== "กำลังจะเตรียม")
+          .slice(0, 3);
+
+        const mappedSlides = validEvents.map((item) => {
+          // แปลงวันที่
+          const dateObj = new Date(item.rental_start);
+          const dateStr = dateObj.toLocaleDateString("en-GB", {
+            day: "2-digit", month: "short", year: "numeric",
+          }).toUpperCase();
+
+          // จัดการรูปภาพ (ดึงจาก Storage)
+          const imageUrl = item.bannerImage 
+            ? (item.bannerImage.startsWith('http') 
+                ? item.bannerImage 
+                : `http://127.0.0.1:8000/storage/${item.bannerImage}`) 
+            : "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=1920&q=80"; // รูปสำรอง
+
+          return {
+            id: item.Event_id,
+            image: imageUrl,
+            title: item.eventName,
+            // ใน DB เราไม่มี Subtitle ผมเลยใส่ข้อความเชิญชวนแบบ Dynamic ให้แทน
+            subtitle: language === "th" ? "ห้ามพลาดกับประสบการณ์สุดพิเศษที่กำลังจะเกิดขึ้น!" : "Don't miss out on this spectacular experience!",
+            date: dateStr,
+            venue: item.hall?.Hall_Name || "TBA",
+            category: item.eventType || "CONCERT",
+          };
+        });
+
+        setSlides(mappedSlides);
+      } catch (error) {
+        console.error("Error fetching hero events:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHeroEvents();
+  }, [language]);
+
+  // Auto Slide (ทำงานเมื่อโหลดสไลด์เสร็จแล้ว)
+  useEffect(() => {
+    if (slides.length === 0) return;
     const timer = setInterval(() => {
       setCurrent((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
     }, 5000);
@@ -50,6 +99,25 @@ export default function Hero() {
 
   const prevSlide = () => setCurrent(current === 0 ? slides.length - 1 : current - 1);
   const nextSlide = () => setCurrent(current === slides.length - 1 ? 0 : current + 1);
+
+  // แสดงตอนกำลังโหลดข้อมูล
+  if (loading) {
+    return (
+      <div className="w-full h-[600px] flex flex-col items-center justify-center bg-[#0B0F14] text-cyan-400">
+        <Loader2 className="animate-spin mb-4" size={40} />
+        <p className="animate-pulse">Loading Highlight Events...</p>
+      </div>
+    );
+  }
+
+  // เผื่อกรณีที่ดึงมาแล้วไม่มีงานจัดแสดงเลย
+  if (slides.length === 0) {
+    return (
+      <div className="w-full h-[600px] flex items-center justify-center bg-[#0B0F14] text-gray-500">
+        No highlight events available.
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full h-[600px] overflow-hidden group">
@@ -68,7 +136,7 @@ export default function Hero() {
           ></div>
           
           {/* Overlay Gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0B0F14] via-[#0B0F14]/50 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0B0F14] via-[#0B0F14]/50 to-[#0B0F14]/20"></div>
         </div>
       ))}
 
@@ -76,37 +144,34 @@ export default function Hero() {
       <div className="absolute inset-0 flex items-center justify-center px-4 mt-16">
         <div className="text-center max-w-4xl space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
           
-          {/* Badge: เปลี่ยนเป็นสี Cyan สว่างๆ */}
+          {/* Badge */}
           <span className="inline-block px-4 py-1 rounded-full border border-cyan-500/30 text-cyan-400 text-sm font-bold tracking-wider uppercase bg-cyan-500/10 backdrop-blur-md shadow-[0_0_15px_rgba(34,211,238,0.2)]">
-            {slides[current].category[language]}
+            {slides[current].category}
           </span>
 
-          {/* Title: เพิ่ม Glow สีฟ้าอมม่วง */}
-          <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter drop-shadow-[0_0_25px_rgba(139,92,246,0.6)]">
-            {slides[current].title[language]}
+          {/* Title */}
+          <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter drop-shadow-[0_0_25px_rgba(139,92,246,0.6)] uppercase line-clamp-2 leading-tight">
+            {slides[current].title}
           </h1>
 
           {/* Subtitle */}
           <p className="text-lg md:text-2xl text-gray-200 font-light drop-shadow-md">
-            {slides[current].subtitle[language]}
+            {slides[current].subtitle}
           </p>
 
           {/* Info & Button */}
           <div className="flex flex-col md:flex-row items-center justify-center gap-6 mt-8">
             <div className="flex items-center gap-2 text-gray-300">
-              {/* Calendar Icon: สี Cyan */}
               <Calendar className="text-cyan-400" size={20} />
               <span>{slides[current].date}</span>
             </div>
             <div className="flex items-center gap-2 text-gray-300">
-              {/* MapPin Icon: สี Pink (แทนสีแดง) */}
               <MapPin className="text-pink-500" size={20} />
-              <span>{slides[current].venue[language]}</span>
+              <span>{slides[current].venue}</span>
             </div>
           </div>
 
           <div className="pt-4">
-            {/* ✅ แก้ไข: เพิ่ม Link ครอบปุ่มเพื่อให้กดแล้วไปหน้า Event ตาม ID */}
             <Link href={`/event/${slides[current].id}`}>
                 <button className="px-10 py-3.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold rounded-full transition-all shadow-[0_0_20px_rgba(124,58,237,0.4)] hover:shadow-[0_0_30px_rgba(124,58,237,0.6)] transform hover:-translate-y-1 cursor-pointer active:scale-95">
                 {language === "th" ? "ซื้อบัตรเลย" : "Buy Ticket"}
@@ -124,7 +189,7 @@ export default function Hero() {
         <ChevronRight size={30} />
       </button>
 
-      {/* Dots Indicators: สี Gradient */}
+      {/* Dots Indicators */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3">
         {slides.map((_, index) => (
           <button
