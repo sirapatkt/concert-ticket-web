@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { Search, Filter, UserCheck, UserX, Mail, Loader2 } from 'lucide-react';
 
-// 1. สร้าง Interface เพื่อบอก TypeScript ว่าข้อมูล customer มีหน้าตาแบบไหน (แก้ปัญหา any แดง)
 interface Customer {
   id: string | number;
   firstname: string;
@@ -15,11 +14,9 @@ interface Customer {
 }
 
 export default function CustomersPage() {
-  // 2. ใส่ Type <Customer[]> ให้กับ useState
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ดึงข้อมูลจาก API
   useEffect(() => {
     const fetchCustomers = async () => {
       const token = localStorage.getItem("token");
@@ -39,6 +36,14 @@ export default function CustomersPage() {
     };
     fetchCustomers();
   }, []);
+
+  // ฟังก์ชันสำหรับจัดการเมื่อกดปุ่มจดหมาย
+  const handleShowEmail = (email: string, firstname: string) => {
+    // 1. คัดลอกอีเมลลง Clipboard
+    navigator.clipboard.writeText(email);
+    // 2. เด้งหน้าต่างแจ้งเตือนแสดงอีเมล
+    alert(`อีเมลของ ${firstname} คือ:\n\n${email}\n\n(คัดลอกลงเครื่องเรียบร้อยแล้ว สามารถกดวางได้เลย)`);
+  };
 
   return (
     <div className="space-y-8">
@@ -63,7 +68,6 @@ export default function CustomersPage() {
                 </td>
               </tr>
             ) : (
-              // 3. เอา any ออกได้เลย เพราะเรากำหนด type ให้ state ด้านบนแล้ว
               customers.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-800/30 transition-colors">
                   <td className="p-4 pl-6">
@@ -90,7 +94,12 @@ export default function CustomersPage() {
                     )}
                   </td>
                   <td className="p-4 pr-6 text-right">
-                    <button className="text-slate-400 hover:text-white p-2 hover:bg-slate-700 rounded-full transition-all">
+                    {/* เปลี่ยนกลับเป็น <button> และเรียกใช้ฟังก์ชัน handleShowEmail */}
+                    <button 
+                      onClick={() => handleShowEmail(c.email, c.firstname)}
+                      className="inline-block text-slate-400 hover:text-white p-2 hover:bg-slate-700 rounded-full transition-all cursor-pointer"
+                      title={`ดูและคัดลอกอีเมลของ ${c.firstname}`}
+                    >
                       <Mail size={18} />
                     </button>
                   </td>

@@ -2,30 +2,32 @@
 
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation"; // ✅ 1. เปลี่ยนมาใช้ useSearchParams
+import { useSearchParams } from "next/navigation"; 
 import { 
   ArrowLeft, Calendar, MapPin, Ticket, Clock, 
-  AlignLeft, Users, Loader2 
+  AlignLeft, Users, Loader2, Map 
 } from "lucide-react";
 
-// สร้าง Component ย่อยเพื่อแยกส่วนที่เรียกใช้ search parameters
+// ✅ นำเข้า Modal ผังที่นั่ง
+import SeatPreviewModal from "@/components/SeatPreviewModal";
+
 function EventDetailContent() {
   const searchParams = useSearchParams(); 
-  // ✅ 2. ดึงค่า ID จาก URL ที่เป็น ?id=...
   const eventId = searchParams?.get("id"); 
 
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  
+  // State สำหรับควบคุมการเปิด/ปิด Modal ผังที่นั่ง
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchEventDetail = async () => {
-      // ถ้ายังไม่ได้ ID มา ให้หยุดรอก่อน
       if (!eventId) return; 
 
       try {
         setLoading(true);
         const token = localStorage.getItem("token");
-        // ยิง API ไปหาหลังบ้าน
         const res = await fetch(`http://127.0.0.1:8000/api/events/${eventId}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -74,6 +76,55 @@ function EventDetailContent() {
       </div>
     );
   }
+
+  // ====================================================================
+  // ✅ 1. ประกาศตัวแปร formattedTickets ก่อน เพื่อไม่ให้เกิด Error เส้นแดง
+  // ====================================================================
+  const formattedTickets = event.ticket_zones?.map((zone: any) => ({
+    zoneName: zone.zoneName,
+    price: zone.priceperTick,
+    quantity: zone.totalSeat,
+  })) || [];
+
+  // ====================================================================
+  // ✅ 2. ฟังก์ชันอัจฉริยะสำหรับประเมินขนาดสถานที่ (ใช้แค่การนับจำนวนโซน)
+  // ====================================================================
+  const detectVenueSize = (hallId: string, tickets: any[]) => {
+    const zoneCount = tickets.length;
+
+    if (hallId === "1") { 
+      // 📍 อิมแพ็ค อารีน่า
+      if (zoneCount > 20) return "Large";
+      if (zoneCount > 8) return "Medium";
+      return "Small";
+    } 
+    else if (hallId === "2") { 
+      // 📍 มหิดลสิทธาคาร
+      if (zoneCount > 26) return "Large";
+      if (zoneCount > 14) return "Medium";
+      return "Small";
+    } 
+    else if (hallId === "3") { 
+      // 📍 เมืองไทยรัชดาลัย
+      if (zoneCount > 12) return "Large";  // มี 13-18 โซน = ผังใหญ่
+      if (zoneCount > 6) return "Medium";  // มี 7-12 โซน = ผังกลาง
+      return "Small";                      // มี 1-6 โซน = ผังเล็ก
+    }
+    
+    return "Small"; // ค่าเริ่มต้น
+  };
+
+  // ดึง Hall ID ปัจจุบัน
+  const currentHallId = event.Hall_id?.toString() || event.hall?.Hall_id?.toString() || "3";
+
+  // ตรวจสอบค่า venueSize
+  let activeVenueSize = event.venueSize || event.venue_size;
+  if (!activeVenueSize) {
+    activeVenueSize = detectVenueSize(currentHallId, formattedTickets);
+  }
+
+  // ทำให้เป็นตัวพิมพ์ใหญ่ตัวแรกเสมอ
+  const formattedVenueSize = activeVenueSize.charAt(0).toUpperCase() + activeVenueSize.slice(1).toLowerCase();
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -136,11 +187,21 @@ function EventDetailContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {event.event_date_times?.map((round: any, index: number) => (
                 <div key={index} className="bg-[#1E293B]/50 p-4 rounded-xl border border-slate-700/50">
-                  <div className="font-bold text-pink-400 mb-2">รอบที่ {round.roundNumber}</div>
-                  <ul className="space-y-2 text-xs text-slate-400">
-                    <li className="flex gap-2"><Clock size={14} className="text-slate-500"/> เริ่ม: <span className="text-white">{formatDate(round.startDT)}</span></li>
-                    <li className="flex gap-2"><Clock size={14} className="text-slate-500"/> จบ: <span className="text-white">{formatDate(round.endDT)}</span></li>
+                  <div className="font-bold text-pink-400 mb-3">รอบที่ {round.roundNumber}</div>
+                  
+                  <ul className="space-y-2 text-xs text-slate-400 mb-3">
+                    <li className="flex gap-2"><Clock size={14} className="text-slate-500"/> เริ่มแสดง: <span className="text-white">{formatDate(round.startDT)}</span></li>
+                    <li className="flex gap-2"><Clock size={14} className="text-slate-500"/> จบการแสดง: <span className="text-white">{formatDate(round.endDT)}</span></li>
                   </ul>
+
+                  <div className="pt-3 border-t border-slate-700/50">
+                    <div className="text-[10px] font-bold text-slate-500 mb-2">ช่วงเวลาขายบัตร</div>
+                    <ul className="space-y-2 text-xs text-slate-400">
+                      <li className="flex gap-2"><Ticket size={14} className="text-yellow-500"/> เปิดขาย: <span className="text-yellow-400">{formatDate(round.Sale_startDT)}</span></li>
+                      <li className="flex gap-2"><Ticket size={14} className="text-red-400"/> ปิดขาย: <span className="text-red-400">{formatDate(round.Sale_endDT)}</span></li>
+                    </ul>
+                  </div>
+
                 </div>
               ))}
             </div>
@@ -148,9 +209,21 @@ function EventDetailContent() {
 
           {/* โซนบัตร */}
           <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Ticket size={18} className="text-yellow-400"/> โซนและราคาบัตร
-            </h3>
+            {/* หัวตาราง และ ปุ่มเปิด Modal */}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Ticket size={18} className="text-yellow-400"/> โซนและราคาบัตร
+              </h3>
+              
+              <button 
+                onClick={() => setIsPreviewModalOpen(true)} 
+                type="button" 
+                className="text-sm bg-cyan-500/10 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500 hover:text-white px-4 py-1.5 rounded-lg flex items-center gap-2 transition-all shadow-sm"
+              >
+                <Map size={16} /> ดูผังที่นั่ง
+              </button>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-slate-500 uppercase bg-[#1E293B]/80 border-b border-slate-700">
@@ -177,11 +250,18 @@ function EventDetailContent() {
 
         </div>
       </div>
+
+      <SeatPreviewModal 
+        isOpen={isPreviewModalOpen} 
+        onClose={() => setIsPreviewModalOpen(false)} 
+        tickets={formattedTickets} 
+        hallId={currentHallId} 
+        venueSize={formattedVenueSize}
+      />
     </div>
   );
 }
 
-// ✅ 3. ครอบด้วย Suspense เพื่อป้องกัน Error ของ Next.js ตอนใช้ useSearchParams
 export default function EventDetailPage() {
   return (
     <div className="min-h-screen bg-[#020617] text-white p-6 pb-20 font-sans">
@@ -193,5 +273,5 @@ export default function EventDetailPage() {
         <EventDetailContent />
       </Suspense>
     </div>
-  );
+  ); 
 }

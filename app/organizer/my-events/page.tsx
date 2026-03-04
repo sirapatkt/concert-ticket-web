@@ -10,7 +10,8 @@ import {
 export default function MyEventsPage() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState("All");
+  // ตั้งค่าเริ่มต้นของตัวกรองเป็น "ทั้งหมด"
+  const [filterStatus, setFilterStatus] = useState("ทั้งหมด");
 
   // ✅ ฟังก์ชันดึงข้อมูลจาก Backend
   const fetchEvents = async () => {
@@ -39,26 +40,54 @@ export default function MyEventsPage() {
     fetchEvents();
   }, []);
 
-  // ฟังก์ชันกรองข้อมูลตามสถานะ
+    // เพิ่ม Type นอก Component (บนสุดของไฟล์) เพื่อแก้ Error เส้นแดง
+  type EventStatusType = "กำลังเตรียม" | "กำลังจะจัด" | "เปิดขายบัตร" | "กำลังจัด" | "บัตรขายหมด" | "เสร็จสิ้น" | "ยกเลิกงาน";
+
+  // แก้ไขฟังก์ชัน getThaiStatus ให้เช็คคำจาก DB ตรงๆ
+  const getThaiStatus = (status: string): EventStatusType => {
+    if (!status) return 'กำลังเตรียม';
+    if (status === 'กำลังเตรียม') return 'กำลังเตรียม';
+    if (status === 'กำลังจะจัด') return 'กำลังจะจัด';
+    if (status === 'เปิดขายบัตร' || status.toUpperCase() === 'ON SALE') return 'เปิดขายบัตร'; 
+    if (status === 'กำลังจัด') return 'กำลังจัด';
+    if (status === 'บัตรขายหมด') return 'บัตรขายหมด';
+    if (status === 'เสร็จสิ้น') return 'เสร็จสิ้น';
+    return 'กำลังเตรียม'; 
+  };
+
+  // ✅ 2. ฟังก์ชันกรองข้อมูลตามสถานะ (มีแค่ตัวเดียวเท่านั้น)
   const filteredEvents = events.filter((ev: any) => {
-    if (filterStatus === "All") return true;
-    // รองรับทั้งสถานะภาษาไทยและอังกฤษ
-    if (filterStatus === "On Sale") return ev.status === "กำลังจะจัด" || ev.status === "On Sale";
-    if (filterStatus === "Pending") return ev.status === "กำลังเตรียม" || ev.status === "Pending";
-    if (filterStatus === "Ended") return ev.status === "จบแล้ว" || ev.status === "Ended";
-    return ev.status === filterStatus;
+    if (filterStatus === "ทั้งหมด") return true;
+    return getThaiStatus(ev.status) === filterStatus;
   });
 
-  // ฟังก์ชันเลือกสีป้ายสถานะ
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "กำลังจะจัด": 
-      case "On Sale": return "bg-green-500/10 text-green-400 border-green-500/20";
-      case "กำลังเตรียม":
-      case "Pending": return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
-      case "จบแล้ว":
-      case "Ended": return "bg-slate-500/10 text-slate-400 border-slate-500/20";
-      default: return "bg-slate-500/10 text-slate-400 border-slate-500/20";
+  // ✅ แก้ไข Error ตรงนี้: ลบการประกาศฟังก์ชันที่ซ้อนกันออก
+  const getStatusStyles = (status: string) => {
+    const thaiStatus = getThaiStatus(status);
+  
+    // ปรับพื้นหลังและขอบเป็นสีตามสถานะ และตัวหนังสือเป็นสีขาว (text-white)
+    switch (thaiStatus) {
+      case 'เปิดขายบัตร':
+        // พื้นหลังเขียว ขอบเขียว ตัวหนังสือขาว
+        return "border-2 border-emerald-500 bg-emerald-600 text-white shadow-lg";
+      case 'กำลังจัด':
+        // พื้นหลังชมพูเข้ม (หรือจะใช้เขียวก็ได้) ขอบชมพู ตัวหนังสือขาว
+        return "border-2 border-pink-500 bg-pink-600 text-white animate-pulse";
+      case 'กำลังเตรียม':
+        // พื้นหลังเหลือง/ส้ม ขอบเหลือง ตัวหนังสือขาว
+        return "border-2 border-amber-400 bg-amber-500 text-white";
+      case 'กำลังจะจัด':
+        // พื้นหลังฟ้าเข้ม ขอบฟ้า ตัวหนังสือขาว
+        return "border-2 border-blue-500 bg-blue-600 text-white";
+      case 'บัตรขายหมด':
+        // พื้นหลังส้ม ขอบส้ม ตัวหนังสือขาว
+        return "border-2 border-orange-500 bg-orange-600 text-white";
+      case 'เสร็จสิ้น':
+        return "border-2 border-slate-500 bg-slate-600 text-white";
+      case 'ยกเลิกงาน':
+        return "border-2 border-red-500 bg-red-600 text-white";
+      default:
+        return "border-2 border-slate-600 bg-slate-700 text-white";
     }
   };
 
@@ -80,7 +109,7 @@ export default function MyEventsPage() {
 
       if (res.ok) {
         alert("ลบข้อมูลสำเร็จ!");
-        fetchEvents(); // ลบเสร็จให้โหลดข้อมูลใหม่ทันที เพื่อให้งานหายไปจากหน้าจอ
+        fetchEvents(); // ลบเสร็จให้โหลดข้อมูลใหม่ทันที
       } else {
         const err = await res.json();
         alert("เกิดข้อผิดพลาด: " + (err.message || "ไม่สามารถลบได้"));
@@ -122,7 +151,8 @@ export default function MyEventsPage() {
         </div>
 
         <div className="flex bg-[#0F172A] p-1 rounded-lg border border-slate-800 overflow-x-auto">
-          {["All", "On Sale", "Pending", "Ended"].map((status) => (
+          {/* ✅ อัปเดตปุ่ม Filter ให้ตรงกับสถานะภาษาไทย */}
+          {["ทั้งหมด", "กำลังเตรียม", "กำลังจะจัด", "กำลังจัด", "เสร็จสิ้น", "ยกเลิกงาน"].map((status) => (
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
@@ -132,7 +162,7 @@ export default function MyEventsPage() {
                   : "text-slate-400 hover:text-white hover:bg-slate-800"
                 }`}
             >
-              {status === "All" ? "ทั้งหมด" : status}
+              {status}
             </button>
           ))}
         </div>
@@ -158,11 +188,11 @@ export default function MyEventsPage() {
                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                />
                <div className="absolute top-2 left-2">
-                 <span className={`px-2 py-1 rounded text-[10px] font-bold border ${getStatusBadge(event.status)}`}>
-                   {event.status || "Pending"}
-                 </span>
-               </div>
-            </div>
+                  <span className={`px-2 py-1 rounded text-[10px] font-black ${getStatusStyles(event.status)}`}>
+                    {getThaiStatus(event.status)}
+                  </span>
+                </div>
+              </div>
 
             {/* Content Section */}
             <div className="flex-1 py-1">
@@ -202,11 +232,11 @@ export default function MyEventsPage() {
                 </div>
                 <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
                   <div 
-                    className={`h-full rounded-full transition-all duration-1000 ${event.status === 'Ended' || event.status === 'จบแล้ว' ? 'bg-slate-500' : 'bg-gradient-to-r from-blue-600 to-cyan-400'}`} 
+                    className={`h-full rounded-full transition-all duration-1000 ${getThaiStatus(event.status) === 'เสร็จสิ้น' ? 'bg-slate-500' : 'bg-gradient-to-r from-blue-600 to-cyan-400'}`} 
                     style={{ width: `${event.capacity > 0 ? ((event.sold || 0) / event.capacity) * 100 : 0}%` }}
                   ></div>
                 </div>
-              </div>1
+              </div>
             </div>
 
             {/* Action Buttons */}
@@ -217,23 +247,25 @@ export default function MyEventsPage() {
               >
                 <Eye size={14} /> ดูข้อมูล
               </Link>
-              {/* เปลี่ยนปุ่มแก้ไขเดิม เป็นโค้ดชุดนี้ครับ */}
-                {event.status === 'กำลังเตรียม' || event.status === 'รอตรวจสอบ' ? (
-                  <Link 
-                    href={`/organizer/edit-event?id=${event.id}`} 
-                    className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-all text-xs font-bold border border-slate-700"
-                  >
-                    <Edit size={14} /> แก้ไขงาน
-                  </Link>
-                ) : (
-                  <button 
-                    disabled 
-                    className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-slate-800/50 text-slate-500 cursor-not-allowed text-xs font-bold border border-slate-700/50"
-                    title="งานนี้เปิดขายบัตรหรือจัดไปแล้ว ไม่สามารถแก้ไขได้"
-                  >
-                    <Edit size={14} /> แก้ไขไม่ได้แล้ว
-                  </button>
-                )}
+              
+              {/* ✅ อัปเดตเงื่อนไขปุ่มแก้ไข ให้กดได้แค่สถานะ กำลังเตรียม และ กำลังจะจัด */}
+              {(getThaiStatus(event.status) === 'กำลังเตรียม' || getThaiStatus(event.status) === 'กำลังจะจัด') ? (
+                <Link 
+                  href={`/organizer/edit-event?id=${event.id}`} 
+                  className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-all text-xs font-bold border border-slate-700"
+                >
+                  <Edit size={14} /> แก้ไขข้อมูล
+                </Link>
+              ) : (
+                <button 
+                  disabled 
+                  className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-slate-800/50 text-slate-500 cursor-not-allowed text-xs font-bold border border-slate-700/50"
+                  title="งานนี้กำลังจัด จัดเสร็จสิ้น หรือยกเลิกไปแล้ว ไม่สามารถแก้ไขได้"
+                >
+                  <Edit size={14} /> แก้ไขไม่ได้แล้ว
+                </button>
+              )}
+
               <button 
                 onClick={() => handleDelete(event.id)} 
                 className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-red-500/5 text-red-400 hover:bg-red-500 hover:text-white transition-all text-xs font-bold border border-red-500/10"

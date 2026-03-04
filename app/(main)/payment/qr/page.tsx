@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Timer, Download, Share2, ScanLine, CheckCircle2, Loader2 } from "lucide-react";
+import { ChevronLeft, Timer, Download, Share2, ScanLine, CheckCircle2, Loader2, XCircle } from "lucide-react";
 
 export default function PaymentQRPage() {
   const router = useRouter();
@@ -21,6 +21,9 @@ export default function PaymentQRPage() {
   const [timeLeft, setTimeLeft] = React.useState(300); 
   const [isChecking, setIsChecking] = React.useState(false);
   const [refNo, setRefNo] = React.useState("");
+  
+  // ⭐️ 1. ดึง ID บิลจาก URL เตรียมไว้ส่งให้ API
+  const bookingId = searchParams.get("bookingId"); 
 
   React.useEffect(() => {
     setRefNo(`BEAT-${Math.floor(100000 + Math.random() * 90000000)}`);
@@ -39,12 +42,48 @@ export default function PaymentQRPage() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  const handleSimulatePayment = () => {
+  // ⭐️ 2. ฟังก์ชันปุ่มสำเร็จ ให้ยิง API
+  const handleSimulatePayment = async () => {
     setIsChecking(true);
-    setTimeout(() => {
-      const query = new URLSearchParams(params).toString();
-      router.push(`/ticket?${query}`); 
-    }, 2000);
+    try {
+      if (bookingId) {
+        const res = await fetch(`http://127.0.0.1:8000/api/payment/success/${bookingId}`, { method: "POST" });
+        if (!res.ok) {
+            const errorMsg = await res.text();
+            alert("❌ API Error: " + errorMsg);
+            setIsChecking(false);
+            return;
+        }
+      }
+      
+      setTimeout(() => {
+        // 🔴🔴 แก้อยู่ตรงนี้ครับ! ลบการส่ง query ยาวๆ ออก ให้เหลือแค่นี้ 🔴🔴
+        router.push(`/ticket?bookingId=${bookingId}`); 
+      }, 1000);
+      
+    } catch (error) {
+      console.error("Payment confirm error:", error);
+      setIsChecking(false);
+      alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อเครือข่าย");
+    }
+  };
+
+  // ⭐️ 3. ฟังก์ชันปุ่มยกเลิก ให้ยิง API คืนที่นั่ง
+  const handlePaymentFailed = async () => {
+    const confirmCancel = window.confirm("คุณต้องการจำลองการชำระเงินไม่สำเร็จ และยกเลิกรายการนี้ใช่หรือไม่?");
+    if (!confirmCancel) return;
+
+    try {
+      if (bookingId) {
+        // ส่งคำสั่งไปบอกฐานข้อมูลให้ยกเลิกและคืนที่นั่ง
+        await fetch(`http://127.0.0.1:8000/api/payment/cancel/${bookingId}`, { method: "POST" });
+      }
+      alert("❌ ชำระเงินไม่สำเร็จ! ระบบได้ยกเลิกและคืนที่นั่งเรียบร้อยแล้ว");
+      router.push("/"); // พากลับไปหน้าแรกเมื่อยกเลิก
+    } catch (error) {
+      console.error("Cancel payment error:", error);
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อระบบ");
+    }
   };
 
   const slipText = `PAYMENT SUCCESS%0A%0ARef: ${refNo}%0AAmount: ${params.amount} THB%0A%0A(BeatPass Demo)`;
@@ -52,7 +91,7 @@ export default function PaymentQRPage() {
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(mockSlipUrl)}`;
 
   return (
-    // ✅ 1. เพิ่ม style={{ paddingTop: '80px' }} เพื่อดันเนื้อหาลงมาแน่นอน 100%
+    // ✅ เพิ่ม style={{ paddingTop: '80px' }} เพื่อดันเนื้อหาลงมาแน่นอน 100%
     <div 
       className="min-h-screen bg-[#0B0F14] text-white font-sans pb-20 relative overflow-hidden flex flex-col items-center"
       style={{ paddingTop: '80px' }}
@@ -61,7 +100,7 @@ export default function PaymentQRPage() {
       {/* Background Glow */}
       <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#00B4D8]/10 rounded-full blur-[120px] pointer-events-none" />
 
-      {/* ✅ 2. ปุ่มย้อนกลับ (ลบ sticky ออก เพราะเราดัน padding ตัวแม่ลงมาแล้ว) */}
+      {/* ✅ ปุ่มย้อนกลับ */}
       <div className="w-full flex items-center px-8 mb-6 z-50">
         <button 
             onClick={() => router.back()} 
@@ -142,12 +181,23 @@ export default function PaymentQRPage() {
                     <Loader2 size={20} className="animate-spin" /> กำลังตรวจสอบยอดเงิน...
                 </button>
             ) : (
-                <button 
-                    onClick={handleSimulatePayment}
-                    className="w-full py-4 bg-[#00B4D8] hover:bg-[#0096B4] text-white rounded-2xl font-black text-lg shadow-[0_0_20px_rgba(0,180,216,0.3)] transition-all transform active:scale-95 flex items-center justify-center gap-2"
-                >
-                    <CheckCircle2 size={24} /> จำลองการชำระเงินสำเร็จ
-                </button>
+                <div className="space-y-3">
+                    {/* ปุ่มจำลองชำระเงินสำเร็จ (สีฟ้า) */}
+                    <button 
+                        onClick={handleSimulatePayment}
+                        className="w-full py-4 bg-[#00B4D8] hover:bg-[#0096B4] text-white rounded-2xl font-black text-lg shadow-[0_0_20px_rgba(0,180,216,0.3)] transition-all transform active:scale-95 flex items-center justify-center gap-2"
+                    >
+                        <CheckCircle2 size={24} /> จำลองการชำระเงินสำเร็จ
+                    </button>
+
+                    {/* 🔴 ปุ่มจำลองชำระเงินไม่สำเร็จ (สีแดง) */}
+                    <button 
+                        onClick={handlePaymentFailed}
+                        className="w-full py-4 bg-transparent border-2 border-[#E60023] text-[#E60023] rounded-2xl font-black text-lg hover:bg-[#E60023] hover:text-white transition-all transform active:scale-95 flex items-center justify-center gap-2"
+                    >
+                        <XCircle size={24} /> จำลองการชำระเงินไม่สำเร็จ
+                    </button>
+                </div>
             )}
             
             <p className="text-center text-xs text-gray-500">

@@ -1,84 +1,235 @@
 "use client";
 
-import React from "react";
-import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { Plus, Minus, RotateCcw, X, Check, Calendar, MapPin, ChevronLeft, TimerOff } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Plus, Minus, RotateCcw, X, Check, Calendar, MapPin, ChevronLeft, TimerOff, Loader2 } from "lucide-react";
 
 // --- ประกาศ Type ---
-type SeatStatus = "available" | "selected" | "reserved" | "sold";
+type SeatStatus = "available" | "selected" | "reserved" | "sold" | "blank";
 type Seat = {
   id: string;
+  dbId?: number;   // ✅ รหัสที่นั่งจากตาราง seats (Seat_id)
+  zoneId?: number; // ✅ รหัสโซนจากตาราง ticket_zones (Zone_id)
   row: string;
-  number: number;
+  number: string;
   status: SeatStatus;
   price: number;
+  isHidden: boolean; 
 };
 
-const SeatIcon = ({ status, label }: { status: SeatStatus; label: string }) => {
-  let bodyFill = "transparent";   
-  let bodyStroke = "none";        
-  let contentOverlay = <span className="text-[10px] font-bold text-white">{label}</span>;
+// ========================================================
+// 🎨 Component: ไอคอนเก้าอี้
+// ========================================================
+const SeatIcon = ({ status, label, zoneColor }: { status: SeatStatus; label: string, zoneColor: string }) => {
+  if (status === "blank") {
+      return <div className="w-[40px] h-[40px] md:w-[50px] md:h-[50px] opacity-0 pointer-events-none"></div>;
+  }
+
+  let bgColor = "transparent";   
+  let contentOverlay = <span className="text-[12px] md:text-[16px] font-extrabold text-black">{label}</span>;
 
   if (status === "available") {
-    bodyFill = "#00B4D8"; 
-    contentOverlay = <span className="text-[18px] font-extrabold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">{label}</span>;
+    bgColor = zoneColor; 
   } else if (status === "selected") {
-    bodyFill = "#76FF03"; 
+    bgColor = "#76FF03"; 
     contentOverlay = <Check size={28} className="text-black stroke-[4]" />;
   } else if (status === "sold") {
-    bodyFill = "#FFFFFF"; 
-    bodyStroke = "#E5E7EB"; 
-    contentOverlay = <X size={32} className="text-[#DC2626] stroke-[3]" />;
+    bgColor = "#2A2A2A"; 
+    contentOverlay = <X size={28} className="text-[#DC2626] stroke-[4]" />;
   }
 
   return (
-    <div className={`relative w-full h-full flex items-center justify-center transition-all duration-200 ${status === 'available' ? 'hover:scale-110 cursor-pointer' : ''}`}>
-      <svg viewBox="0 0 40 40" className="w-full h-full drop-shadow-sm">
-        <rect x="2" y="2" width="36" height="36" rx="6" fill={bodyFill} stroke={bodyStroke} strokeWidth={status === 'sold' ? 1 : 0} />
-      </svg>
+    <div className={`relative w-[40px] h-[40px] md:w-[50px] md:h-[50px] rounded-full flex items-center justify-center transition-all duration-200 
+      ${status === 'available' ? 'hover:scale-110 cursor-pointer shadow-[0_0_15px_rgba(255,255,255,0.2)] hover:shadow-[0_0_20px_rgba(255,255,255,0.6)]' : 'opacity-80'}
+      ${status === 'sold' ? 'cursor-not-allowed opacity-50' : ''}`}
+      style={{ backgroundColor: bgColor }}
+    >
       <div className="absolute inset-0 flex justify-center items-center pointer-events-none z-10">{contentOverlay}</div>
     </div>
   );
 };
 
+// สีประจำโซน
+const getZoneColor = (zoneName: string) => {
+    const z = zoneName.toUpperCase();
+    if (z.includes('1')) return "#FFCC00"; // L1, C1, R1 สีเหลือง
+    if (z.includes('2')) return "#FF9500"; // สีส้ม
+    if (z.includes('3')) return "#E91E63"; // สีชมพู
+    if (z.includes('4')) return "#00B4D8"; // สีฟ้า
+    if (z.includes('5')) return "#A855F7"; // สีม่วง
+    if (z.includes('6')) return "#76FF03"; // สีเขียวตอง
+    return "#FFCC00"; 
+};
+
 export default function BookingPage() {
   const router = useRouter();
-  const params = useParams();
   const searchParams = useSearchParams();
 
-  // ✅ 1. ดึงข้อมูลงาน โซน และรายละเอียดจาก URL
-  const eventName = searchParams.get("name") || "2060 MOTHERSHIP TALK STAGE: Before the End of the World";
-  const eventDate = searchParams.get("date") || "เสาร์, 15 มกราคม 2026";
-  const eventTime = searchParams.get("time") || "19:00 - 22:00 น.";
-  const eventVenue = searchParams.get("venue") || "Impact Arena, Bangkok";
-  const eventZone = searchParams.get("zone") || "A1"; 
+  const eventId = searchParams.get("eventId");
+  const roundId = searchParams.get("round");
+  const eventName = searchParams.get("name") || "KATAKK MUSIC FEST 2";
+  const eventDate = searchParams.get("date") || "Sunday, 5 Apr 2026";
+  const eventTime = searchParams.get("time") || "19:00 - 23:00";
+  const eventVenue = searchParams.get("venue") || "เมืองไทยรัชดาลัย";
+  const eventZone = searchParams.get("zone") || "L1"; 
+  const tierPrice = Number(searchParams.get("price")) || 0;
 
-  const [seats, setSeats] = React.useState<Seat[]>(() => {
-    const rows = ["U", "T", "S", "R", "Q", "P", "O", "N"];
-    const seatsPerRow = 14;
-    const initialSeats: Seat[] = [];
-    rows.forEach((row) => {
-      for (let i = 1; i <= seatsPerRow; i++) {
-        initialSeats.push({ id: `${row}${i}`, row, number: i, status: "available", price: 1500 });
+  const zoneColor = getZoneColor(eventZone);
+
+  const [seats, setSeats] = useState<Seat[]>([]);
+  const [loadingSeats, setLoadingSeats] = useState(true);
+
+  const [scale, setScale] = useState(1);
+  const [timeLeft, setTimeLeft] = useState(300);
+  const [isTimeout, setIsTimeout] = useState(false); 
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+
+  // ========================================================
+  // 🧠 ฟังก์ชัน: สร้างโครงสร้างผังที่นั่ง
+  // ========================================================
+  const generateStructuralLayout = (zoneName: string): Seat[] => {
+    let maxCol = 12;
+    let startNum = 1;
+    let matrix: { l: number, r: number }[] = [];
+    let rowLetters = "BCDEFGH".split(""); 
+    
+    const name = zoneName.toUpperCase().trim();
+
+    if (name === "L1") {
+        rowLetters = "BCDEFGH".split("");
+        matrix = [
+            {l: 4, r: 0}, // B: เว้น 4 ช่อง
+            {l: 3, r: 0}, // C: เว้น 3 ช่อง
+            {l: 2, r: 0}, // D: เว้น 2 ช่อง
+            {l: 1, r: 0}, // E: เว้น 1 ช่อง
+            {l: 1, r: 0}, // F: เว้น 1 ช่อง
+            {l: 1, r: 0}, // G: เว้น 1 ช่อง
+            {l: 1, r: 0}  // H: เว้น 1 ช่อง
+        ];
+    } 
+    else if (name === "C1") {
+        maxCol = 16; startNum = 13;
+        rowLetters = "ABCDEFGH".split("");
+        matrix = [{l: 0, r: 0}]; 
+    }
+    else if (name === "R1") {
+        maxCol = 12; startNum = 29;
+        rowLetters = "BCDEFGH".split("");
+        matrix = [
+            {l: 0, r: 4}, 
+            {l: 0, r: 3}, 
+            {l: 0, r: 2}, 
+            {l: 0, r: 1}, 
+            {l: 0, r: 1}, 
+            {l: 0, r: 1}, 
+            {l: 0, r: 1}  
+        ];
+    } else {
+        rowLetters = "ABCDEF".split("");
+        matrix = [{l: 0, r: 0}];
+    }
+
+    const templateSeats: Seat[] = [];
+    let rowIndex = 0;
+    
+    while (rowIndex < rowLetters.length) {
+        const rowLetter = rowLetters[rowIndex % rowLetters.length];
+        const conf = matrix[rowIndex] || (matrix.length > 0 ? matrix[matrix.length - 1] : { l: 0, r: 0 });
+        
+        const lBlanks = conf.l || 0;
+        const rBlanks = conf.r || 0;
+        const maxReal = maxCol - lBlanks - rBlanks;
+        
+        for (let i = 0; i < lBlanks; i++) {
+           templateSeats.push({ id: `BL_${rowIndex}_${i}`, row: rowLetter, number: "", status: "blank", price: 0, isHidden: true });
+        }
+        
+        for (let i = 0; i < maxReal; i++) {
+           const seatNum = startNum + lBlanks + i; 
+           templateSeats.push({ 
+               id: `${rowLetter}${seatNum.toString().padStart(2, '0')}`, 
+               row: rowLetter, 
+               number: seatNum.toString().padStart(2, '0'), 
+               status: "available", 
+               price: tierPrice,
+               isHidden: false 
+           });
+        }
+        
+        for (let i = 0; i < rBlanks; i++) {
+           templateSeats.push({ id: `BR_${rowIndex}_${i}`, row: rowLetter, number: "", status: "blank", price: 0, isHidden: true });
+        }
+        rowIndex++;
+    }
+    return templateSeats;
+  };
+
+  // ========================================================
+  // 🔌 ดึงข้อมูลจาก API แล้วประกอบร่าง
+  // ========================================================
+  useEffect(() => {
+    const fetchSeatsAndMap = async () => {
+      if (!eventId || !roundId || !eventZone) return;
+
+      const structuralLayout = generateStructuralLayout(eventZone);
+
+      try {
+        setLoadingSeats(true);
+        const res = await fetch(`http://127.0.0.1:8000/api/seats?eventId=${eventId}&roundId=${roundId}&zoneName=${eventZone}`, {
+            headers: { 'Accept': 'application/json' }
+        });
+        
+        if (!res.ok) throw new Error("API Error");
+        const dbData = await res.json();
+
+        if (dbData && dbData.length > 0) {
+            const finalSeats: Seat[] = structuralLayout.map((templateSeat) => {
+                if (templateSeat.isHidden) return templateSeat; 
+
+                const dbSeat = dbData.find((s: any) => (s.SeatRow + s.SeatNo) === templateSeat.id);
+                
+                if (dbSeat) {
+                    let reactStatus: SeatStatus = 'available';
+                    
+                    // ✅ แมปสถานะภาษาไทยจาก Database
+                    if (dbSeat.SeatStatus === 'จองแล้ว' || dbSeat.SeatStatus === 'กำลังจอง' || dbSeat.SeatStatus === 'ชำรุด/ใช้ไม่ได้') {
+                        reactStatus = 'sold'; // ถ้าไม่ใช่ 'ว่าง' ให้ล็อคเป็นกดไม่ได้ (สีเทา)
+                    }
+
+                    return { 
+                        ...templateSeat, 
+                        status: reactStatus,
+                        dbId: dbSeat.Seat_id,   // ✅ เก็บ Seat_id ไว้
+                        zoneId: dbSeat.Zone_id  // ✅ เก็บ Zone_id ไว้
+                    };
+                } else {
+                    return { ...templateSeat, status: "sold" as SeatStatus }; 
+                }
+            });
+            setSeats(finalSeats);
+        } else {
+            setSeats(structuralLayout);
+        }
+
+      } catch (error) {
+        console.warn("⚠️ Cannot connect to Database. Showing simulated structure.");
+        setSeats(structuralLayout); 
+      } finally {
+        setLoadingSeats(false);
       }
-    });
-    return initialSeats;
-  });
+    };
 
-  const [scale, setScale] = React.useState(0.8);
-  const [timeLeft, setTimeLeft] = React.useState(300);
-  const [isTimeout, setIsTimeout] = React.useState(false); 
-  const [position, setPosition] = React.useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = React.useState(false);
-  const dragStart = React.useRef({ x: 0, y: 0 });
+    fetchSeatsAndMap();
+  }, [eventId, roundId, eventZone, tierPrice]);
 
-  // ✅ 2. เพิ่มฟังก์ชัน handleReset เพื่อแก้ Error
   const handleReset = () => {
-    setScale(0.8);
+    setScale(1);
     setPosition({ x: 0, y: 0 });
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (timeLeft <= 0) {
       setIsTimeout(true); 
       setSeats(prev => prev.map(s => s.status === 'selected' ? { ...s, status: 'available' } : s));
@@ -94,12 +245,11 @@ export default function BookingPage() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  const toggleSeat = (seatId: string) => {
-    if (isDragging || isTimeout) return; 
+  const toggleSeat = (seatId: string, isHidden: boolean, status: string) => {
+    if (isDragging || isTimeout || isHidden || status === "sold") return; 
     setSeats((prev) =>
       prev.map((seat) => {
         if (seat.id !== seatId) return seat;
-        if (seat.status === "sold" || seat.status === "reserved") return seat;
         return { ...seat, status: seat.status === "available" ? "selected" : "available" };
       })
     );
@@ -126,11 +276,13 @@ export default function BookingPage() {
   const selectedSeats = seats.filter((s) => s.status === "selected");
   const totalPrice = selectedSeats.reduce((sum, s) => sum + s.price, 0);
 
+  const rows = Array.from(new Set(seats.map(s => s.row)));
+
   return (
-    <div className="h-screen w-full bg-[#0B0F14] text-white flex pt-16 overflow-hidden font-sans select-none relative">
+    <div className="h-screen w-full bg-[#050505] text-white flex pt-16 overflow-hidden font-sans select-none relative">
       
       {isTimeout && (
-        <div className="fixed inset-0 z-[100] bg-[#0B0F14]/90 backdrop-blur-md flex items-center justify-center p-6 text-center">
+        <div className="fixed inset-0 z-[100] bg-[#050505]/90 backdrop-blur-md flex items-center justify-center p-6 text-center">
           <div className="max-w-sm w-full bg-[#161B22] border border-white/10 p-10 rounded-[2.5rem] shadow-2xl">
             <TimerOff size={40} className="mx-auto mb-6 text-red-500" />
             <h2 className="text-2xl font-black mb-2 uppercase tracking-tight text-white">หมดเวลาทำรายการ</h2>
@@ -140,17 +292,17 @@ export default function BookingPage() {
       )}
 
       {/* LEFT SIDEBAR */}
-      <div className="w-[350px] bg-[#161B22] border-r border-white/5 flex flex-col z-20 shadow-2xl shrink-0 text-white">
-        <div className="p-4 border-b border-white/5">
+      <div className="w-[350px] bg-[#0A0A0A] border-r border-white/10 flex flex-col z-20 shadow-2xl shrink-0 text-white">
+        <div className="p-4 border-b border-white/10">
             <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-400 hover:text-white text-sm font-bold">
-                <ChevronLeft size={18} /> กลับ
+                <ChevronLeft size={18} /> กลับไปหน้าผังใหญ่
             </button>
         </div>
         <div className="p-6 flex-1 overflow-y-auto">
             <h1 className="text-xl font-black leading-tight mb-4 uppercase tracking-tight">{eventName}</h1>
             <div className="space-y-3 mb-6">
                 <div className="flex items-start gap-3 text-sm text-gray-400">
-                    <Calendar size={16} className="mt-0.5 text-[#00B4D8]" />
+                    <Calendar size={16} className="mt-0.5 text-blue-400" />
                     <span>{eventDate}<br/><span className="text-xs text-gray-500">{eventTime}</span></span>
                 </div>
                 <div className="flex items-start gap-3 text-sm text-gray-400">
@@ -160,15 +312,15 @@ export default function BookingPage() {
             </div>
             <div className="border-t border-white/10 my-6"></div>
             <div>
-                {/* ✅ ส่วนแสดงโซน */}
-                <p className="text-xs font-bold text-[#00B4D8] uppercase tracking-[0.2em] mb-1">Zone</p>
-                <p className="text-2xl font-black text-white mb-6 tracking-tighter uppercase">{eventZone}</p>
+                <p className="text-xs font-bold text-blue-400 uppercase tracking-[0.2em] mb-1">Zone</p>
+                <p className="text-3xl font-black text-white mb-2 tracking-tighter uppercase">{eventZone}</p>
+                <p className="text-xl text-blue-400 font-medium mb-6">฿ {tierPrice.toLocaleString()}</p>
                 
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">ที่นั่ง ({selectedSeats.length})</p>
                 <div className="flex flex-wrap gap-2">
                     {selectedSeats.length > 0 ? (
                         selectedSeats.map((s) => (
-                            <span key={s.id} className="bg-[#00B4D8] text-[#0B0F14] px-3 py-1 rounded-md text-xs font-black shadow-lg shadow-blue-500/20">{s.id}</span>
+                            <span key={s.id} className="bg-white text-black px-3 py-1 rounded-md text-xs font-black shadow-lg">{s.id}</span>
                         ))
                     ) : (
                         <span className="text-sm text-gray-600 italic">ยังไม่ได้เลือกที่นั่ง</span>
@@ -176,26 +328,44 @@ export default function BookingPage() {
                 </div>
             </div>
         </div>
-        <div className="p-6 bg-[#0B0F14] border-t border-white/10">
+        
+        {/* 🟢 ส่วนที่แก้ไขปุ่มชำระเงิน 🟢 */}
+        <div className="p-6 bg-[#050505] border-t border-white/10">
             <div className="flex justify-between items-end mb-4">
                 <span className="text-gray-400 text-sm font-bold uppercase tracking-widest">ราคารวม</span>
                 <span className="text-3xl font-black text-white">฿{totalPrice.toLocaleString()}</span>
             </div>
+            
             <button 
                 onClick={() => {
-                  const query = new URLSearchParams({
-                    name: eventName,
-                    date: eventDate,
-                    time: eventTime,
-                    venue: eventVenue,
-                    zone: eventZone,
-                    amount: totalPrice.toString(),
-                    seats: selectedSeats.map(s => s.id).join(", ")
-                  }).toString();
-                  router.push(`/booking_detail?${query}`);
+                    // 1. ตรวจสอบว่าที่นั่งที่เลือก มี ID จากฐานข้อมูลจริงไหม
+                    const validSeatIds = selectedSeats.map(s => s.dbId).filter(id => id !== undefined);
+                    
+                    // 2. ถ้า ID ไม่ครบ แปลว่าเป็นเก้าอี้จำลอง ให้แจ้งเตือนทันที!
+                    if (validSeatIds.length === 0 || validSeatIds.length !== selectedSeats.length) {
+                        alert("❌ ไม่สามารถจองได้: ไม่พบ Seat_id จากฐานข้อมูล\nสาเหตุ: API ไม่ส่งข้อมูลที่นั่งของโซน " + eventZone + " กลับมา กรุณาเช็ค Laravel Backend ครับ");
+                        return; // หยุดการทำงาน ห้ามเปลี่ยนหน้า
+                    }
+
+                    const currentZoneId = selectedSeats.length > 0 && selectedSeats[0].zoneId ? selectedSeats[0].zoneId : 164;
+                    
+                    const query = new URLSearchParams({
+                        name: eventName,
+                        date: eventDate,
+                        time: eventTime,
+                        venue: eventVenue,
+                        zone: eventZone,
+                        amount: totalPrice.toString(),
+                        seats: selectedSeats.map(s => s.id).join(", "),
+                        seatIds: validSeatIds.join(","), // ส่งเฉพาะ ID ที่มีอยู่จริง
+                        roundId: roundId || "44",
+                        zoneId: currentZoneId.toString()
+                    }).toString();
+                    
+                    router.push(`/booking_detail?${query}`);
                 }}
                 disabled={selectedSeats.length === 0}
-                className={`w-full py-4 rounded-xl font-black text-lg transition-all transform active:scale-95 ${selectedSeats.length > 0 ? "bg-[#E60023] text-white shadow-[0_10px_30px_rgba(230,0,35,0.3)]" : "bg-gray-800 text-gray-500 cursor-not-allowed"}`}
+                className={`w-full py-4 rounded-xl font-black text-lg transition-all transform active:scale-95 ${selectedSeats.length > 0 ? "bg-white text-black hover:bg-gray-200" : "bg-gray-800 text-gray-500 cursor-not-allowed"}`}
             >
                 ชำระเงิน
             </button>
@@ -203,33 +373,28 @@ export default function BookingPage() {
       </div>
 
       {/* RIGHT SIDE MAP AREA */}
-      <div className="flex-1 h-full relative bg-[#0B0F14] overflow-hidden bg-dots-pattern">
+      <div className="flex-1 h-full relative bg-[#050505] overflow-hidden">
         <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center px-8 py-4 pointer-events-none">
             {/* TIMER */}
-            <div className="bg-[#161B22]/90 backdrop-blur border border-white/10 px-6 py-2 rounded-full pointer-events-auto shadow-xl">
+            <div className="bg-black/50 backdrop-blur border border-white/10 px-6 py-2 rounded-full pointer-events-auto shadow-xl">
                 <span className="text-red-500 font-bold font-mono text-xl tracking-tighter">{formatTime(timeLeft)}</span>
             </div>
 
-            {/* ✅ LEGEND (คำอธิบายสถานะ) แก้ไขใหม่ */}
-            <div className="flex gap-4 bg-[#161B22]/90 backdrop-blur border border-white/10 px-6 py-2 rounded-full pointer-events-auto shadow-xl items-center">
-                {/* ว่าง: สีฟ้าเดิม ขยายขนาด */}
+            {/* LEGEND */}
+            <div className="flex gap-4 bg-black/50 backdrop-blur border border-white/10 px-6 py-2 rounded-full pointer-events-auto shadow-xl items-center">
                 <div className="flex items-center gap-2 text-sm uppercase font-bold text-gray-400">
-                    <div className="w-6 h-6 bg-[#00B4D8] rounded-sm shadow-sm"></div> 
+                    <div className="w-5 h-5 rounded-full" style={{ backgroundColor: zoneColor }}></div> 
                     <span>ว่าง</span>
                 </div>
-                
-                {/* เลือก: สีเขียว + ติ๊กถูกสีดำ */}
                 <div className="flex items-center gap-2 text-sm uppercase font-bold text-gray-400">
-                    <div className="w-6 h-6 bg-[#76FF03] rounded-sm flex items-center justify-center shadow-sm">
-                        <Check size={16} className="text-black stroke-[4]" />
+                    <div className="w-5 h-5 bg-[#76FF03] rounded-full flex items-center justify-center">
+                        <Check size={14} className="text-black stroke-[4]" />
                     </div> 
                     <span>เลือก</span>
                 </div>
-                
-                {/* ขายแล้ว: สีขาว + กากบาทสีแดง */}
                 <div className="flex items-center gap-2 text-sm uppercase font-bold text-gray-400">
-                    <div className="w-6 h-6 bg-white rounded-sm flex items-center justify-center shadow-sm">
-                        <X size={16} className="text-[#DC2626] stroke-[3]" />
+                    <div className="w-5 h-5 bg-[#2A2A2A] rounded-full flex items-center justify-center">
+                        <X size={14} className="text-[#DC2626] stroke-[3]" />
                     </div> 
                     <span>ขายแล้ว</span>
                 </div>
@@ -242,24 +407,43 @@ export default function BookingPage() {
              onMouseUp={handleMouseUp}
              onMouseLeave={handleMouseUp}
              onWheel={handleWheel}>
-             <div className={`flex flex-col items-center ${isDragging ? 'duration-0' : 'duration-300'} transition-transform shadow-blue-500/5`} 
+             
+             <div className={`flex flex-col items-center ${isDragging ? 'duration-0' : 'duration-300'} transition-transform`} 
                   style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})` }}>
-                <div className="w-[600px] h-32 bg-gradient-to-b from-gray-700 to-gray-800 mb-20 rounded-sm flex items-center justify-center text-white/20 font-black text-4xl tracking-[1em] shadow-2xl relative shrink-0">
-                    STAGE
-                    <div className="absolute bottom-0 w-full h-1 bg-blue-500 shadow-[0_0_30px_#3B82F6]"></div>
-                </div>
-                <div className="grid gap-2 w-max mx-auto px-40" style={{ gridTemplateColumns: `repeat(14, 60px)` }}>
-                    {seats.map((seat) => (
-                        <button key={seat.id} onClick={() => toggleSeat(seat.id)} disabled={seat.status === "sold"} className="relative w-[50px] h-[50px] focus:outline-none group shrink-0">
-                            <SeatIcon status={seat.status} label={seat.id} />
-                        </button>
-                    ))}
-                </div>
+                
+                <h3 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-widest drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">โซน {eventZone}</h3>
+                <p className="text-xl text-cyan-400 mb-12 font-medium">฿ {tierPrice.toLocaleString()}</p>
+
+                {loadingSeats ? (
+                    <div className="flex flex-col items-center justify-center h-40 text-blue-400">
+                      <Loader2 className="animate-spin mb-2" size={40} />
+                      <p>กำลังโหลดที่นั่ง...</p>
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-2 md:gap-3 pointer-events-auto">
+                        {rows.map(rowLetter => (
+                            <div key={rowLetter} className="flex items-center gap-2 md:gap-3 justify-center">
+                                {/* ตัวอักษรฝั่งซ้าย */}
+                                <span className="w-6 text-slate-400 font-bold text-sm md:text-lg text-right pr-4">{rowLetter}</span>
+                                
+                                {/* เก้าอี้ในแถวนั้น */}
+                                {seats.filter(s => s.row === rowLetter).map(seat => (
+                                    <div key={seat.id} onClick={() => toggleSeat(seat.id, seat.isHidden, seat.status)}>
+                                        <SeatIcon status={seat.status} label={seat.number} zoneColor={zoneColor} />
+                                    </div>
+                                ))}
+
+                                {/* ตัวอักษรฝั่งขวา */}
+                                <span className="w-6 text-slate-400 font-bold text-sm md:text-lg text-left pl-4">{rowLetter}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
 
         {/* Controls */}
-        <div className="absolute right-6 bottom-6 flex flex-col gap-2 bg-[#161B22] p-2 rounded-xl border border-white/10 shadow-xl z-10 text-white">
+        <div className="absolute right-6 bottom-6 flex flex-col gap-2 bg-black/50 p-2 rounded-xl border border-white/10 shadow-xl z-10 text-white">
             <button onClick={() => setScale(s => Math.min(s + 0.1, 3))} className="p-2 hover:bg-white/10 rounded-lg transition-colors"><Plus size={20} /></button>
             <button onClick={() => setScale(s => Math.max(s - 0.1, 0.4))} className="p-2 hover:bg-white/10 rounded-lg transition-colors"><Minus size={20} /></button>
             <button onClick={handleReset} className="p-2 hover:bg-white/10 rounded-lg transition-colors"><RotateCcw size={20} /></button>

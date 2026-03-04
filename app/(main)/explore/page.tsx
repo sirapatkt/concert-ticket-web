@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Calendar, MapPin, Ticket, SlidersHorizontal, Search, Frown, Check, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 
-// ✅ 1. เพิ่มฟังก์ชันแยกประเภทจากชื่อคอนเสิร์ตไว้ตรงนี้
+// ✅ ฟังก์ชันแยกประเภทจากชื่อคอนเสิร์ต
 const getEventType = (name: string) => {
   const text = name.toLowerCase(); 
   
@@ -22,8 +22,30 @@ const getEventType = (name: string) => {
     return "ออร์เคสตรา";
   }
   
-  // ถ้าหาคำพวกนี้ไม่เจอเลย ให้เหมาว่าเป็น "คอนเสิร์ต" ไปก่อน
   return "คอนเสิร์ต"; 
+};
+
+// ✅ เพิ่มฟังก์ชันแปลงสถานะเป็นภาษาไทย กำหนดสี และสิทธิ์การแสดงผล
+const getThaiStatusInfo = (status: string) => {
+  const s = (status || "UPCOMING").toUpperCase();
+  
+  if (s === "ON SALE" || s === "ONGOING") {
+    return { text: "กำลังจัด", color: "bg-green-500", isVisible: true };
+  }
+  if (s === "UPCOMING") {
+    return { text: "กำลังจะจัด", color: "bg-blue-600", isVisible: true };
+  }
+  if (s === "SOLD OUT") {
+    return { text: "ขายหมดแล้ว", color: "bg-gray-600", isVisible: true }; 
+  }
+  // ❌ เพิ่มการดักจับคำว่า PENDING, PREPARING, DRAFT หรือคำว่า "กำลังเตรียม" ตรงๆ
+  if (s === "PREPARING" || s === "PENDING" || s === "DRAFT" || s === "กำลังเตรียม" || s.includes("เตรียม")) {
+    return { text: "กำลังเตรียม", color: "bg-gray-400", isVisible: false }; 
+  }
+  
+  
+  // Default fallback
+  return { text: status, color: "bg-blue-600", isVisible: true }; 
 };
 
 export default function ExplorePage() {
@@ -72,6 +94,9 @@ export default function ExplorePage() {
               : `http://127.0.0.1:8000/storage/${item.bannerImage}`;
           }
 
+          // ✅ 4. ดึงข้อมูลสถานะที่แปลงแล้ว
+          const statusInfo = getThaiStatusInfo(item.eventStatus);
+
           return {
             id: item.Event_id,
             title: item.eventName,
@@ -79,15 +104,17 @@ export default function ExplorePage() {
             venue: item.hall?.Hall_Name || "TBA",
             price: minPriceVal,
             image: imageUrl,
-            
-            // ✅ 2. เรียกใช้ฟังก์ชันที่นี่ เพื่อให้ระบบประเมินประเภทจากชื่อ
             type: getEventType(item.eventName),
             
-            status: item.eventStatus || "UPCOMING",
-            statusColor: item.eventStatus === "On Sale" ? "bg-green-500" : "bg-blue-600",
-            isSoldOut: item.eventStatus === "Sold Out"
+            // ✅ นำข้อมูลสถานะที่ได้มาใช้งาน
+            status: statusInfo.text,
+            statusColor: statusInfo.color,
+            isVisible: statusInfo.isVisible,
+            isSoldOut: (item.eventStatus || "").toUpperCase() === "SOLD OUT"
           };
-        });
+        })
+        // ✅ 5. กรองเอาเฉพาะข้อมูลที่ isVisible เป็น true เท่านั้น (ตัด "กำลังเตรียม" ทิ้งตั้งแต่ตรงนี้)
+        .filter((event: any) => event.isVisible);
 
         setEvents(formattedEvents);
       } catch (error) {
@@ -114,6 +141,8 @@ export default function ExplorePage() {
 
   const filteredEvents = events
     .filter(event => {
+      if (!event.isVisible) return false;
+      
       const matchesCategory = categoryParam === "ทั้งหมด" || event.type === categoryParam;
       const matchesMinPrice = minPrice === "" || event.price >= parseInt(minPrice);
       const matchesMaxPrice = maxPrice === "" || event.price <= parseInt(maxPrice);
@@ -243,6 +272,7 @@ export default function ExplorePage() {
                   <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#161B22] via-transparent to-transparent opacity-80"></div>
                   
+                  {/* แสดงป้ายสถานะ (ที่ถูกแปลงเป็นภาษาไทยเรียบร้อยแล้ว) */}
                   {event.status && (
                     <div className={`absolute top-3 right-3 ${event.statusColor} text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg uppercase`}>
                       {event.status}

@@ -1,34 +1,80 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Timer, User, Smartphone, ShieldCheck, X, Check } from "lucide-react";
+import { ChevronLeft, Timer, User, Smartphone, ShieldCheck, X, Check, Loader2 } from "lucide-react";
 
 export default function BookingDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // ข้อมูลจาก URL
+  // ข้อมูลแสดงผลจาก URL
   const eventName = searchParams.get("name") || "2060 MOTHERSHIP TALK STAGE";
   const eventDate = searchParams.get("date") || "เสาร์, 15 มกราคม 2026";
-  const eventTime = searchParams.get("time") || "19:00 - 22:00 น.";
+  const eventTime = searchParams.get("time") || "19:00 - 23:00";
   const eventVenue = searchParams.get("venue") || "Impact Arena, Bangkok";
-  const eventZone = searchParams.get("zone") || "A1";
+  const eventZone = searchParams.get("zone") || "L1";
   const selectedSeatsStr = searchParams.get("seats") || "-";
   const amountStr = searchParams.get("amount") || "0";
 
-  // คำนวณยอดเงินจริง (สมมติค่าธรรมเนียม)
+  // ข้อมูล Database ID ที่ส่งมาจากหน้าผังที่นั่ง
+  const roundId = searchParams.get("roundId");
+  const zoneId = searchParams.get("zoneId");
+  const seatIdsStr = searchParams.get("seatIds") || "";
+  const seatIdsArray = seatIdsStr.split(",").filter(id => id !== "").map(Number);
+
+  // คำนวณยอดเงินจริง
   const ticketPrice = Number(amountStr);
   const seatCount = selectedSeatsStr.split(",").filter(s => s !== "-").length;
-  const serviceFee = seatCount * 20; // ค่าธรรมเนียม 20 บาทต่อใบ
+  const serviceFee = seatCount * 20; 
   const finalTotal = ticketPrice + serviceFee;
 
-  const memberData = { fullName: "John Doe", email: "user@beatpass.com" };
-  
-  const [timeLeft, setTimeLeft] = React.useState(300);
-  const [isAgreed, setIsAgreed] = React.useState(false); // ✅ Checkbox State
+  const [memberData, setMemberData] = useState({ fullName: "กำลังโหลดข้อมูล...", email: "กำลังโหลด..." });
+  const [timeLeft, setTimeLeft] = useState(300);
+  const [isAgreed, setIsAgreed] = useState(false); 
+  const [isProcessing, setIsProcessing] = useState(false); 
 
-  React.useEffect(() => {
+  // 🟢 1. ดึงข้อมูล Profile (ใช้โค้ดแบบเดียวกับหน้าแก้ไขโปรไฟล์)
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const token = localStorage.getItem("token"); // ดึงกุญแจ
+      if (!token) {
+        setMemberData({ fullName: "ไม่พบข้อมูล (ยังไม่ได้ Login)", email: "-" });
+        return;
+      }
+
+      try {
+        // ยิงไปที่ /api/profile แบบเดียวกับหน้าแก้โปรไฟล์
+        const res = await fetch("http://127.0.0.1:8000/api/profile", {
+          headers: { 
+            "Authorization": `Bearer ${token}`, // แนบกุญแจ
+            "Accept": "application/json" 
+          }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          // เอา firstName กับ lastName มาต่อกัน
+          const fullName = `${data.firstName || ""} ${data.lastName || ""}`.trim();
+          
+          setMemberData({ 
+            fullName: fullName || "ผู้ใช้งานระบบ", 
+            email: data.email || "-" 
+          });
+        } else {
+          setMemberData({ fullName: "ไม่พบข้อมูลผู้ใช้", email: "-" });
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        setMemberData({ fullName: "ข้อผิดพลาดในการเชื่อมต่อ", email: "-" });
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  // ระบบจับเวลา
+  useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) { clearInterval(timer); return 0; }
@@ -44,6 +90,51 @@ export default function BookingDetailPage() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
+  // 🟢 2. ฟังก์ชันยืนยันการจอง (แนบ Token ด้วยเสมอ)
+  const handleConfirmBooking = async () => {
+    setIsProcessing(true);
+
+    if (!roundId || !zoneId || seatIdsArray.length === 0) {
+      alert("⚠️ โหมดทดสอบ UI: ที่นั่งนี้ยังไม่มีใน Database ของคุณ ระบบจะพาข้ามไปดูหน้า QR Code จำลองเลยนะครับ!");
+      setTimeout(() => {
+          router.push(`/payment/qr?bookingId=TEST-001&amount=${finalTotal}`);
+          setIsProcessing(false);
+      }, 1000);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://127.0.0.1:8000/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          ...(token && { "Authorization": `Bearer ${token}` }) // แนบกุญแจตอนซื้อตั๋ว
+        },
+        body: JSON.stringify({
+          Datetime_id: parseInt(roundId),
+          Zone_id: parseInt(zoneId),
+          seat_ids: seatIdsArray
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        router.push(`/payment/qr?bookingId=${data.booking_id}&amount=${finalTotal}`);
+      } else {
+        const errorData = await res.json();
+        alert(errorData.message || "ขออภัย ที่นั่งนี้ถูกจองไปแล้วในขณะที่คุณกำลังทำรายการ");
+        router.back(); 
+      }
+    } catch (error) {
+      console.error("Confirm Booking Error:", error);
+      alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0B0F14] text-white font-sans pb-20 relative overflow-x-hidden">
       
@@ -53,7 +144,7 @@ export default function BookingDetailPage() {
           <div className="max-w-sm w-full bg-[#161B22] border border-white/10 p-10 rounded-[2.5rem] shadow-2xl">
             <X size={40} className="text-red-500 mx-auto mb-6" />
             <h2 className="text-2xl font-black mb-2 uppercase tracking-tight">หมดเวลาทำรายการ</h2>
-            <button onClick={() => router.push("/booking")} className="w-full py-4 bg-[#E60023] text-white rounded-2xl font-black text-lg">ตกลง</button>
+            <button onClick={() => router.back()} className="w-full py-4 bg-[#E60023] text-white rounded-2xl font-black text-lg">ตกลง</button>
           </div>
         </div>
       )}
@@ -131,7 +222,6 @@ export default function BookingDetailPage() {
                 </div>
               </div>
 
-              {/* ✅ แจกแจงราคา (ตัดส่วนลดออกแล้ว) */}
               <div className="space-y-2 mb-6 text-xs">
                 <div className="flex justify-between text-gray-400">
                     <span>ราคาบัตร</span>
@@ -148,7 +238,6 @@ export default function BookingDetailPage() {
                 <span className="text-3xl font-black text-white leading-none tracking-tighter">฿{finalTotal.toLocaleString()}</span>
               </div>
 
-              {/* ✅ Checkbox ยอมรับเงื่อนไข */}
               <div className="flex items-start gap-3 mb-6 group cursor-pointer" onClick={() => setIsAgreed(!isAgreed)}>
                 <div className={`w-5 h-5 rounded border border-white/20 flex items-center justify-center shrink-0 transition-colors ${isAgreed ? 'bg-[#00B4D8] border-[#00B4D8]' : 'bg-transparent group-hover:border-white/50'}`}>
                     {isAgreed && <Check size={14} className="text-black" />}
@@ -158,12 +247,19 @@ export default function BookingDetailPage() {
                 </p>
               </div>
 
+              {/* ปุ่มยืนยันการจอง */}
               <button 
-                onClick={() => router.push(`/payment/qr?amount=${finalTotal}`)} 
-                disabled={!isAgreed} // ห้ามกดถ้าไม่ติ๊กถูก
-                className={`w-full py-5 rounded-2xl font-black text-xl shadow-[0_10px_40px_rgba(230,0,35,0.3)] transition-all transform active:scale-95 flex items-center justify-center gap-2 ${isAgreed ? 'bg-[#E60023] hover:bg-[#C2001E] text-white' : 'bg-gray-700 text-gray-500 cursor-not-allowed shadow-none'}`}
+                onClick={handleConfirmBooking} 
+                disabled={!isAgreed || isProcessing}
+                className={`w-full py-5 rounded-2xl font-black text-xl shadow-[0_10px_40px_rgba(230,0,35,0.3)] transition-all transform active:scale-95 flex items-center justify-center gap-2 ${isAgreed && !isProcessing ? 'bg-[#E60023] hover:bg-[#C2001E] text-white' : 'bg-gray-700 text-gray-500 cursor-not-allowed shadow-none'}`}
               >
-                ยืนยันการจอง
+                {isProcessing ? (
+                  <>
+                    <Loader2 size={24} className="animate-spin" /> กำลังทำรายการ...
+                  </>
+                ) : (
+                  "ยืนยันการจอง"
+                )}
               </button>
 
               <div className="mt-6 flex items-center justify-center gap-2 text-[10px] text-gray-600 font-bold uppercase tracking-widest">

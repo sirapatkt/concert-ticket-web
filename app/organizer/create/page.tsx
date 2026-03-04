@@ -22,14 +22,14 @@ type VenueSize = keyof typeof GRID_SIZES;
 
 const PREDEFINED_PLANS: Record<string, Record<VenueSize, string>> = {
   "1": { // อิมแพคอารีน่า
-    "Small": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1771491663/IM-small_dl59ai.jpg",
-    "Medium": "/images/plans/MT-medium.jpg",
-    "Large": "/images/plans/MT-big.jpg",
+    "Small": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1772092022/S__68526083_0_fr3z72.jpg",
+    "Medium": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1772092027/S__68526084_0_mdjqnl.jpg",
+    "Large": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1772092034/S__68526085_0_samzcb.jpg",
   },
   "2": { // มหิดลฮอล์
-    "Small": "/images/plans/MT-small.jpg",
-    "Medium": "/images/plans/MT-medium.jpg",
-    "Large": "/images/plans/MT-big.jpg",
+    "Small": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1772092141/S__68517894_0_u4ud72.jpg",
+    "Medium": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1772092149/S__68517893_0_yi253r.jpg",
+    "Large": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1772092157/S__68517892_0_toexgb.jpg",
   },
   "3": { // เมืองไทยรัชดาลัย
     "Small": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1771487600/MT-small_k9ktvy.jpg",
@@ -370,13 +370,20 @@ export default function CreateEventPage() {
   };
 
   // ✅ ปรับปรุงให้ไม่สามารถกรอกเกิน maxQuantity ได้
+  // ✅ ปรับปรุงให้ไม่สามารถกรอกเกิน maxQuantity และจำกัดราคาไม่เกิน 5 หลัก
   const updateTicket = (index: number, field: keyof TicketTier, value: string | number) => {
     const newTickets = [...tickets];
     
     if (field === "zoneName") {
         newTickets[index].zoneName = String(value);
     } else if (field === "price") {
-        newTickets[index].price = Math.max(0, Number(value));
+        // 👇 อัปเดตส่วนนี้: ล็อกราคาไม่ให้ติดลบ และไม่ให้เกิน 99,999
+        let val = Math.max(0, Number(value));
+        if (val > 99999) {
+            alert("ราคาบัตรไม่สามารถตั้งเกิน 5 หลัก (99,999 บาท) ได้ครับ 💸");
+            val = 99999; // บังคับกลับมาที่ค่าสูงสุด
+        }
+        newTickets[index].price = val;
     } else if (field === "quantity") {
         let val = Math.max(0, Number(value));
         const max = newTickets[index].maxQuantity;
@@ -695,33 +702,39 @@ export default function CreateEventPage() {
                    )}
                </div>
 
-               <div className="space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
+               {/* ✅ ส่วนที่อัปเดตใหม่ ป้องกันบีบและซ่อน Scrollbar ✅ */}
+               <div className="space-y-3 max-h-[500px] overflow-y-auto overflow-x-hidden custom-scrollbar pr-2">
                    {tickets.map((ticket, index) => (
-                       <div key={index} className="flex gap-4 items-center p-4 rounded-xl border border-slate-700 bg-transparent hover:border-purple-500/50 transition-colors">
-                           <div className="flex-1">
-                               <label className="text-xs text-slate-500 mb-1.5 block">โซน</label>
-                               <input type="text" value={ticket.zoneName} onChange={(e) => updateTicket(index, 'zoneName', e.target.value)} placeholder="Zone A" className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors" />
-                           </div>
-                           <div className="flex-1">
-                               <label className="text-xs text-slate-500 mb-1.5 block">ราคา</label>
-                               <input type="number" min="0" value={ticket.price} onChange={(e) => updateTicket(index, 'price', e.target.value)} className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors" />
-                           </div>
-                           <div className="flex-1">
-                               {/* 🌟 แสดงข้อความเตือน maxQuantity 🌟 */}
-                               <label className="text-xs text-slate-500 mb-1.5 flex justify-between">
-                                 <span>จำนวน</span>
-                                 {ticket.maxQuantity !== undefined && (
-                                   <span className="text-red-400 text-[9px]">(สูงสุด {ticket.maxQuantity})</span>
-                                 )}
-                               </label>
-                               <input type="number" min="0" max={ticket.maxQuantity} value={ticket.quantity} onChange={(e) => updateTicket(index, 'quantity', e.target.value)} className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors" />
-                           </div>
-                           <div className="pt-6 flex items-center justify-center">
-                               <button onClick={() => removeTicketTier(index)} className="text-slate-600 hover:text-red-500 p-1.5 transition-colors">
-                                   <Trash2 size={20} />
-                               </button>
-                           </div>
-                       </div>
+                      <div key={index} className="flex gap-2 items-start p-3 rounded-xl border border-slate-700 bg-[#1E293B]/20 hover:border-purple-500/50 transition-colors">
+                          
+                          {/* 1. ช่องโซน (ล็อกความกว้างไว้ที่ w-16 ไม่ให้โดนบีบ) */}
+                          <div className="w-16 shrink-0">
+                              <label className="text-[10px] text-slate-500 mb-1 block text-center">โซน</label>
+                              <input type="text" value={ticket.zoneName} onChange={(e) => updateTicket(index, 'zoneName', e.target.value)} placeholder="A1" className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-2 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors text-center" />
+                          </div>
+                          
+                          {/* 2. ช่องราคา (ให้ขยายตัวยืดหยุ่นเต็มพื้นที่ และใส่ min-w-0 กันดันกรอบแตก) */}
+                          <div className="flex-1 min-w-0">
+                              <label className="text-[10px] text-slate-500 mb-1 block text-center">ราคา</label>
+                              <input type="number" min="0" value={ticket.price} onChange={(e) => updateTicket(index, 'price', e.target.value)} placeholder="0" className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-2 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors text-center" />
+                          </div>
+                          
+                          {/* 3. ช่องจำนวน (ล็อกความกว้างไว้ ไม่ให้หด และจัดข้อความไม่ให้ตกบรรทัด) */}
+                          <div className="w-24 shrink-0">
+                              <label className="text-[10px] text-slate-500 mb-1 block whitespace-nowrap text-center">
+                                  จำนวน {ticket.maxQuantity !== undefined && <span className="text-red-400">(เต็ม {ticket.maxQuantity})</span>}
+                              </label>
+                              <input type="number" min="0" max={ticket.maxQuantity} value={ticket.quantity} onChange={(e) => updateTicket(index, 'quantity', e.target.value)} className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-2 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors text-center" />
+                          </div>
+                          
+                          {/* 4. ปุ่มลบ */}
+                          <div className="pt-5 shrink-0 flex items-center justify-center">
+                              <button onClick={() => removeTicketTier(index)} className="text-slate-500 hover:text-red-500 p-1.5 transition-colors">
+                                  <Trash2 size={16} />
+                              </button>
+                          </div>
+
+                      </div>
                    ))}
                </div>
             </div>
