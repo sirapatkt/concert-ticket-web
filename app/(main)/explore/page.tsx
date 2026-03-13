@@ -137,7 +137,7 @@ export default function ExplorePage() {
     router.push(`/explore?q=${query}&category=${cat}`);
   };
 
-  const categories = ["ทั้งหมด", "คอนเสิร์ต", "แฟนมีตติ้ง", "ละครเวที", "ออร์เคสตรา"];
+  const categories = ["ทั้งหมด", "คอนเสิร์ต", "เทศกาลดนตรี", "แฟนมีตติ้ง", "ละครเวที", "ออร์เคสตรา"];
 
   const filteredEvents = events
     .filter(event => {

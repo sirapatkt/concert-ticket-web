@@ -91,7 +91,7 @@ export default function BookingDetailPage() {
   };
 
   // 🟢 2. ฟังก์ชันยืนยันการจอง (แนบ Token ด้วยเสมอ)
-  const handleConfirmBooking = async () => {
+ const handleConfirmBooking = async () => {
     setIsProcessing(true);
 
     if (!roundId || !zoneId || seatIdsArray.length === 0) {
@@ -105,13 +105,25 @@ export default function BookingDetailPage() {
 
     try {
       const token = localStorage.getItem("token");
+      
+      // ✅ สร้าง Headers แบบตรงไปตรงมา
+      const headersConfig: HeadersInit = {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      };
+
+      // ✅ ถ้ามี Token ให้ใส่เข้าไปตรงๆ
+      if (token) {
+        headersConfig["Authorization"] = `Bearer ${token}`;
+      } else {
+        alert("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่");
+        router.push("/login");
+        return;
+      }
+
       const res = await fetch("http://127.0.0.1:8000/api/bookings", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          ...(token && { "Authorization": `Bearer ${token}` }) // แนบกุญแจตอนซื้อตั๋ว
-        },
+        headers: headersConfig,
         body: JSON.stringify({
           Datetime_id: parseInt(roundId),
           Zone_id: parseInt(zoneId),

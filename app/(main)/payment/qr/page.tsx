@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Timer, Download, Share2, ScanLine, CheckCircle2, Loader2, XCircle } from "lucide-react";
 
+
 export default function PaymentQRPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -27,14 +28,30 @@ export default function PaymentQRPage() {
 
   React.useEffect(() => {
     setRefNo(`BEAT-${Math.floor(100000 + Math.random() * 90000000)}`);
+    
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
-        if (prev <= 1) { clearInterval(timer); return 0; }
+        if (prev <= 1) { 
+            clearInterval(timer); 
+            
+            // ⭐️ เพิ่มการทำงานตรงนี้ เมื่อเวลาหมด
+            if (bookingId) {
+                // ยิง API คืนที่นั่งทันที (ไม่ต้องรอให้กดปุ่ม)
+                fetch(`http://127.0.0.1:8000/api/payment/cancel/${bookingId}`, { method: "POST" })
+                .then(() => {
+                    alert("⏱️ หมดเวลาชำระเงิน! ระบบได้คืนที่นั่งเรียบร้อยแล้ว");
+                    router.push("/"); // พากลับไปหน้าแรก
+                })
+                .catch(err => console.error("Auto cancel error:", err));
+            }
+            return 0; 
+        }
         return prev - 1;
       });
     }, 1000);
+
     return () => clearInterval(timer);
-  }, []);
+  }, [bookingId, router]); // ✅ อย่าลืมเพิ่ม dependencies ตรงนี้
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -42,12 +59,21 @@ export default function PaymentQRPage() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  // ⭐️ 2. ฟังก์ชันปุ่มสำเร็จ ให้ยิง API
+ // ⭐️ 2. ฟังก์ชันปุ่มสำเร็จ ให้ยิง API พร้อมส่งยอดเงินไปให้ Backend บันทึก
   const handleSimulatePayment = async () => {
     setIsChecking(true);
     try {
       if (bookingId) {
-        const res = await fetch(`http://127.0.0.1:8000/api/payment/success/${bookingId}`, { method: "POST" });
+        const res = await fetch(`http://127.0.0.1:8000/api/payment/success/${bookingId}`, { 
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json", // บอก API ว่าเราจะส่งข้อมูลเป็น JSON
+          },
+          body: JSON.stringify({
+            amount: params.amount // 👈 ส่งยอดเงินแนบไปให้ Backend ด้วย
+          })
+        });
+
         if (!res.ok) {
             const errorMsg = await res.text();
             alert("❌ API Error: " + errorMsg);
@@ -57,7 +83,6 @@ export default function PaymentQRPage() {
       }
       
       setTimeout(() => {
-        // 🔴🔴 แก้อยู่ตรงนี้ครับ! ลบการส่ง query ยาวๆ ออก ให้เหลือแค่นี้ 🔴🔴
         router.push(`/ticket?bookingId=${bookingId}`); 
       }, 1000);
       
@@ -76,10 +101,18 @@ export default function PaymentQRPage() {
     try {
       if (bookingId) {
         // ส่งคำสั่งไปบอกฐานข้อมูลให้ยกเลิกและคืนที่นั่ง
-        await fetch(`http://127.0.0.1:8000/api/payment/cancel/${bookingId}`, { method: "POST" });
+        const res = await fetch(`http://127.0.0.1:8000/api/payment/cancel/${bookingId}`, { method: "POST" });
+        
+        // 🚨 ดัก Error ถ้าระบบหลังบ้านพัง ให้ Alert ฟ้องขึ้นมาเลย
+        if (!res.ok) {
+            const err = await res.text();
+            alert("❌ Database Error: " + err);
+            return; // หยุดทำงาน ไม่พากลับหน้าแรก
+        }
       }
+      
       alert("❌ ชำระเงินไม่สำเร็จ! ระบบได้ยกเลิกและคืนที่นั่งเรียบร้อยแล้ว");
-      router.push("/"); // พากลับไปหน้าแรกเมื่อยกเลิก
+      router.push("/"); // พากลับไปหน้าแรกเมื่อยกเลิกสำเร็จจริงๆ
     } catch (error) {
       console.error("Cancel payment error:", error);
       alert("เกิดข้อผิดพลาดในการเชื่อมต่อระบบ");

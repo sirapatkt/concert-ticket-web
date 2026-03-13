@@ -13,7 +13,7 @@ export default function MyTicketsPage() {
     const fetchTickets = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("http://127.0.0.1:8000/api/orders", {
+        const res = await fetch("http://127.0.0.1:8000/api/bookings", {
           headers: { "Authorization": `Bearer ${token}` }
         });
         if (res.ok) {

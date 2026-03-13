@@ -1,13 +1,33 @@
 "use client";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { 
   Mic2, Drama, Music2, Ticket, MapPin, Calendar, 
   ArrowLeft, Users, Music, Clock, ChevronRight, Tag
 } from "lucide-react";
 import React from "react"; 
 
-// กำหนด Type ของ Config
+// ✅ 1. ฟังก์ชันแยกประเภทจากชื่อคอนเสิร์ต (Keyword Matching)
+const getEventType = (name: string) => {
+  const text = (name || "").toLowerCase(); 
+  
+  if (text.includes("fest") || text.includes("festival") || text.includes("เทศกาลดนตรี")) {
+    return "เทศกาลดนตรี";
+  }
+  if (text.includes("fan") || text.includes("meet") || text.includes("แฟนมีต")) {
+    return "แฟนมีตติ้ง";
+  }
+  if (text.includes("musical") || text.includes("stage") || text.includes("ละครเวที")) {
+    return "ละครเวที";
+  }
+  if (text.includes("orchestra") || text.includes("symphony") || text.includes("philharmonic") || text.includes("ออร์เคสตรา")) {
+    return "ออร์เคสตรา";
+  }
+  
+  return "คอนเสิร์ต"; 
+};
+
 interface CategoryConfigData {
   title: string;
   subtitle: string;
@@ -16,155 +36,45 @@ interface CategoryConfigData {
   icon: React.ReactNode;
 }
 
-// ✅ Mock Data
-const allEvents = [
-  // --- 🎤 CONCERTS ---
-  {
-    id: 1,
-    category: "concert",
-    title: "THE BOYZ WORLD TOUR : ZENERATION II",
-    artist: "THE BOYZ",
-    date: "15 AUG 2025",
-    time: "19:00",
-    venue: "Impact Arena",
-    price: "2,500 - 6,500 THB",
-    image: "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=1000&auto=format&fit=crop", 
-    status: "SELLING"
-  },
-  {
-    id: 2,
-    category: "concert",
-    title: "NCT WISH : SCHOOL of WISH Fan Showcase",
-    artist: "NCT WISH",
-    date: "25 APR 2026",
-    time: "18:00",
-    venue: "MCC Hall",
-    price: "2,000 - 5,500 THB",
-    image: "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?q=80&w=1000&auto=format&fit=crop", 
-    status: "SELLING"
-  },
-  
-  // --- 🤝 FANMEETS ---
-  {
-    id: 3,
-    category: "fanmeet",
-    title: "KIM SEON HO ASIA TOUR <Color+Full>",
-    artist: "Kim Seon Ho",
-    date: "15 FEB 2026",
-    time: "18:00",
-    venue: "Union Hall",
-    price: "2,500 - 6,500 THB",
-    image: "https://images.unsplash.com/photo-1516280440614-6697288d5d38?q=80&w=1000&auto=format&fit=crop", 
-    status: "SELLING"
-  },
-  {
-    id: 4,
-    category: "fanmeet",
-    title: "HWANG IN YOUP FAN MEETING TOUR [IN LOVE]",
-    artist: "Hwang In Youp",
-    date: "14 DEC 2025",
-    time: "17:00",
-    venue: "UOB LIVE, Emsphere",
-    price: "2,500 - 6,500 THB",
-    image: "https://pbs.twimg.com/media/F1_z9cfaYAAy2_K?format=jpg&name=large",
-    status: "SELLING"
-  },
-  {
-    id: 5,
-    category: "fanmeet",
-    title: "PARK BO GUM FANMEETING <Cantabile>",
-    artist: "Park Bo Gum",
-    date: "05 APR 2026",
-    time: "18:00",
-    venue: "Thunder Dome",
-    price: "3,000 - 6,000 THB",
-    image: "https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?q=80&w=1000&auto=format&fit=crop",
-    status: "SELLING"
-  },
-
-  // --- 🎭 THEATER & VARIETY ---
-  {
-    id: 7,
-    category: "theater",
-    title: "THE PHANTOM OF THE OPERA",
-    artist: "Broadway Cast",
-    date: "10-30 JUN 2026",
-    time: "19:30",
-    venue: "Muangthai Rachadalai Theatre",
-    price: "1,500 - 4,500 THB",
-    image: "https://images.unsplash.com/photo-1503095392269-2d6092842485?q=80&w=1000&auto=format&fit=crop",
-    status: "SELLING"
-  },
-  {
-    id: 8,
-    category: "theater",
-    title: "CIRQUE DU SOLEIL: WORLDS AWAY",
-    artist: "Cirque du Soleil",
-    date: "15-20 JUL 2026",
-    time: "19:00",
-    venue: "Impact Arena",
-    price: "2,000 - 5,000 THB",
-    image: "https://images.unsplash.com/photo-1536300007881-7e482242baa5?q=80&w=1000&auto=format&fit=crop",
-    status: "SELLING"
-  },
-  {
-    id: 9,
-    category: "theater",
-    title: "NANTA SHOW BANGKOK",
-    artist: "Nanta",
-    date: "Every Weekend",
-    time: "20:00",
-    venue: "Show DC Hall",
-    price: "1,000 - 2,500 THB",
-    image: "https://images.unsplash.com/photo-1468359601543-843bfaef291a?q=80&w=1000&auto=format&fit=crop",
-    status: "SELLING"
-  },
-
-  // --- 🎻 ORCHESTRA & CLASSICAL ---
-  {
-    id: 10,
-    category: "classical",
-    title: "RBSO 2026: The Great Classics",
-    artist: "Royal Bangkok Symphony Orchestra",
-    date: "05 SEP 2026",
-    time: "19:00",
-    venue: "Thailand Cultural Centre",
-    price: "800 - 3,500 THB",
-    image: "https://images.unsplash.com/photo-1465847899078-b290428d3268?q=80&w=1000&auto=format&fit=crop",
-    status: "EARLY_BIRD"
-  },
-  {
-    id: 11,
-    category: "classical",
-    title: "HARRY POTTER IN CONCERT",
-    artist: "Thailand Philharmonic Orchestra",
-    date: "12 OCT 2026",
-    time: "16:00",
-    venue: "Prince Mahidol Hall",
-    price: "1,500 - 4,000 THB",
-    image: "https://images.unsplash.com/photo-1514117445516-2ecfc9c4ec90?q=80&w=1000&auto=format&fit=crop",
-    status: "SELLING"
-  },
-
-  // --- 🎪 FESTIVALS ---
-  {
-    id: 6,
-    category: "festival",
-    title: "SUMMER SONIC BANGKOK 2025",
-    artist: "Various Artists",
-    date: "22 SEP 2025",
-    time: "14:00",
-    venue: "BITEC Bangna",
-    price: "3,500 THB",
-    image: "https://images.unsplash.com/photo-1459749411177-717441447994?q=80&w=1000&auto=format&fit=crop",
-    status: "EARLY_BIRD"
-  },
-];
-
 export default function CategoryPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  
   const slug = params?.slug as string || 'all';
+  const venue = searchParams?.get('venue'); 
 
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setLoading(true);
+      try {
+        // ✅ 2. ดึงข้อมูลทั้งหมดมาก่อน แล้วให้ Frontend จัดการกรองเอง
+        let url = 'http://localhost:8000/api/public/events';
+          
+        // ถ้ามีการค้นหาด้วยสถานที่ (กดจาก dropdown) ค่อยแนบสถานที่ไป
+        if (venue) {
+            url += `?venue=${venue}`;
+        }
+          
+        const res = await fetch(url);
+        
+        if (res.ok) {
+          const data = await res.json();
+          setEvents(data);
+        }
+      } catch (error) {
+        console.error("Error fetching events:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [venue]);
+
+  // ตั้งค่าสีและข้อความส่วนหัว
   const categoryConfig: Record<string, CategoryConfigData> = {
     concert: { 
       title: "คอนเสิร์ต", 
@@ -208,18 +118,16 @@ export default function CategoryPage() {
       shadow: "shadow-cyan-500/20",
       icon: <Music2 size={40} className="text-white" />,
     },
-    // ✅ เพิ่ม Config สำหรับ "concert-fanmeet" ตรงนี้ครับ
     "concert-fanmeet": {
         title: "คอนเสิร์ต & แฟนมีต",
         subtitle: "รวมทุกความประทับใจ ทั้งคอนเสิร์ตและแฟนมีตติ้ง",
-        // ใช้สีผสมระหว่างฟ้า (Concert) และชมพู (Fanmeet) = สีม่วง
         gradient: "from-violet-600 via-purple-500 to-fuchsia-400",
         shadow: "shadow-purple-500/20",
         icon: <Mic2 size={40} className="text-white" />,
     },
     all: {
       title: "งานแสดงทั้งหมด",
-      subtitle: "ค้นพบอีเวนต์ที่น่าสนใจรอบตัวคุณ",
+      subtitle: venue ? `ค้นหางานที่: ${venue}` : "ค้นพบอีเวนต์ที่น่าสนใจรอบตัวคุณ",
       gradient: "from-gray-700 via-slate-600 to-zinc-500",
       shadow: "shadow-gray-500/20",
       icon: <Ticket size={40} className="text-white" />,
@@ -228,16 +136,25 @@ export default function CategoryPage() {
 
   const config = categoryConfig[slug] || categoryConfig.all;
 
-  // Filter Events Logic
-  const filteredEvents = allEvents.filter(event => {
+  // ✅ 3. ระบบกรองหมวดหมู่จาก Keyword
+  const validEvents = events.filter((event) => event && event.Event_id);
+  
+  const displayEvents = validEvents.filter((event) => {
+    // ถ้าดูทั้งหมด ให้โชว์ทุกงาน
     if (slug === 'all') return true;
-    if (slug === 'concert-fanmeet') {
-       return event.category === 'concert' || event.category === 'fanmeet';
-    }
-    if (slug === 'orchestra') {
-        return event.category === 'classical';
-    }
-    return event.category === slug;
+    
+    // หาสถานะหมวดหมู่จากชื่อ
+    const type = getEventType(event.eventName);
+    
+    // จับคู่ URL Slug ให้ตรงกับประเภทที่กรองได้
+    if (slug === 'concert-fanmeet') return type === 'คอนเสิร์ต' || type === 'แฟนมีตติ้ง';
+    if (slug === 'concert') return type === 'คอนเสิร์ต';
+    if (slug === 'fanmeet') return type === 'แฟนมีตติ้ง';
+    if (slug === 'festival') return type === 'เทศกาลดนตรี';
+    if (slug === 'theater') return type === 'ละครเวที';
+    if (slug === 'classical' || slug === 'orchestra') return type === 'ออร์เคสตรา';
+    
+    return true;
   });
 
   return (
@@ -271,65 +188,87 @@ export default function CategoryPage() {
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Calendar size={20} className="text-gray-400" /> อีเวนต์ที่กำลังจะเกิดขึ้น
           </h2>
-          <div className="text-sm text-gray-500">พบ {filteredEvents.length} รายการ</div>
+          {!loading && <div className="text-sm text-gray-500">พบ {displayEvents.length} รายการ</div>}
         </div>
 
-        {filteredEvents.length > 0 ? (
+        {loading ? (
+          <div className="py-20 text-center text-blue-400 font-bold animate-pulse">กำลังโหลดข้อมูลอีเวนต์...</div>
+        ) : displayEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredEvents.map((event) => (
-              <Link 
-                key={event.id} 
-                href={`/event/${event.id}`}
-                className="group bg-[#161B22] border border-white/5 rounded-2xl overflow-hidden hover:border-white/20 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col"
-              >
-                {/* Image & Status */}
-                <div className="relative h-48 overflow-hidden">
-                  <img src={event.image} alt={event.title} className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-500" />
-                  
-                  {/* Category Badge */}
-                  <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg text-xs font-bold text-white uppercase border border-white/10 flex items-center gap-1">
-                    <Tag size={10} /> {event.category}
+            
+            {displayEvents.map((event, index) => {
+              const lowestPrice = event.ticket_zones && event.ticket_zones.length > 0 
+                ? Math.min(...event.ticket_zones.map((z: any) => parseFloat(z.priceperTick) || 0)) 
+                : 0;
+                
+              // ดึงชื่อประเภทมาโชว์ในป้าย Badge
+              const eventType = getEventType(event.eventName);
+
+              return (
+                <Link 
+                  key={event.Event_id || `event-${index}`} 
+                  href={`/event/${event.Event_id}`}
+                  className="group bg-[#161B22] border border-white/5 rounded-2xl overflow-hidden hover:border-white/20 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col"
+                >
+                  {/* รูปภาพ */}
+                  <div className="relative h-48 overflow-hidden bg-white/5 flex items-center justify-center">
+                    {event.bannerImage ? (
+                      <img 
+                        src={event.bannerImage.startsWith('http') ? event.bannerImage : `http://localhost:8000/storage/${event.bannerImage}`} 
+                        alt={event.eventName} 
+                        className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-500" 
+                      />
+                    ) : (
+                      <span className="text-gray-500 text-xs font-mono">ไม่มีรูปภาพ</span>
+                    )}
+
+                    {/* ✅ Category Badge โชว์คำที่ดึงมาจากชื่องานเลย */}
+                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg text-xs font-bold text-white border border-white/10 flex items-center gap-1">
+                      <Tag size={10} /> {eventType}
+                    </div>
+
+                    {/* Status Badge */}
+                    {(event.eventStatus === 'บัตรขายหมด') && (
+                       <div className="absolute top-3 right-3 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">
+                          SOLD OUT
+                       </div>
+                    )}
                   </div>
 
-                  {/* Status Badge */}
-                  {event.status === 'SOLD_OUT' && (
-                     <div className="absolute top-3 right-3 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">
-                        SOLD OUT
-                     </div>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="p-5 flex flex-col flex-grow">
-                  <h3 className="text-lg font-bold mb-1 line-clamp-1 group-hover:text-blue-400 transition-colors">{event.title}</h3>
-                  <p className="text-gray-400 text-sm mb-4">{event.artist}</p>
-                  
-                  <div className="space-y-2 text-sm text-gray-500 mb-4">
-                    <div className="flex items-center gap-2">
-                      <Calendar size={14} className="shrink-0" /> {event.date}
-                      <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
-                      <Clock size={14} className="shrink-0" /> {event.time}
+                  {/* เนื้อหา */}
+                  <div className="p-5 flex flex-col flex-grow">
+                    <h3 className="text-lg font-bold mb-1 line-clamp-1 group-hover:text-blue-400 transition-colors">
+                      {event.eventName || "ไม่ระบุชื่องาน"} 
+                    </h3>
+                    
+                    <div className="space-y-2 text-sm text-gray-500 mb-4 mt-4">
+                      <div className="flex items-center gap-2">
+                        <Calendar size={14} className="shrink-0" /> 
+                        {event.rental_start ? new Date(event.rental_start).toLocaleDateString('th-TH') : "-"}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin size={14} className="shrink-0" /> 
+                        <span className="truncate">{event.hall?.Hall_Name || "ไม่ระบุสถานที่"}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin size={14} className="shrink-0" /> {event.venue}
+
+                    {/* Price & CTA */}
+                    <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
+                      <div>
+                          <span className="text-[10px] text-gray-500 block uppercase tracking-wider">ราคาเริ่มต้น</span>
+                          <span className={`font-bold text-transparent bg-clip-text bg-gradient-to-r ${config.gradient}`}>
+                          {lowestPrice > 0 ? lowestPrice : "0"} THB
+                          </span>
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-colors">
+                          <ChevronRight size={16} />
+                      </div>
                     </div>
                   </div>
+                </Link>
+              );
+            })}
 
-                  {/* Price & CTA */}
-                  <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
-                    <div>
-                        <span className="text-[10px] text-gray-500 block uppercase tracking-wider">ราคาเริ่มต้น</span>
-                        <span className={`font-bold text-transparent bg-clip-text bg-gradient-to-r ${config.gradient}`}>
-                        {event.price}
-                        </span>
-                    </div>
-                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-colors">
-                        <ChevronRight size={16} />
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
           </div>
         ) : (
           /* Empty State */

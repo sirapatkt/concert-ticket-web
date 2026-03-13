@@ -5,7 +5,7 @@ import Link from "next/link";
 import { 
   Search, ChevronDown, ShoppingCart, Bell, 
   Mic2, Drama, Music2, Ticket, MapPin, TrendingUp,
-  ArrowUpRight, X, User, LogOut, History, Pencil, Lock 
+  ArrowUpRight, X, User, LogOut, History, Pencil, Lock , Music
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useCart } from "@/context/CartContext";
@@ -30,70 +30,39 @@ export default function Navbar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false); 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
 
+  // 🌟 1. สร้าง State สำหรับเก็บข้อมูล Trending Events จาก DB
+  const [trendingDbEvents, setTrendingDbEvents] = useState<any[]>([]);
+
   // ==========================================
   // ✅ 1. เตรียมข้อมูล 2 ชุด (Guest vs Member)
   // ==========================================
-  // (ย้ายออกมานอก render หรือใช้ useMemo ก็ได้ แต่ไว้ตรงนี้เพื่อความง่ายในการอ่านตามเดิม)
   const guestNotifications: NotificationItem[] = [
-    { 
-      id: 101, type: "info", title: "🔥 กำลังฮิต: Bruno Mars", 
-      desc: "บัตรโซนยืนเหลือน้อยกว่า 100 ใบ! สมัครสมาชิกเพื่อจองเลย", 
-      time: "10 นาทีที่แล้ว", link: "/register", read: false 
-    },
-    { 
-      id: 102, type: "info", title: "สมาชิกใหม่ลด 10% 🎉", 
-      desc: "สมัครวันนี้รับโค้ด NEWUSER ทันที", 
-      time: "1 วันที่แล้ว", link: "/register", read: false 
-    },
-    { 
-      id: 103, type: "system", title: "ผังคอนเสิร์ต SUMMER SONIC", 
-      desc: "เปิดเผยผังที่นั่งและราคาบัตรแล้ว เช็คเลย!", 
-      time: "2 วันที่แล้ว", link: "/event/summer-sonic", read: true 
-    }
+    { id: 101, type: "info", title: "🔥 กำลังฮิต: Bruno Mars", desc: "บัตรโซนยืนเหลือน้อยกว่า 100 ใบ! สมัครสมาชิกเพื่อจองเลย", time: "10 นาทีที่แล้ว", link: "/register", read: false },
+    { id: 102, type: "info", title: "สมาชิกใหม่ลด 10% 🎉", desc: "สมัครวันนี้รับโค้ด NEWUSER ทันที", time: "1 วันที่แล้ว", link: "/register", read: false },
+    { id: 103, type: "system", title: "ผังคอนเสิร์ต SUMMER SONIC", desc: "เปิดเผยผังที่นั่งและราคาบัตรแล้ว เช็คเลย!", time: "2 วันที่แล้ว", link: "/event/summer-sonic", read: true }
   ];
 
   const memberNotifications: NotificationItem[] = [
-    { 
-      id: 1, type: "alert", title: "ชำระเงินไม่สำเร็จ ❌", 
-      desc: "ออเดอร์ #BK88100 ถูกปฏิเสธ โปรดชำระใหม่ใน 15 นาที", 
-      time: "2 นาทีที่แล้ว", link: "/payment/retry", read: false 
-    },
-    { 
-      id: 2, type: "booking", title: "จองบัตรสำเร็จ! ✅", 
-      desc: "คุณจองบัตร 2060 MOTHERSHIP โซน A1 เรียบร้อยแล้ว", 
-      time: "5 นาทีที่แล้ว", link: "/ticket", read: false 
-    },
-    { 
-      id: 3, type: "event", title: "ใกล้ถึงวันงานแล้ว 📅", 
-      desc: "คอนเสิร์ต Jeff Satur จะเริ่มในอีก 24 ชม.", 
-      time: "1 ชั่วโมงที่แล้ว", link: "/event/1", read: true 
-    }
+    { id: 1, type: "alert", title: "ชำระเงินไม่สำเร็จ ❌", desc: "ออเดอร์ #BK88100 ถูกปฏิเสธ โปรดชำระใหม่ใน 15 นาที", time: "2 นาทีที่แล้ว", link: "/payment/retry", read: false },
+    { id: 2, type: "booking", title: "จองบัตรสำเร็จ! ✅", desc: "คุณจองบัตร 2060 MOTHERSHIP โซน A1 เรียบร้อยแล้ว", time: "5 นาทีที่แล้ว", link: "/ticket", read: false },
+    { id: 3, type: "event", title: "ใกล้ถึงวันงานแล้ว 📅", desc: "คอนเสิร์ต Jeff Satur จะเริ่มในอีก 24 ชม.", time: "1 ชั่วโมงที่แล้ว", link: "/event/1", read: true }
   ];
 
-  // ✅ 2. State สำหรับเก็บ Notifications ที่จะแสดงผลจริง
   const [notifications, setNotifications] = useState<NotificationItem[]>(guestNotifications);
-
-  // ✅ 3. คำนวณจำนวนที่ยังไม่อ่าน (จะคำนวณใหม่ทุกครั้งที่ State เปลี่ยน)
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // ✅ 4. ฟังก์ชันกด "อ่านทั้งหมด"
   const handleMarkAllAsRead = () => {
-    // อัปเดต State โดยตรงเพื่อให้ UI เปลี่ยนทันที และจะไม่โดนทับจาก Interval แล้ว
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
   // ==========================================
-  // ✅ แก้ไขส่วน useEffect (แยกเป็น 2 ส่วน)
+  // ✅ เช็คสถานะ Login 
   // ==========================================
-  
-  // ส่วนที่ 1: เช็คสถานะ Login อย่างเดียว (Loop ทุก 1 วิ)
   useEffect(() => {
     const checkAuth = () => {
       const hasContextUser = !!user;
       const hasCookie = Cookies.get("isLoggedIn") === "true";
       const userIsLoggedIn = hasContextUser || hasCookie;
-      
-      // อัปเดตสถานะ Auth (ถ้าค่าเปลี่ยน React จะไปทำ useEffect ตัวถัดไป)
       setIsLoggedIn(userIsLoggedIn);
     };
     
@@ -102,17 +71,30 @@ export default function Navbar() {
     return () => clearInterval(authInterval);
   }, [user]);
 
-  // ส่วนที่ 2: โหลดข้อมูล Notification ใหม่ "เฉพาะตอนสถานะ Login เปลี่ยน" เท่านั้น
-  // วิธีนี้จะทำให้ค่า read: true ที่เรากดไป ไม่โดนทับจนกว่าจะ Logout/Login ใหม่
   useEffect(() => {
     if (isLoggedIn) {
       setNotifications(memberNotifications);
     } else {
       setNotifications(guestNotifications);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn]); 
 
+  // 🌟 2. ดึงข้อมูลจาก DB มาแสดงในกล่องค้นหา (Trending)
+  useEffect(() => {
+    const fetchTrending = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/public/events');
+        if (res.ok) {
+          const data = await res.json();
+          // เอามาแสดงแค่ 3 งานแรก เพื่อความสวยงามในช่องค้นหา
+          setTrendingDbEvents(data.slice(0, 3)); 
+        }
+      } catch (error) {
+        console.error("Error fetching trending events:", error);
+      }
+    };
+    fetchTrending();
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState("");
   const searchSuggestions = allSearchTerms || []; 
@@ -135,19 +117,10 @@ export default function Navbar() {
     setUser(null); 
     setIsLoggedIn(false);
     setIsUserMenuOpen(false);
-    
-    // รีเซ็ตแจ้งเตือนเป็น Guest ทันที
     setNotifications(guestNotifications);
-
     router.push("/"); 
     router.refresh(); 
   };
-
-  const trendingEvents = [
-    { id: 1, title: "The Grand Concert 2025", venue: "Impact Arena", image: "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=200&q=80" },
-    { id: 2, title: "Phantom of the Opera", venue: "Rachadalai", image: "https://images.unsplash.com/photo-1503095392237-5985e5a9536e?w=200&q=80" },
-    { id: 3, title: "Neon Music Festival", venue: "BITEC Live", image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&q=80" },
-  ];
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const eventRef = useRef<HTMLDivElement>(null);
@@ -178,11 +151,12 @@ export default function Navbar() {
   ];
 
   const eventCategories = [
-    { id: "concert-fanmeet", nameTh: "คอนเสิร์ต & แฟนมีต", nameEn: "Concerts & Fan Meet", descTh: "อิมแพ็ค อารีน่า", descEn: "at Impact Arena", icon: <Mic2 size={18} /> },
-    { id: "theater", nameTh: "ละครเวที & วาไรตี้", nameEn: "Theater & Variety", descTh: "เมืองไทยรัชดาลัย", descEn: "at Rachadalai Theatre", icon: <Drama size={18} /> },
-    { id: "classical", nameTh: "ออร์เคสตรา & คลาสสิก", nameEn: "Orchestra & Classical", descTh: "มหิดลสิทธาคาร", descEn: "at Prince Mahidol Hall", icon: <Music2 size={18} /> },
-    { id: "all", nameTh: "งานแสดงทั้งหมด", nameEn: "All Events", descTh: "ค้นหาทุกสถานที่", descEn: "Explore All Venues", icon: <Ticket size={18} /> },
-  ];
+    { id: "concert-fanmeet", nameTh: "คอนเสิร์ต & แฟนมีต", nameEn: "Concerts & Fan Meet", descEn: "at Impact Arena", icon: <Mic2 size={18} /> },
+    { id: "festival", nameTh: "เทศกาลดนตรี", nameEn: "Music Festival", icon: <Music size={18} /> }, // ✅ เพิ่มบรรทัดนี้เข้ามา
+    { id: "theater", nameTh: "ละครเวที & วาไรตี้", nameEn: "Theater & Variety", descEn: "at Rachadalai Theatre", icon: <Drama size={18} /> },
+    { id: "classical", nameTh: "ออร์เคสตรา & คลาสสิก", nameEn: "Orchestra & Classical", descEn: "at Suriyadhep Music Sala", icon: <Music2 size={18} /> },
+    { id: "all", nameTh: "งานแสดงทั้งหมด", nameEn: "All Events", descEn: "Explore All Venues", icon: <Ticket size={18} /> },
+  ];;
 
   const currentLang = languages.find(l => l.code === lang);
 
@@ -216,8 +190,7 @@ export default function Navbar() {
                             <div className="text-sm font-medium text-white group-hover:text-blue-400 transition-colors">
                                 {lang === "th" ? cat.nameTh : cat.nameEn}
                             </div>
-                            <div className="text-xs text-gray-400 group-hover:text-gray-300 mt-1 flex items-center gap-1.5 font-medium">
-                                <MapPin size={11} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> 
+                            <div className="text-xs text-gray-400 group-hover:text-gray-300 mt-1 font-medium">
                                 {lang === "th" ? cat.descTh : cat.descEn}
                             </div>
                         </div>
@@ -279,15 +252,29 @@ export default function Navbar() {
                     <>
                       <div className="px-4 py-2 text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2"><TrendingUp size={12} /> {t.popular_events} (Trending)</div>
                       <div className="space-y-1 p-2">
-                        {trendingEvents.map((event) => (
-                          <Link key={event.id} href={`/event/${event.id}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors group" onClick={() => setIsSearchOpen(false)}>
-                            <img src={event.image} alt={event.title} className="w-12 h-12 rounded-lg object-cover border border-white/10 group-hover:border-blue-500/50" />
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-bold text-white truncate group-hover:text-blue-400 transition-colors">{event.title}</h4>
-                              <div className="text-[10px] text-gray-500 truncate flex items-center gap-1"><MapPin size={10} /> {event.venue}</div>
-                            </div>
-                          </Link>
-                        ))}
+                        {/* 🌟 3. นำข้อมูลจาก DB มาระบายลงการ์ด (แทนของเดิมที่ Hardcode ไว้) */}
+                        {trendingDbEvents.length > 0 ? (
+                            trendingDbEvents.map((event) => {
+                              // ตรวจสอบที่อยู่รูปภาพ
+                              const imageUrl = event.bannerImage 
+                                ? (event.bannerImage.startsWith('http') ? event.bannerImage : `http://localhost:8000/storage/${event.bannerImage}`)
+                                : "https://via.placeholder.com/200?text=No+Image";
+
+                              return (
+                                <Link key={event.Event_id} href={`/event/${event.Event_id}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors group" onClick={() => setIsSearchOpen(false)}>
+                                  <img src={imageUrl} alt={event.eventName} className="w-12 h-12 rounded-lg object-cover border border-white/10 group-hover:border-blue-500/50" />
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="text-sm font-bold text-white truncate group-hover:text-blue-400 transition-colors">{event.eventName}</h4>
+                                    <div className="text-[10px] text-gray-500 truncate flex items-center gap-1">
+                                      <MapPin size={10} /> {event.hall?.Hall_Name || "ไม่ระบุสถานที่"}
+                                    </div>
+                                  </div>
+                                </Link>
+                              );
+                            })
+                        ) : (
+                            <div className="px-4 py-4 text-center text-gray-500 text-xs">กำลังโหลดข้อมูล...</div>
+                        )}
                       </div>
                     </>
                   )}
@@ -296,14 +283,12 @@ export default function Navbar() {
             )}
           </div>
           
-          {/* ✅ ส่วนแจ้งเตือน */}
           <div className="relative" ref={notiRef}>
             <button 
                 onClick={() => setIsNotiOpen(!isNotiOpen)} 
                 className={`relative text-gray-400 hover:text-white transition-colors p-1.5 rounded-full ${isNotiOpen ? 'bg-white/10 text-white' : ''}`}
             >
                 <Bell size={20} />
-                {/* 🔴 จุดแดง (จะหายไปถ้า unreadCount = 0) */}
                 {unreadCount > 0 && <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#0B0F14] animate-pulse"></span>}
             </button>
 

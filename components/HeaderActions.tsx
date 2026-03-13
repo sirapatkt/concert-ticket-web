@@ -67,11 +67,12 @@ export default function HeaderActions() {
     <div className="flex items-center gap-3">
       
       {/* =======================
-          ปุ่มช่วยเหลือ (?) 
+         ปุ่มช่วยเหลือ (?) 
       ======================== */}
       <div className="relative" ref={helpRef}>
         <button 
           onClick={() => setOpenHelp(!openHelp)}
+          suppressHydrationWarning={true} // ✅ เติมป้องกัน Error
           className={`p-2 rounded-full transition-all duration-200 border ${
             openHelp 
               ? 'bg-slate-800 text-white border-slate-700' 
@@ -107,11 +108,12 @@ export default function HeaderActions() {
       </div>
 
       {/* =======================
-          ปุ่มแจ้งเตือน (Bell) 
+         ปุ่มแจ้งเตือน (Bell) 
       ======================== */}
       <div className="relative" ref={notiRef}>
         <button 
           onClick={() => setOpenNoti(!openNoti)}
+          suppressHydrationWarning={true} // ✅ เติมป้องกัน Error
           className={`p-2 rounded-full transition-all duration-200 border relative ${
             openNoti 
               ? 'bg-slate-800 text-white border-slate-700' 

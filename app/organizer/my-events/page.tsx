@@ -10,10 +10,8 @@ import {
 export default function MyEventsPage() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  // ตั้งค่าเริ่มต้นของตัวกรองเป็น "ทั้งหมด"
   const [filterStatus, setFilterStatus] = useState("ทั้งหมด");
 
-  // ✅ ฟังก์ชันดึงข้อมูลจาก Backend
   const fetchEvents = async () => {
     try {
       setLoading(true);
@@ -40,47 +38,42 @@ export default function MyEventsPage() {
     fetchEvents();
   }, []);
 
-    // เพิ่ม Type นอก Component (บนสุดของไฟล์) เพื่อแก้ Error เส้นแดง
-  type EventStatusType = "กำลังเตรียม" | "กำลังจะจัด" | "เปิดขายบัตร" | "กำลังจัด" | "บัตรขายหมด" | "เสร็จสิ้น" | "ยกเลิกงาน";
+  type EventStatusType = "กำลังเตรียม" | "กำลังจะจัด" | "เปิดขาย" | "กำลังจัด" | "ปิดการขาย" | "บัตรขายหมด" | "เสร็จสิ้น" | "ยกเลิกงาน";
 
-  // แก้ไขฟังก์ชัน getThaiStatus ให้เช็คคำจาก DB ตรงๆ
   const getThaiStatus = (status: string): EventStatusType => {
     if (!status) return 'กำลังเตรียม';
     if (status === 'กำลังเตรียม') return 'กำลังเตรียม';
     if (status === 'กำลังจะจัด') return 'กำลังจะจัด';
-    if (status === 'เปิดขายบัตร' || status.toUpperCase() === 'ON SALE') return 'เปิดขายบัตร'; 
+    if (status === 'เปิดขาย' || status === 'เปิดขายบัตร' || status.toUpperCase() === 'ON SALE') return 'เปิดขาย'; 
+    if (status === 'ปิดการขาย') return 'ปิดการขาย';
     if (status === 'กำลังจัด') return 'กำลังจัด';
     if (status === 'บัตรขายหมด') return 'บัตรขายหมด';
     if (status === 'เสร็จสิ้น') return 'เสร็จสิ้น';
+    if (status === 'ยกเลิกงาน') return 'ยกเลิกงาน';
+    
     return 'กำลังเตรียม'; 
   };
 
-  // ✅ 2. ฟังก์ชันกรองข้อมูลตามสถานะ (มีแค่ตัวเดียวเท่านั้น)
   const filteredEvents = events.filter((ev: any) => {
     if (filterStatus === "ทั้งหมด") return true;
     return getThaiStatus(ev.status) === filterStatus;
   });
 
-  // ✅ แก้ไข Error ตรงนี้: ลบการประกาศฟังก์ชันที่ซ้อนกันออก
   const getStatusStyles = (status: string) => {
     const thaiStatus = getThaiStatus(status);
   
-    // ปรับพื้นหลังและขอบเป็นสีตามสถานะ และตัวหนังสือเป็นสีขาว (text-white)
     switch (thaiStatus) {
-      case 'เปิดขายบัตร':
-        // พื้นหลังเขียว ขอบเขียว ตัวหนังสือขาว
+      case 'เปิดขาย': 
         return "border-2 border-emerald-500 bg-emerald-600 text-white shadow-lg";
+      case 'ปิดการขาย':
+        return "border-2 border-red-900 bg-red-800 text-white";
       case 'กำลังจัด':
-        // พื้นหลังชมพูเข้ม (หรือจะใช้เขียวก็ได้) ขอบชมพู ตัวหนังสือขาว
         return "border-2 border-pink-500 bg-pink-600 text-white animate-pulse";
       case 'กำลังเตรียม':
-        // พื้นหลังเหลือง/ส้ม ขอบเหลือง ตัวหนังสือขาว
         return "border-2 border-amber-400 bg-amber-500 text-white";
       case 'กำลังจะจัด':
-        // พื้นหลังฟ้าเข้ม ขอบฟ้า ตัวหนังสือขาว
         return "border-2 border-blue-500 bg-blue-600 text-white";
       case 'บัตรขายหมด':
-        // พื้นหลังส้ม ขอบส้ม ตัวหนังสือขาว
         return "border-2 border-orange-500 bg-orange-600 text-white";
       case 'เสร็จสิ้น':
         return "border-2 border-slate-500 bg-slate-600 text-white";
@@ -91,9 +84,7 @@ export default function MyEventsPage() {
     }
   };
 
-  // ✅ ฟังก์ชันลบงาน
   const handleDelete = async (id: number) => {
-    // โชว์หน้าต่างยืนยันก่อนลบ
     const confirmDelete = window.confirm("⚠️ คุณแน่ใจหรือไม่ที่จะลบอีเวนต์นี้?\nข้อมูลจะถูกลบถาวรและไม่สามารถกู้คืนได้");
     if (!confirmDelete) return;
 
@@ -109,7 +100,7 @@ export default function MyEventsPage() {
 
       if (res.ok) {
         alert("ลบข้อมูลสำเร็จ!");
-        fetchEvents(); // ลบเสร็จให้โหลดข้อมูลใหม่ทันที
+        fetchEvents(); 
       } else {
         const err = await res.json();
         alert("เกิดข้อผิดพลาด: " + (err.message || "ไม่สามารถลบได้"));
@@ -121,7 +112,8 @@ export default function MyEventsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white p-6 pb-20 font-sans">
+    // ✅ จุดไม้ตาย: ใส่ suppressHydrationWarning ที่ div นอกสุด ครอบคลุมทั้งหน้าไปเลย!
+    <div suppressHydrationWarning className="min-h-screen bg-[#020617] text-white p-6 pb-20 font-sans">
       
       {/* Header */}
       <div className="max-w-6xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -151,8 +143,7 @@ export default function MyEventsPage() {
         </div>
 
         <div className="flex bg-[#0F172A] p-1 rounded-lg border border-slate-800 overflow-x-auto">
-          {/* ✅ อัปเดตปุ่ม Filter ให้ตรงกับสถานะภาษาไทย */}
-          {["ทั้งหมด", "กำลังเตรียม", "กำลังจะจัด", "กำลังจัด", "เสร็จสิ้น", "ยกเลิกงาน"].map((status) => (
+          {["ทั้งหมด", "กำลังเตรียม", "กำลังจะจัด", "เปิดขาย", "ปิดการขาย", "บัตรขายหมด", "เสร็จสิ้น", "ยกเลิกงาน"].map((status) => (
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
@@ -248,7 +239,6 @@ export default function MyEventsPage() {
                 <Eye size={14} /> ดูข้อมูล
               </Link>
               
-              {/* ✅ อัปเดตเงื่อนไขปุ่มแก้ไข ให้กดได้แค่สถานะ กำลังเตรียม และ กำลังจะจัด */}
               {(getThaiStatus(event.status) === 'กำลังเตรียม' || getThaiStatus(event.status) === 'กำลังจะจัด') ? (
                 <Link 
                   href={`/organizer/edit-event?id=${event.id}`} 
@@ -260,7 +250,7 @@ export default function MyEventsPage() {
                 <button 
                   disabled 
                   className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-slate-800/50 text-slate-500 cursor-not-allowed text-xs font-bold border border-slate-700/50"
-                  title="งานนี้กำลังจัด จัดเสร็จสิ้น หรือยกเลิกไปแล้ว ไม่สามารถแก้ไขได้"
+                  title="งานนี้เปิดขายบัตร หรือจัดไปแล้ว ไม่สามารถแก้ไขได้"
                 >
                   <Edit size={14} /> แก้ไขไม่ได้แล้ว
                 </button>

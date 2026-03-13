@@ -110,6 +110,7 @@ export default function TicketPage() {
       </div>
     );
   }
+    
 
   // ❌ ถ้าโหลดเสร็จแล้วแต่ไม่มีข้อมูล (เผื่อหลุดมา)
   if (!eventData) {
@@ -151,6 +152,9 @@ export default function TicketPage() {
                     <div className="flex items-start gap-3 text-xs text-gray-300">
                       <Calendar size={14} className="mt-0.5 text-[#76FF03] shrink-0" />
                       <span>{eventData.eventDate} | {eventData.eventTime}</span>
+                    </div>
+                    <div className="flex items-start gap-3 text-[10px] text-gray-500 mt-2">
+                      <span>ออกตั๋วเมื่อ: {eventData.issueDate || "ชำระเงินสำเร็จ"}</span>
                     </div>
                     <div className="flex items-start gap-3 text-xs text-gray-300">
                       <MapPin size={14} className="mt-0.5 text-[#E60023] shrink-0" />

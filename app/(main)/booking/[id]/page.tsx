@@ -87,46 +87,59 @@ export default function BookingPage() {
   const dragStart = useRef({ x: 0, y: 0 });
 
   // ========================================================
-  // 🧠 ฟังก์ชัน: สร้างโครงสร้างผังที่นั่ง
+  // 🧠 ฟังก์ชัน: สร้างโครงสร้างผังที่นั่ง (อัปเดตครบทุกโซน)
   // ========================================================
   const generateStructuralLayout = (zoneName: string): Seat[] => {
     let maxCol = 12;
     let startNum = 1;
     let matrix: { l: number, r: number }[] = [];
-    let rowLetters = "BCDEFGH".split(""); 
+    let rowLetters: string[] = []; 
     
     const name = zoneName.toUpperCase().trim();
 
+    // --- LEVEL 1 ---
     if (name === "L1") {
         rowLetters = "BCDEFGH".split("");
-        matrix = [
-            {l: 4, r: 0}, // B: เว้น 4 ช่อง
-            {l: 3, r: 0}, // C: เว้น 3 ช่อง
-            {l: 2, r: 0}, // D: เว้น 2 ช่อง
-            {l: 1, r: 0}, // E: เว้น 1 ช่อง
-            {l: 1, r: 0}, // F: เว้น 1 ช่อง
-            {l: 1, r: 0}, // G: เว้น 1 ช่อง
-            {l: 1, r: 0}  // H: เว้น 1 ช่อง
-        ];
+        matrix = [ {l: 4, r: 0}, {l: 3, r: 0}, {l: 2, r: 0}, {l: 1, r: 0}, {l: 1, r: 0}, {l: 1, r: 0}, {l: 1, r: 0} ];
     } 
-    else if (name === "C1") {
-        maxCol = 16; startNum = 13;
-        rowLetters = "ABCDEFGH".split("");
-        matrix = [{l: 0, r: 0}]; 
+    else if (name === "C1") { 
+        maxCol = 16; startNum = 13; rowLetters = "ABCDEFGH".split(""); matrix = [{l: 0, r: 0}]; 
     }
     else if (name === "R1") {
-        maxCol = 12; startNum = 29;
-        rowLetters = "BCDEFGH".split("");
-        matrix = [
-            {l: 0, r: 4}, 
-            {l: 0, r: 3}, 
-            {l: 0, r: 2}, 
-            {l: 0, r: 1}, 
-            {l: 0, r: 1}, 
-            {l: 0, r: 1}, 
-            {l: 0, r: 1}  
-        ];
-    } else {
+        maxCol = 12; startNum = 29; rowLetters = "BCDEFGH".split("");
+        matrix = [ {l: 0, r: 4}, {l: 0, r: 3}, {l: 0, r: 2}, {l: 0, r: 1}, {l: 0, r: 1}, {l: 0, r: 1}, {l: 0, r: 1} ];
+    }
+    // --- LEVEL 1 (ด้านหลัง) ---
+    else if (name === "L2") { maxCol = 12; startNum = 1; rowLetters = "IJKLMNOP".split(""); matrix = [{l: 0, r: 0}]; }
+    else if (name === "C2") { maxCol = 16; startNum = 13; rowLetters = "IJKLMNOP".split(""); matrix = [{l: 0, r: 0}]; }
+    else if (name === "R2") { maxCol = 12; startNum = 29; rowLetters = "IJKLMNOP".split(""); matrix = [{l: 0, r: 0}]; }
+    else if (name === "L3") { maxCol = 12; startNum = 1; rowLetters = "QRST".split(""); matrix = [{l: 0, r: 0}]; }
+    else if (name === "C3") { maxCol = 16; startNum = 13; rowLetters = "QRST".split(""); matrix = [{l: 0, r: 0}]; }
+    else if (name === "R3") { maxCol = 12; startNum = 29; rowLetters = "QRST".split(""); matrix = [{l: 0, r: 0}]; }
+    else if (name === "L4") {
+        maxCol = 12; startNum = 1; rowLetters = "UVWXYZ".split("");
+        matrix = [ {l: 0, r: 0}, {l: 0, r: 0}, {l: 0, r: 0}, {l: 0, r: 1}, {l: 0, r: 1}, {l: 0, r: 1} ]; 
+    }
+    else if (name === "C4") { maxCol = 16; startNum = 13; rowLetters = "UVW".split(""); matrix = [{l: 0, r: 0}]; }
+    else if (name === "R4") {
+        maxCol = 12; startNum = 29; rowLetters = "UVWXYZ".split("");
+        matrix = [ {l: 0, r: 0}, {l: 1, r: 0}, {l: 1, r: 0}, {l: 1, r: 0}, {l: 1, r: 0}, {l: 1, r: 0} ]; 
+    }
+    // --- LEVEL 2 ---
+    else if (name === "L5") { maxCol = 11; startNum = 2; rowLetters = ["AA","BB","CC","DD"]; matrix = [{l: 0, r: 0}]; }
+    else if (name === "C5") { maxCol = 16; startNum = 13; rowLetters = ["AA","BB","CC","DD"]; matrix = [{l: 0, r: 0}]; }
+    else if (name === "R5") {
+        maxCol = 12; startNum = 29; rowLetters = ["AA","BB","CC","DD"];
+        matrix = [ {l: 0, r: 1}, {l: 0, r: 0}, {l: 0, r: 1}, {l: 0, r: 0} ]; 
+    }
+    else if (name === "L6") { maxCol = 11; startNum = 2; rowLetters = ["EE","FF","GG","HH","II","JJ","KK"]; matrix = [{l: 0, r: 0}]; }
+    else if (name === "C6") { maxCol = 16; startNum = 13; rowLetters = ["EE","FF","GG","HH","II","JJ","KK"]; matrix = [{l: 0, r: 0}]; }
+    else if (name === "R6") {
+        maxCol = 12; startNum = 29; rowLetters = ["EE","FF","GG","HH","II","JJ","KK"];
+        matrix = [ {l: 0, r: 0}, {l: 0, r: 1}, {l: 0, r: 0}, {l: 0, r: 1}, {l: 0, r: 0}, {l: 0, r: 1}, {l: 0, r: 1} ];
+    }
+    // --- DEFAULT FAILSAFE ---
+    else {
         rowLetters = "ABCDEF".split("");
         matrix = [{l: 0, r: 0}];
     }
@@ -177,8 +190,13 @@ export default function BookingPage() {
 
       try {
         setLoadingSeats(true);
+        // ✅ เพิ่ม 'Cache-Control' และ cache: 'no-store' ตรงนี้ครับ
         const res = await fetch(`http://127.0.0.1:8000/api/seats?eventId=${eventId}&roundId=${roundId}&zoneName=${eventZone}`, {
-            headers: { 'Accept': 'application/json' }
+            headers: { 
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            },
+            cache: 'no-store' // 👈 บังคับให้ดึงข้อมูลสดใหม่เสมอ ห้ามจำ!
         });
         
         if (!res.ok) throw new Error("API Error");
@@ -194,8 +212,9 @@ export default function BookingPage() {
                     let reactStatus: SeatStatus = 'available';
                     
                     // ✅ แมปสถานะภาษาไทยจาก Database
-                    if (dbSeat.SeatStatus === 'จองแล้ว' || dbSeat.SeatStatus === 'กำลังจอง' || dbSeat.SeatStatus === 'ชำรุด/ใช้ไม่ได้') {
-                        reactStatus = 'sold'; // ถ้าไม่ใช่ 'ว่าง' ให้ล็อคเป็นกดไม่ได้ (สีเทา)
+                    // 🟢 เปลี่ยนเงื่อนไขให้ดักจับสถานะทั้งหมดที่ไม่ใช่คำว่า "ว่าง" 
+                    if (dbSeat.SeatStatus !== 'ว่าง') {
+                        reactStatus = 'sold'; 
                     }
 
                     return { 
@@ -245,8 +264,19 @@ export default function BookingPage() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
+  // ✅ อัปเดตฟังก์ชัน toggleSeat เพื่อดักห้ามกดเกิน 5 ใบ
   const toggleSeat = (seatId: string, isHidden: boolean, status: string) => {
     if (isDragging || isTimeout || isHidden || status === "sold") return; 
+
+    // นับจำนวนที่นั่งที่กำลังเลือกอยู่ตอนนี้ (status === 'selected')
+    const currentSelectedCount = seats.filter(s => s.status === "selected").length;
+
+    // ถ้ากำลังจะ "เลือกเพิ่ม" แต่มีอยู่แล้ว 5 ใบ ให้แจ้งเตือนและเด้งออก
+    if (status === "available" && currentSelectedCount >= 5) {
+        alert("คุณสามารถเลือกที่นั่งได้สูงสุด 5 ใบ ต่อ 1 การทำรายการครับ");
+        return; 
+    }
+
     setSeats((prev) =>
       prev.map((seat) => {
         if (seat.id !== seatId) return seat;
@@ -347,7 +377,15 @@ export default function BookingPage() {
                         return; // หยุดการทำงาน ห้ามเปลี่ยนหน้า
                     }
 
-                    const currentZoneId = selectedSeats.length > 0 && selectedSeats[0].zoneId ? selectedSeats[0].zoneId : 164;
+                   // ✅ แก้ไขใหม่ให้ดึง ID จริงเท่านั้น
+                    const firstSelectedSeat = selectedSeats[0];
+                    const currentZoneId = firstSelectedSeat?.zoneId;
+
+                    // เช็คว่ามี ID หรือไม่ก่อนเปลี่ยนหน้า
+                    if (!currentZoneId) {
+                        alert("❌ เกิดข้อผิดพลาด: ไม่พบรหัสโซน (Zone ID) จากฐานข้อมูล กรุณารีเฟรชหน้าเว็บแล้วลองใหม่อีกครั้ง");
+                        return;
+                    }
                     
                     const query = new URLSearchParams({
                         name: eventName,

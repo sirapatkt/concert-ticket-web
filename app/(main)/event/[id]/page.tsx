@@ -143,15 +143,26 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             };
         }) || [];
 
+       // ✅ 1. เพิ่มฟังก์ชันเช็ค URL รูปภาพ (ไว้เหนือ formattedEvent)
+        const getImageUrl = (imagePath: string | null) => {
+            if (!imagePath) return "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80"; // รูป Default
+            if (imagePath.startsWith("http")) return imagePath; // ถ้าเป็นลิงก์เต็มอยู่แล้ว (เช่น ลิงก์ Cloudinary) ให้ใช้ได้เลย
+            
+            // 🚨 ถ้าใน Database เก็บแค่ชื่อไฟล์ lxwtxcdgibxat2vrefduz.jpg จาก Cloudinary ให้ใช้บรรทัดล่างนี้ (เปลี่ยน YOUR_CLOUD_NAME ด้วยนะ)
+            return `https://res.cloudinary.com/YOUR_CLOUD_NAME/image/upload/${imagePath}`;
+            
+            // 🚨 แต่ถ้าจะดึงจาก Laravel Storage ให้คอมเมนต์บรรทัด Cloudinary ด้านบน แล้วเปิดใช้บรรทัดล่างนี้แทน
+            // return `http://127.0.0.1:8000/storage/${imagePath}`;
+        };
+
+        // ✅ 2. ปรับการเรียกใช้ image ใน formattedEvent
         const formattedEvent: UiEvent = {
             id: data.Event_id,
             title: data.eventName,
             venue: data.hall?.Hall_Name || "Location TBA",
             hallId: currentHallId,
             venueSize: formattedVenueSize,
-            image: data.bannerImage 
-                ? `http://127.0.0.1:8000/storage/${data.bannerImage}` 
-                : "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80", 
+            image: getImageUrl(data.bannerImage), // เรียกใช้ฟังก์ชันจัดการรูปตรงนี้
             description: data.eventDescription || "ไม่มีรายละเอียด",
             category: "Concert", 
             rounds: rounds,
