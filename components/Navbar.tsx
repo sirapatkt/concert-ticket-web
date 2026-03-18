@@ -191,7 +191,7 @@ export default function Navbar() {
                                 {lang === "th" ? cat.nameTh : cat.nameEn}
                             </div>
                             <div className="text-xs text-gray-400 group-hover:text-gray-300 mt-1 font-medium">
-                                {lang === "th" ? cat.descTh : cat.descEn}
+
                             </div>
                         </div>
                     </Link>

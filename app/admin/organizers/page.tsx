@@ -1,304 +1,340 @@
 "use client";
+import { useState, useEffect } from "react";
+import { Search, Building2, Mail, Phone, MoreHorizontal, UserCheck, X, Calendar, Ticket, ChevronDown, ExternalLink } from "lucide-react";
+import Link from "next/link"; // 👈 เพิ่ม Import Link
 
-import { useState } from "react";
-import { 
-  Building2, Search, CheckCircle, XCircle, 
-  User, Phone, Mail, MoreHorizontal, ShieldAlert, X 
-} from "lucide-react";
-
-// Interface
-interface OrganizerType {
-  id: number;
-  personName: string;  
-  companyName: string; 
-  email: string;
-  phone: string;
-  status: string;
-  events: number;
-  joined: string;
+// อัปเดต Interface ให้รองรับข้อมูล Events จาก Backend
+interface EventDetail {
+  Event_id: number;
+  eventName: string;
 }
 
-export default function OrganizersPage() {
-  
-  // ✅ Mock Data: เหลือไว้ 1 ตัวอย่าง
-  const [organizers, setOrganizers] = useState<OrganizerType[]>([
-    { 
-      id: 1, 
-      personName: "คุณสมชาย ใจดี", 
-      companyName: "GMM Grammy", 
-      email: "contact@gmm.com", 
-      phone: "02-669-9000", 
-      status: "Active", 
-      events: 12, 
-      joined: "12 Jan 2024" 
-    }
-  ]);
+interface Organizer {
+  id: number;
+  org_code: string;
+  person_name: string;
+  company_name: string;
+  email: string;
+  phone: string;
+  event_count: number;
+  events?: EventDetail[]; // 👈 รับค่า Array ของอีเวนต์
+  created_at: string;
+  status: "Pending" | "Active" | "Suspended";
+}
 
-  const [filterStatus, setFilterStatus] = useState("All");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedOrg, setSelectedOrg] = useState<OrganizerType | null>(null);
+export default function AdminOrganizersPage() {
+  const [organizers, setOrganizers] = useState<Organizer[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("All");
 
-  // Filter Logic
-  const filteredOrganizers = organizers.filter(org => {
-    const matchesSearch = org.personName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          org.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          org.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterStatus === "All" ? true : org.status === filterStatus;
-    return matchesSearch && matchesFilter;
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedOrg, setSelectedOrg] = useState<Organizer | null>(null);
+  const [showEventList, setShowEventList] = useState(false); // State ควบคุมการกางลิสต์อีเวนต์
+
+  useEffect(() => {
+    const fetchOrganizers = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('token'); 
+        const res = await fetch("http://localhost:8000/api/admin/organizers", {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Accept": "application/json"
+          }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setOrganizers(data);
+        } else {
+          console.error("Failed to fetch organizers");
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrganizers();
+  }, []);
+
+  const filteredOrganizers = organizers.filter((org) => {
+    const matchesSearch = 
+      org.person_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      org.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      org.email.toLowerCase().includes(searchQuery.toLowerCase());
+      
+    const matchesTab = activeTab === "All" || org.status === activeTab;
+    return matchesSearch && matchesTab;
   });
 
-  // Status Change Logic
-  const handleStatusChange = (id: number, newStatus: string) => {
-    if(confirm(`ยืนยันการเปลี่ยนสถานะเป็น ${newStatus}?`)) {
-      setOrganizers(prev => prev.map(org => {
-        if (org.id === id) {
-           if (selectedOrg?.id === id) setSelectedOrg({ ...org, status: newStatus });
-           return { ...org, status: newStatus };
-        }
-        return org;
-      }));
+  const tabs = ["All", "Pending", "Active", "Suspended"];
+
+  const openModal = (org: Organizer) => {
+    setSelectedOrg(org);
+    setShowEventList(false); // รีเซ็ตลิสต์ให้หุบไว้ก่อนเสมอตอนเปิด Modal
+    setIsModalOpen(true);
+  };
+  
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedOrg(null);
+    setShowEventList(false);
+  };
+
+  const handleUpdateStatus = (id: number, newStatus: "Active" | "Suspended" | "Pending", actionName: string) => {
+    if (confirm(`คุณแน่ใจหรือไม่ที่จะ ${actionName} ผู้จัดงานรายนี้?`)) {
+      setOrganizers(prev => prev.map(org => org.id === id ? { ...org, status: newStatus } : org));
+      alert(`${actionName} สำเร็จ!`);
     }
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-screen text-white p-8 bg-[#0B0F14]">
-      
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Building2 className="text-blue-500" /> อนุมัติผู้จัดงาน (Organizers)
-          </h1>
-          <p className="text-gray-400 text-sm">ตรวจสอบและอนุมัติบัญชีผู้จัดงานคอนเสิร์ต</p>
-        </div>
+    <div className="p-8 max-w-7xl mx-auto w-full text-white">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold flex items-center gap-3">
+          <Building2 className="text-blue-500" size={28} />
+          อนุมัติผู้จัดงาน (Organizers)
+        </h1>
+        <p className="text-gray-400 text-sm mt-1">ตรวจสอบและอนุมัติบัญชีผู้จัดงานคอนเสิร์ต</p>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col md:flex-row gap-4 bg-[#161B22] p-4 rounded-2xl border border-white/5">
-        
-        {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-          <input 
-            type="text" 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="ค้นหาชื่อคน, บริษัท, อีเมล..." 
-            className="w-full bg-[#0B0F14] border border-white/10 text-white pl-10 pr-4 py-2.5 rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-sm"
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-[#161B22] p-4 rounded-xl border border-white/5">
+        <div className="relative w-full md:w-96">
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input
+            type="text"
+            placeholder="ค้นหาชื่อคน, บริษัท, อีเมล..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-[#0B0F14] text-white text-sm px-4 py-2.5 pl-11 rounded-lg border border-white/10 focus:outline-none focus:border-blue-500 transition-colors placeholder:text-gray-600"
           />
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex bg-[#0B0F14] p-1 rounded-xl border border-white/10">
-          {["All", "Pending", "Active", "Suspended"].map((status) => (
+        <div className="flex bg-[#0B0F14] p-1 rounded-lg border border-white/10">
+          {tabs.map((tab) => (
             <button
-              key={status}
-              onClick={() => setFilterStatus(status)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                filterStatus === status ? "bg-[#161B22] text-white shadow" : "text-gray-500 hover:text-gray-300"
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                activeTab === tab ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
               }`}
             >
-              {status}
+              {tab}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-[#161B22] border border-white/5 rounded-2xl overflow-hidden shadow-xl">
+      <div className="bg-[#161B22] rounded-xl border border-white/5 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-[#0B0F14] text-gray-400 text-xs uppercase font-bold tracking-wider">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="text-xs text-gray-400 uppercase bg-[#0B0F14]/50 border-b border-white/5">
               <tr>
-                <th className="p-4 border-b border-white/5 pl-6">ผู้ขอใช้งาน (Person)</th>
-                <th className="p-4 border-b border-white/5">สังกัด / องค์กร</th>
-                <th className="p-4 border-b border-white/5">ข้อมูลติดต่อ</th>
-                <th className="p-4 border-b border-white/5 text-center">อีเวนต์</th>
-                <th className="p-4 border-b border-white/5">วันที่สมัคร</th>
-                <th className="p-4 border-b border-white/5">สถานะ</th>
-                <th className="p-4 border-b border-white/5 text-right pr-6">จัดการ</th>
+                <th className="px-6 py-4 font-medium">ผู้ขอใช้งาน (PERSON)</th>
+                <th className="px-6 py-4 font-medium">สังกัด / องค์กร</th>
+                <th className="px-6 py-4 font-medium">ข้อมูลติดต่อ</th>
+                <th className="px-6 py-4 font-medium text-center">อีเวนต์</th>
+                <th className="px-6 py-4 font-medium">วันที่สมัคร</th>
+                <th className="px-6 py-4 font-medium">สถานะ</th>
+                <th className="px-6 py-4 font-medium text-center">จัดการ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 text-sm">
-              {filteredOrganizers.map((org) => (
-                <tr 
-                    key={org.id} 
-                    className="hover:bg-white/[0.02] transition-colors group cursor-pointer"
-                    onClick={() => setSelectedOrg(org)}
-                >
-                  
-                  <td className="p-4 pl-6">
-                    <div className="font-bold text-white text-base group-hover:text-blue-400 transition-colors flex items-center gap-2">
-                        <User size={16} className="text-blue-500"/> {org.personName}
-                    </div>
-                    <div className="text-xs text-gray-500 font-mono mt-0.5 ml-6">ID: ORG-{org.id.toString().padStart(4, '0')}</div>
-                  </td>
-
-                  <td className="p-4">
-                    <div className="flex items-center gap-2 text-gray-300">
-                         <Building2 size={14} className="text-pink-500"/> 
-                         <span className="font-medium">{org.companyName}</span>
-                     </div>
-                  </td>
-
-                  <td className="p-4 space-y-1">
-                    <div className="flex items-center gap-2 text-gray-300">
-                      <Mail size={12} className="text-gray-500" /> {org.email}
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-300">
-                      <Phone size={12} className="text-gray-500" /> {org.phone}
-                    </div>
-                  </td>
-
-                  <td className="p-4 text-center">
-                    <span className="bg-white/5 px-2 py-1 rounded text-white font-mono">{org.events}</span>
-                  </td>
-
-                  <td className="p-4 text-gray-400">{org.joined}</td>
-
-                  <td className="p-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
-                      org.status === 'Active' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                      org.status === 'Pending' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
-                      'bg-red-500/10 text-red-400 border-red-500/20'
-                    }`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${
-                        org.status === 'Active' ? 'bg-green-400' :
-                        org.status === 'Pending' ? 'bg-orange-400' : 'bg-red-400'
-                      }`}></div>
-                      {org.status}
-                    </span>
-                  </td>
-
-                  <td className="p-4 text-right pr-6">
-                    <button className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors">
-                        <MoreHorizontal size={16}/>
-                    </button>
-                  </td>
+            <tbody className="divide-y divide-white/5">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">กำลังโหลดข้อมูล...</td>
                 </tr>
-              ))}
+              ) : filteredOrganizers.length > 0 ? (
+                filteredOrganizers.map((org) => (
+                  <tr key={org.id} className="hover:bg-white/5 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
+                          <UserCheck size={16} />
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-200 group-hover:text-white transition-colors">{org.person_name}</p>
+                          <p className="text-[11px] text-gray-500">ID: {org.org_code}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-pink-400 bg-pink-500/10 w-fit px-2 py-1 rounded">
+                        <Building2 size={14} />
+                        <span className="font-medium text-xs">{org.company_name}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1 text-gray-400 text-xs">
+                        <span className="flex items-center gap-2"><Mail size={12} /> {org.email}</span>
+                        <span className="flex items-center gap-2"><Phone size={12} /> {org.phone}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="bg-white/10 text-gray-300 text-xs font-bold px-2 py-1 rounded">{org.event_count}</span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-400 text-xs">
+                      {new Date(org.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`flex items-center gap-1.5 text-xs font-medium w-fit px-2.5 py-1 rounded-full border ${
+                        org.status === 'Active' ? 'text-green-400 border-green-500/20 bg-green-500/10' :
+                        org.status === 'Pending' ? 'text-yellow-400 border-yellow-500/20 bg-yellow-500/10' :
+                        'text-red-400 border-red-500/20 bg-red-500/10'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          org.status === 'Active' ? 'bg-green-400' :
+                          org.status === 'Pending' ? 'bg-yellow-400' : 'bg-red-400'
+                        }`}></span>
+                        {org.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button 
+                          onClick={() => openModal(org)} 
+                          className="text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 px-3 py-1.5 rounded transition-colors text-xs font-medium border border-blue-500/20"
+                        >
+                          ดูข้อมูล
+                        </button>
+                        {org.status === 'Pending' && (
+                          <>
+                            <button onClick={() => handleUpdateStatus(org.id, 'Active', 'อนุมัติ')} className="bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500 hover:text-white px-3 py-1.5 rounded transition-all text-xs font-medium">
+                              อนุมัติ
+                            </button>
+                            <button onClick={() => handleUpdateStatus(org.id, 'Suspended', 'ไม่อนุมัติ')} className="bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white px-3 py-1.5 rounded transition-all text-xs font-medium">
+                              ไม่อนุมัติ
+                            </button>
+                          </>
+                        )}
+                        {org.status === 'Active' && (
+                          <button onClick={() => handleUpdateStatus(org.id, 'Suspended', 'ระงับสิทธิ์')} className="bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500 hover:text-white px-3 py-1.5 rounded transition-all text-xs font-medium">
+                            ระงับสิทธิ์
+                          </button>
+                        )}
+                        {org.status === 'Suspended' && (
+                          <button onClick={() => handleUpdateStatus(org.id, 'Active', 'คืนสิทธิ์')} className="bg-gray-500/10 text-gray-400 border border-gray-500/20 hover:bg-gray-500 hover:text-white px-3 py-1.5 rounded transition-all text-xs font-medium">
+                            คืนสิทธิ์
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">ไม่พบข้อมูลผู้จัดงาน</td>
+                </tr>
+              )}
             </tbody>
           </table>
-
-          {filteredOrganizers.length === 0 && (
-             <div className="p-12 text-center text-gray-500">
-                 <Building2 size={48} className="mx-auto mb-3 opacity-20"/>
-                 ไม่พบข้อมูลผู้จัดงาน
-             </div>
-          )}
         </div>
       </div>
 
-      {/* Modal ตรวจสอบข้อมูล */}
-      {selectedOrg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="absolute inset-0" onClick={() => setSelectedOrg(null)}></div>
-            <div className="relative bg-[#161B22] w-full max-w-lg rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
-                
-                {/* Modal Header */}
-                <div className="p-6 border-b border-white/10 bg-[#0B0F14] flex justify-between items-start">
-                    <div>
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            {selectedOrg.personName}
-                            <span className={`text-[10px] px-2 py-0.5 rounded border uppercase ${
-                                selectedOrg.status === 'Pending' ? 'text-orange-400 border-orange-500/30' : 
-                                selectedOrg.status === 'Active' ? 'text-green-400 border-green-500/30' : 'text-red-400 border-red-500/30'
-                            }`}>
-                                {selectedOrg.status}
-                            </span>
-                        </h2>
-                        <p className="text-gray-400 text-sm mt-1 flex items-center gap-2">
-                             <Building2 size={14} className="text-pink-500"/> {selectedOrg.companyName}
-                        </p>
-                    </div>
-                    <button onClick={() => setSelectedOrg(null)} className="p-2 text-gray-500 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors">
-                        <X size={20}/>
-                    </button>
+      {isModalOpen && selectedOrg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-[#12161B] border border-white/10 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            
+            <div className="flex items-center justify-between p-5 border-b border-white/5 bg-white/5">
+              <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                <UserCheck className="text-blue-500" size={20} />
+                ข้อมูลผู้จัดงาน
+              </h3>
+              <button onClick={closeModal} className="text-gray-400 hover:text-white transition-colors p-1 rounded-md hover:bg-white/10">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-pink-500/10 flex items-center justify-center text-pink-500">
+                    <Building2 size={20} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">องค์กร / สังกัด</p>
+                    <p className="font-bold text-white">{selectedOrg.company_name}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <UserCheck size={16} className="text-gray-500 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-500">ชื่อผู้ดูแล (Admin)</p>
+                    <p className="text-sm font-medium text-gray-200">{selectedOrg.person_name} <span className="text-xs text-gray-500 ml-1">({selectedOrg.org_code})</span></p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Mail size={16} className="text-gray-500 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-500">อีเมล</p>
+                    <p className="text-sm font-medium text-gray-200">{selectedOrg.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Phone size={16} className="text-gray-500 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-500">เบอร์โทรศัพท์</p>
+                    <p className="text-sm font-medium text-gray-200">{selectedOrg.phone}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+                <div className="bg-white/5 p-3 rounded-lg border border-white/5 text-center">
+                  <Calendar size={16} className="text-gray-400 mx-auto mb-1" />
+                  <p className="text-[10px] text-gray-500">วันที่สมัคร</p>
+                  <p className="text-sm font-bold text-gray-300">
+                    {new Date(selectedOrg.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                  </p>
                 </div>
 
-                {/* Body: ข้อมูลผู้สมัคร */}
-                <div className="p-6 space-y-4">
-                    
-                    {/* ข้อมูลผู้ติดต่อ */}
-                    <div className="bg-[#0B0F14] p-4 rounded-xl border border-white/5">
-                        <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
-                             <User size={14} className="text-blue-500"/> ข้อมูลผู้ติดต่อ (Contact Person)
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <p className="text-gray-500 text-xs">ชื่อ-นามสกุล</p>
-                                <p className="text-white font-medium">{selectedOrg.personName}</p>
-                            </div>
-                            <div>
-                                <p className="text-gray-500 text-xs">เบอร์โทรศัพท์</p>
-                                <p className="text-white font-medium font-mono">{selectedOrg.phone}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ข้อมูลองค์กร */}
-                    <div className="bg-[#0B0F14] p-4 rounded-xl border border-white/5">
-                        <h3 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
-                             <Building2 size={14} className="text-pink-500"/> ข้อมูลองค์กร (Organization)
-                        </h3>
-                        <div className="space-y-3">
-                            <div>
-                                <p className="text-gray-500 text-xs">ชื่อบริษัท / องค์กร</p>
-                                <p className="text-white font-medium">{selectedOrg.companyName}</p>
-                            </div>
-                            <div>
-                                <p className="text-gray-500 text-xs">อีเมลองค์กร</p>
-                                <p className="text-white font-medium flex items-center gap-2">
-                                    <Mail size={14}/> {selectedOrg.email}
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-gray-500 text-xs">วันที่สมัคร</p>
-                                <p className="text-white font-medium">{selectedOrg.joined}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    {/* หมายเหตุสำหรับ Admin */}
-                    <div className="p-3 bg-yellow-500/5 border border-yellow-500/10 rounded-lg">
-                        <p className="text-xs text-yellow-500 flex items-center gap-2">
-                            ⚠️ กรุณาตรวจสอบชื่อบริษัทและเบอร์โทรศัพท์ก่อนกดอนุมัติ
-                        </p>
-                    </div>
-                </div>
-
-                {/* Modal Footer (Actions) */}
-                <div className="p-4 bg-[#1C2128] border-t border-white/5 flex justify-end gap-3">
-                    {selectedOrg.status === 'Pending' ? (
-                        <>
-                            <button 
-                                onClick={() => handleStatusChange(selectedOrg.id, 'Suspended')}
-                                className="px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 text-sm font-bold transition-colors"
-                            >
-                                <XCircle size={16} className="inline mr-2"/> ปฏิเสธ
-                            </button>
-                            <button 
-                                onClick={() => handleStatusChange(selectedOrg.id, 'Active')}
-                                className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-bold transition-colors shadow-lg shadow-green-900/20"
-                            >
-                                <CheckCircle size={16} className="inline mr-2"/> อนุมัติ
-                            </button>
-                        </>
-                    ) : (
-                        <button 
-                             onClick={() => handleStatusChange(selectedOrg.id, selectedOrg.status === 'Active' ? 'Suspended' : 'Active')}
-                             className={`px-4 py-2 rounded-lg border text-sm font-bold transition-colors ${
-                                 selectedOrg.status === 'Active' 
-                                 ? 'border-red-500/30 text-red-400 hover:bg-red-500/10' 
-                                 : 'border-green-500/30 text-green-400 hover:bg-green-500/10'
-                             }`}
-                        >
-                             {selectedOrg.status === 'Active' ? <><ShieldAlert size={16} className="inline mr-2"/> ระงับบัญชี</> : 'เปิดใช้งานบัญชี'}
-                        </button>
+                <button 
+                  onClick={() => setShowEventList(!showEventList)}
+                  className="bg-white/5 p-3 rounded-lg border border-white/5 text-center hover:bg-white/10 transition-colors group flex flex-col items-center w-full"
+                >
+                  <div className="flex items-center gap-1 mx-auto mb-1 text-blue-400">
+                    <Ticket size={16} />
+                  </div>
+                  <p className="text-[10px] text-gray-500">จำนวนอีเวนต์ที่จัด</p>
+                  <div className="flex items-center justify-center gap-1">
+                    <p className="text-sm font-bold text-blue-400">{selectedOrg.event_count} งาน</p>
+                    {selectedOrg.event_count > 0 && (
+                      <ChevronDown size={14} className={`text-blue-400 transition-transform ${showEventList ? "rotate-180" : ""}`} />
                     )}
+                  </div>
+                </button>
+              </div>
+
+              {/* ลิสต์รายชื่องานที่ซ่อนอยู่ */}
+              {showEventList && selectedOrg.event_count > 0 && (
+                <div className="p-3 bg-black/30 rounded-lg border border-white/5 max-h-40 overflow-y-auto custom-scrollbar animate-in slide-in-from-top-2 duration-200">
+                  <h4 className="text-xs font-bold text-gray-400 mb-2 pb-2 border-b border-white/5">รายการอีเวนต์:</h4>
+                  <ul className="space-y-1.5">
+                    {selectedOrg.events?.map((ev, idx) => (
+                      <li key={idx}>
+                        <Link 
+                          href={`/admin/organizers/${ev.Event_id}`}
+                          className="text-sm text-gray-300 hover:text-blue-400 transition-colors flex items-center justify-between group"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="w-1 h-1 bg-blue-500 rounded-full flex-shrink-0"></span>
+                            <span className="truncate">{ev.eventName}</span>
+                          </div>
+                          <ExternalLink size={12} className="text-gray-600 group-hover:text-blue-400 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
+              )}
 
             </div>
+          </div>
         </div>
       )}
 
