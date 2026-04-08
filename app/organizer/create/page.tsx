@@ -26,10 +26,10 @@ const PREDEFINED_PLANS: Record<string, Record<VenueSize, string>> = {
     "Medium": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1772092027/S__68526084_0_mdjqnl.jpg",
     "Large": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1772092034/S__68526085_0_samzcb.jpg",
   },
-  "2": { // มหิดลฮอล์
-    "Small": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1772092141/S__68517894_0_u4ud72.jpg",
-    "Medium": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1772092149/S__68517893_0_yi253r.jpg",
-    "Large": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1772092157/S__68517892_0_toexgb.jpg",
+  "2": { // มอรังสิต
+    "Small": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1773993650/S__69509124_kdlnab.jpg",
+    "Medium": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1773993643/S__69509125_c9o85x.jpg",
+    "Large": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1774278816/S__69582857_gfo8ja.jpg",
   },
   "3": { // เมืองไทยรัชดาลัย
     "Small": "https://res.cloudinary.com/de7ml7aeb/image/upload/v1771487600/MT-small_k9ktvy.jpg",
@@ -100,8 +100,8 @@ const PREDEFINED_ZONES: Record<string, Record<VenueSize, TicketTier[]>> = {
       { zoneName: "SL", price: 0, quantity: 160 },
       { zoneName: "SM", price: 0, quantity: 160 },
       { zoneName: "SN", price: 0, quantity: 160 },
-      { zoneName: "B ", price: 0, quantity: 151 },
-      { zoneName: "C ", price: 0, quantity: 297 },
+      { zoneName: "B", price: 0, quantity: 151 }, // แก้ไขการเว้นวรรค
+      { zoneName: "C", price: 0, quantity: 297 }, // แก้ไขการเว้นวรรค
       { zoneName: "D", price: 0, quantity: 297 },
       { zoneName: "E", price: 0, quantity: 306 },
       { zoneName: "F", price: 0, quantity: 258 },
@@ -121,140 +121,74 @@ const PREDEFINED_ZONES: Record<string, Record<VenueSize, TicketTier[]>> = {
       { zoneName: "T", price: 0, quantity: 151 },
     ]
   },
-  "2": { // มหิดลฮอล์
+  "2": { // มอรังสิต
     "Small": [
-      { zoneName: "LM1", price: 0, quantity: 79  },
-      { zoneName: "LM2", price: 0, quantity: 128 },
-      { zoneName: "LM3", price: 0, quantity: 79 },
-      { zoneName: "LM4", price: 0, quantity: 61 },
-      { zoneName: "LM5", price: 0, quantity: 128 },
-      { zoneName: "LM6", price: 0, quantity: 61 },
-      { zoneName: "UM1", price: 0, quantity: 48 },
-      { zoneName: "UM2", price: 0, quantity: 120 },
-      { zoneName: "UM3", price: 0, quantity: 48 },
-      { zoneName: "UM4", price: 0, quantity: 17 },
-      { zoneName: "UM5", price: 0, quantity: 57 },
-      { zoneName: "UM6", price: 0, quantity: 17 },
-      { zoneName: "LTL", price: 0, quantity: 34 },
-      { zoneName: "UTL", price: 0, quantity: 71 },
-      { zoneName: "LTR", price: 0, quantity: 34 },
-      { zoneName: "UTR", price: 0, quantity: 71 },
+      { zoneName: "ZONE 1", price: 0, quantity: 110  },
+      { zoneName: "ZONE 2", price: 0, quantity: 149 },
+      { zoneName: "ZONE 3", price: 0, quantity: 111 },
     ],
     "Medium": [
-      { zoneName: "LM1", price: 0, quantity: 79  },
-      { zoneName: "LM2", price: 0, quantity: 128 },
-      { zoneName: "LM3", price: 0, quantity: 79 },
-      { zoneName: "LM4", price: 0, quantity: 61 },
-      { zoneName: "LM5", price: 0, quantity: 128 },
-      { zoneName: "LM6", price: 0, quantity: 61 },
-      { zoneName: "UM1", price: 0, quantity: 48 },
-      { zoneName: "UM2", price: 0, quantity: 120 },
-      { zoneName: "UM3", price: 0, quantity: 48 },
-      { zoneName: "UM4", price: 0, quantity: 17 },
-      { zoneName: "UM5", price: 0, quantity: 57 },
-      { zoneName: "UM6", price: 0, quantity: 17 },
-      { zoneName: "LTL", price: 0, quantity: 34 },
-      { zoneName: "UTL", price: 0, quantity: 71 },
-      { zoneName: "LTR", price: 0, quantity: 34 },
-      { zoneName: "UTR", price: 0, quantity: 71 },
-      { zoneName: "BXA", price: 0, quantity: 7 },
-      { zoneName: "BXB", price: 0, quantity: 7 },
-      { zoneName: "BXC", price: 0, quantity: 7 },
-      { zoneName: "LB1", price: 0, quantity: 86 },
-      { zoneName: "LB2", price: 0, quantity: 105 },
-      { zoneName: "LB3", price: 0, quantity: 86 },
-      { zoneName: "FBA", price: 0, quantity: 14 },
-      { zoneName: "FBB", price: 0, quantity: 20 },
-      { zoneName: "FBC", price: 0, quantity: 14 },
-      { zoneName: "BXF", price: 0, quantity: 7 },
-      { zoneName: "BXE", price: 0, quantity: 7 },
-      { zoneName: "BXD", price: 0, quantity: 7 },
+      { zoneName: "ZONE 1", price: 0, quantity: 110  },
+      { zoneName: "ZONE 2", price: 0, quantity: 149 },
+      { zoneName: "ZONE 3", price: 0, quantity: 111 },
+      { zoneName: "ZONE 4", price: 0, quantity: 113 },
+      { zoneName: "ZONE 5", price: 0, quantity: 122 },
+      { zoneName: "ZONE 6", price: 0, quantity: 113 },
     ],
     "Large": [
-      { zoneName: "LM1", price: 0, quantity: 79  },
-      { zoneName: "LM2", price: 0, quantity: 128 },
-      { zoneName: "LM3", price: 0, quantity: 79 },
-      { zoneName: "LM4", price: 0, quantity: 61 },
-      { zoneName: "LM5", price: 0, quantity: 128 },
-      { zoneName: "LM6", price: 0, quantity: 61 },
-      { zoneName: "UM1", price: 0, quantity: 48 },
-      { zoneName: "UM2", price: 0, quantity: 120 },
-      { zoneName: "UM3", price: 0, quantity: 48 },
-      { zoneName: "UM4", price: 0, quantity: 17 },
-      { zoneName: "UM5", price: 0, quantity: 57 },
-      { zoneName: "UM6", price: 0, quantity: 17 },
-      { zoneName: "LTL", price: 0, quantity: 34 },
-      { zoneName: "UTL", price: 0, quantity: 71 },
-      { zoneName: "LTR", price: 0, quantity: 34 },
-      { zoneName: "UTR", price: 0, quantity: 71 },
-      { zoneName: "BXA", price: 0, quantity: 7 },
-      { zoneName: "BXB", price: 0, quantity: 7 },
-      { zoneName: "BXC", price: 0, quantity: 7 },
-      { zoneName: "LB1", price: 0, quantity: 86 },
-      { zoneName: "LB2", price: 0, quantity: 105 },
-      { zoneName: "LB3", price: 0, quantity: 86 },
-      { zoneName: "FBA", price: 0, quantity: 14 },
-      { zoneName: "FBB", price: 0, quantity: 20 },
-      { zoneName: "FBC", price: 0, quantity: 14 },
-      { zoneName: "BXF", price: 0, quantity: 7 },
-      { zoneName: "BXE", price: 0, quantity: 7 },
-      { zoneName: "BXD", price: 0, quantity: 7 },
-      { zoneName: "BXG", price: 0, quantity: 7 },
-      { zoneName: "BXH", price: 0, quantity: 6 },
-      { zoneName: "BXJ", price: 0, quantity: 6 },
-      { zoneName: "BXN", price: 0, quantity: 7 },
-      { zoneName: "SBL", price: 0, quantity: 17 },
-      { zoneName: "UB1", price: 0, quantity: 105 },
-      { zoneName: "UB2", price: 0, quantity: 176 },
-      { zoneName: "UB3", price: 0, quantity: 105 },
-      { zoneName: "BXK", price: 0, quantity: 6 },
-      { zoneName: "BXL", price: 0, quantity: 6 },
-      { zoneName: "BXM", price: 0, quantity: 7 },
-      { zoneName: "BXP", price: 0, quantity: 7 },
-      { zoneName: "SBR", price: 0, quantity: 17 },
+      { zoneName: "ZONE 1", price: 0, quantity: 110  },
+      { zoneName: "ZONE 2", price: 0, quantity: 149 },
+      { zoneName: "ZONE 3", price: 0, quantity: 111 },
+      { zoneName: "ZONE 4", price: 0, quantity: 113 },
+      { zoneName: "ZONE 5", price: 0, quantity: 122 },
+      { zoneName: "ZONE 6", price: 0, quantity: 113 },
+      { zoneName: "ZONE 7", price: 0, quantity: 88 },
+      { zoneName: "ZONE 8", price: 0, quantity: 124 },
+      { zoneName: "ZONE 9", price: 0, quantity: 88 },
     ]
   },
   "3": { // เมืองไทยรัชดาลัย
+    // 🌟 แก้ไข: จัดเรียงลำดับโซนใหม่ตามที่ผู้จัดงานต้องการ (ซ้าย กลาง ขวา)
     "Small": [
       { zoneName: "L1", price: 0, quantity: 71 },
-      { zoneName: "L2", price: 0, quantity: 96 },
       { zoneName: "C1", price: 0, quantity: 120 },
-      { zoneName: "C2", price: 0, quantity: 120 },
       { zoneName: "R1", price: 0, quantity: 71 },
+      { zoneName: "L2", price: 0, quantity: 96 },
+      { zoneName: "C2", price: 0, quantity: 120 },
       { zoneName: "R2", price: 0, quantity: 96 }
     ],
     "Medium": [
       { zoneName: "L1", price: 0, quantity: 71 },
-      { zoneName: "L2", price: 0, quantity: 96 },
-      { zoneName: "L3", price: 0, quantity: 48 },
-      { zoneName: "L4", price: 0, quantity: 69 },
       { zoneName: "C1", price: 0, quantity: 120 },
-      { zoneName: "C2", price: 0, quantity: 120 },
-      { zoneName: "C3", price: 0, quantity: 60 },
-      { zoneName: "C4", price: 0, quantity: 45 },
       { zoneName: "R1", price: 0, quantity: 71 },
+      { zoneName: "L2", price: 0, quantity: 96 },
+      { zoneName: "C2", price: 0, quantity: 120 },
       { zoneName: "R2", price: 0, quantity: 96 },
+      { zoneName: "L3", price: 0, quantity: 48 },
+      { zoneName: "C3", price: 0, quantity: 60 },
       { zoneName: "R3", price: 0, quantity: 48 },
+      { zoneName: "L4", price: 0, quantity: 69 },
+      { zoneName: "C4", price: 0, quantity: 45 },
       { zoneName: "R4", price: 0, quantity: 68 },
     ],
     "Large": [
       { zoneName: "L1", price: 0, quantity: 71 },
-      { zoneName: "L2", price: 0, quantity: 96 },
-      { zoneName: "L3", price: 0, quantity: 48 },
-      { zoneName: "L4", price: 0, quantity: 69 },
-      { zoneName: "L5", price: 0, quantity: 44 },
-      { zoneName: "L6", price: 0, quantity: 77 },
       { zoneName: "C1", price: 0, quantity: 120 },
-      { zoneName: "C2", price: 0, quantity: 120 },
-      { zoneName: "C3", price: 0, quantity: 60 },
-      { zoneName: "C4", price: 0, quantity: 45 },
-      { zoneName: "C5", price: 0, quantity: 60 },
-      { zoneName: "C6", price: 0, quantity: 105 },
       { zoneName: "R1", price: 0, quantity: 71 },
+      { zoneName: "L2", price: 0, quantity: 96 },
+      { zoneName: "C2", price: 0, quantity: 120 },
       { zoneName: "R2", price: 0, quantity: 96 },
+      { zoneName: "L3", price: 0, quantity: 48 },
+      { zoneName: "C3", price: 0, quantity: 60 },
       { zoneName: "R3", price: 0, quantity: 48 },
+      { zoneName: "L4", price: 0, quantity: 69 },
+      { zoneName: "C4", price: 0, quantity: 45 },
       { zoneName: "R4", price: 0, quantity: 68 },
+      { zoneName: "L5", price: 0, quantity: 44 },
+      { zoneName: "C5", price: 0, quantity: 60 },
       { zoneName: "R5", price: 0, quantity: 46 },
+      { zoneName: "L6", price: 0, quantity: 77 },
+      { zoneName: "C6", price: 0, quantity: 105 },
       { zoneName: "R6", price: 0, quantity: 80 },
     ]
   }
@@ -297,6 +231,35 @@ export default function CreateEventPage() {
   // 🌟 State ควบคุมการเปิด/ปิด Modal พรีวิวที่นั่ง 🌟
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
+  // 🌟 1. State ควบคุม Dropdown ดึงโซนกลับ
+  const [showAddZoneMenu, setShowAddZoneMenu] = useState(false);
+
+  // 🌟 2. คำนวณหาโซนที่ถูกลบไป (เพื่อนำมาแสดงใน Dropdown ให้เลือกดึงกลับ)
+  const defaultZonesForCurrentHall = (selectedHallId && venueSize) ? (PREDEFINED_ZONES[selectedHallId]?.[venueSize] || []) : [];
+  const availableZonesToAdd = defaultZonesForCurrentHall.filter(
+    (defaultZone) => !tickets.some((t) => t.zoneName === defaultZone.zoneName)
+  );
+
+  // 🌟 3. ฟังก์ชันสำหรับดึงโซนที่ลบไปกลับมา (พร้อมเรียงลำดับให้เหมือนเดิม)
+  const handleAddZoneBack = (zoneToRestore: any) => {
+    const restoredZone = {
+      zoneName: zoneToRestore.zoneName,
+      price: 0,
+      quantity: zoneToRestore.quantity,
+      maxQuantity: zoneToRestore.quantity
+    };
+    
+    // เอาโซนที่ดึงกลับมา ใส่รวมกับโซนที่มีอยู่
+    const newTickets = [...tickets, restoredZone];
+    
+    // 🌟 สั่งให้เรียงลำดับ (Sort) กลับไปเป็นเหมือนตอนแรกสุด
+    const originalOrder = defaultZonesForCurrentHall.map(z => z.zoneName);
+    newTickets.sort((a, b) => originalOrder.indexOf(a.zoneName) - originalOrder.indexOf(b.zoneName));
+
+    setTickets(newTickets);
+    setShowAddZoneMenu(false); // ปิดเมนู
+  };
+
   const resetForm = () => {
     setEventName("");
     setDescription("");
@@ -316,7 +279,7 @@ export default function CreateEventPage() {
   useEffect(() => {
     const specificHalls = [
       { Hall_id: 1, hallName: "อิมแพ็ค อารีน่า เมืองทองธานี (IMPACT Arena, Muang Thong Thani)" },
-      { Hall_id: 2, hallName: "มหิดลสิทธาคาร (Prince Mahidol Hall)" },
+      { Hall_id: 2, hallName: "ศาลาดนตรีสุริยเทพ มหาวิทยาลัยรังสิต" },
       { Hall_id: 3, hallName: "เมืองไทยรัชดาลัย เธียเตอร์ (Muangthai Rachadalai Theatre)" }
     ];
     setHalls(specificHalls);
@@ -369,19 +332,16 @@ export default function CreateEventPage() {
     }
   };
 
-  // ✅ ปรับปรุงให้ไม่สามารถกรอกเกิน maxQuantity ได้
-  // ✅ ปรับปรุงให้ไม่สามารถกรอกเกิน maxQuantity และจำกัดราคาไม่เกิน 5 หลัก
   const updateTicket = (index: number, field: keyof TicketTier, value: string | number) => {
     const newTickets = [...tickets];
     
     if (field === "zoneName") {
         newTickets[index].zoneName = String(value);
     } else if (field === "price") {
-        // 👇 อัปเดตส่วนนี้: ล็อกราคาไม่ให้ติดลบ และไม่ให้เกิน 99,999
         let val = Math.max(0, Number(value));
         if (val > 99999) {
             alert("ราคาบัตรไม่สามารถตั้งเกิน 5 หลัก (99,999 บาท) ได้ครับ 💸");
-            val = 99999; // บังคับกลับมาที่ค่าสูงสุด
+            val = 99999; 
         }
         newTickets[index].price = val;
     } else if (field === "quantity") {
@@ -685,7 +645,42 @@ export default function CreateEventPage() {
                 >
                   <Eye size={16} /> ดูตัวอย่างผังที่นั่ง
                 </button>
-                <button onClick={addTicketTier} type="button" className="text-sm bg-purple-500/10 text-purple-400 border border-purple-500/50 hover:bg-purple-500 hover:text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"><Plus size={16} /> เพิ่มโซน</button>
+                
+                {/* 🌟 4. ปุ่มเพิ่มโซนแบบใหม่ (มี Dropdown ซ่อนอยู่) 🌟 */}
+                <div className="relative">
+                  {availableZonesToAdd.length > 0 && (
+                    <button
+                      onClick={() => setShowAddZoneMenu(!showAddZoneMenu)}
+                      type="button"
+                      className="text-sm bg-purple-500/10 text-purple-400 border border-purple-500/50 hover:bg-purple-500 hover:text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-sm"
+                    >
+                      <Plus size={16} /> เพิ่มโซนที่ซ่อนไว้
+                    </button>
+                  )}
+
+                  {/* Dropdown เมนูแสดงโซนที่โดนลบไปให้เลือกกลับมา */}
+                  {showAddZoneMenu && availableZonesToAdd.length > 0 && (
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-[#161B22] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-20">
+                      <div className="px-4 py-2 text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-700 bg-slate-800/50">
+                        เลือกโซนที่ต้องการเพิ่มกลับ
+                      </div>
+                      <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                        {availableZonesToAdd.map((zone) => (
+                          <button
+                            key={zone.zoneName}
+                            onClick={() => handleAddZoneBack(zone)}
+                            type="button"
+                            className="w-full text-left px-4 py-3 hover:bg-purple-500/20 text-white text-sm transition-colors flex justify-between items-center border-b border-slate-800/50 last:border-0"
+                          >
+                            <span className="font-bold text-purple-400">{zone.zoneName}</span>
+                            <span className="text-xs text-slate-400">{zone.quantity} ที่นั่ง</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
               </div>
 
             </div>
@@ -707,10 +702,15 @@ export default function CreateEventPage() {
                    {tickets.map((ticket, index) => (
                       <div key={index} className="flex gap-2 items-start p-3 rounded-xl border border-slate-700 bg-[#1E293B]/20 hover:border-purple-500/50 transition-colors">
                           
-                          {/* 1. ช่องโซน (ล็อกความกว้างไว้ที่ w-16 ไม่ให้โดนบีบ) */}
+                          {/* 1. ช่องโซน (เปลี่ยน input เป็น readOnly เพื่อห้ามแก้ชื่อ) */}
                           <div className="w-16 shrink-0">
                               <label className="text-[10px] text-slate-500 mb-1 block text-center">โซน</label>
-                              <input type="text" value={ticket.zoneName} onChange={(e) => updateTicket(index, 'zoneName', e.target.value)} placeholder="A1" className="w-full bg-[#0F172A] border border-slate-700 rounded-lg px-2 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors text-center" />
+                              <input 
+                                type="text" 
+                                readOnly
+                                value={ticket.zoneName} 
+                                className="w-full bg-[#0F172A]/50 border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-400 outline-none text-center cursor-not-allowed" 
+                              />
                           </div>
                           
                           {/* 2. ช่องราคา (ให้ขยายตัวยืดหยุ่นเต็มพื้นที่ และใส่ min-w-0 กันดันกรอบแตก) */}
@@ -729,7 +729,7 @@ export default function CreateEventPage() {
                           
                           {/* 4. ปุ่มลบ */}
                           <div className="pt-5 shrink-0 flex items-center justify-center">
-                              <button onClick={() => removeTicketTier(index)} className="text-slate-500 hover:text-red-500 p-1.5 transition-colors">
+                              <button type="button" onClick={() => removeTicketTier(index)} className="text-slate-500 hover:text-red-500 p-1.5 transition-colors">
                                   <Trash2 size={16} />
                               </button>
                           </div>

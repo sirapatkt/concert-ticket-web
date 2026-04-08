@@ -19,7 +19,10 @@ export default function PaymentQRPage() {
     amount: searchParams.get("amount") || "0",
   };
 
-  const [timeLeft, setTimeLeft] = React.useState(300); 
+  const expiresInParam = searchParams.get("expiresIn");
+const initialTime = expiresInParam !== null ? parseInt(expiresInParam) : 300;
+
+const [timeLeft, setTimeLeft] = React.useState(initialTime); 
   const [isChecking, setIsChecking] = React.useState(false);
   const [refNo, setRefNo] = React.useState("");
   
@@ -36,8 +39,12 @@ export default function PaymentQRPage() {
             
             // ⭐️ เพิ่มการทำงานตรงนี้ เมื่อเวลาหมด
             if (bookingId) {
-                // ยิง API คืนที่นั่งทันที (ไม่ต้องรอให้กดปุ่ม)
-                fetch(`http://127.0.0.1:8000/api/payment/cancel/${bookingId}`, { method: "POST" })
+                fetch(`http://localhost:8000/api/payment/cancel/${bookingId}`, { 
+                    method: "POST",
+                    headers: {
+                        "Accept": "application/json" // 👈 บังคับให้ Laravel ไม่พ่นหน้า HTML แดงๆ กลับมา
+                    }
+                })
                 .then(() => {
                     alert("⏱️ หมดเวลาชำระเงิน! ระบบได้คืนที่นั่งเรียบร้อยแล้ว");
                     router.push("/"); // พากลับไปหน้าแรก
@@ -64,19 +71,22 @@ export default function PaymentQRPage() {
     setIsChecking(true);
     try {
       if (bookingId) {
-        const res = await fetch(`http://127.0.0.1:8000/api/payment/success/${bookingId}`, { 
+        // ✅ เปลี่ยน 127.0.0.1 เป็น localhost ให้เหมือนปุ่มยกเลิก
+        const res = await fetch(`http://localhost:8000/api/payment/success/${bookingId}`, { 
           method: "POST",
           headers: {
-            "Content-Type": "application/json", // บอก API ว่าเราจะส่งข้อมูลเป็น JSON
+            "Content-Type": "application/json", 
+            "Accept": "application/json" // ✅ เผื่อเหนียวไว้ ป้องกัน HTML แดงๆ
           },
           body: JSON.stringify({
-            amount: params.amount // 👈 ส่งยอดเงินแนบไปให้ Backend ด้วย
+            amount: params.amount 
           })
         });
 
         if (!res.ok) {
-            const errorMsg = await res.text();
-            alert("❌ API Error: " + errorMsg);
+            // ✅ เปลี่ยนเป็น .json() ให้เหมือนปุ่มยกเลิก จะได้อ่าน Error ง่ายๆ
+            const err = await res.json(); 
+            alert("❌ API Error: " + (err.message || "เกิดข้อผิดพลาด"));
             setIsChecking(false);
             return;
         }
@@ -100,19 +110,23 @@ export default function PaymentQRPage() {
 
     try {
       if (bookingId) {
-        // ส่งคำสั่งไปบอกฐานข้อมูลให้ยกเลิกและคืนที่นั่ง
-        const res = await fetch(`http://127.0.0.1:8000/api/payment/cancel/${bookingId}`, { method: "POST" });
+        // ⭐️ แก้ไขตรงคำสั่ง fetch ตอนกดยกเลิก
+        const res = await fetch(`http://localhost:8000/api/payment/cancel/${bookingId}`, { 
+            method: "POST",
+            headers: {
+                "Accept": "application/json" // 👈 เพิ่ม Header ป้องกัน Error HTML
+            }
+        });
         
-        // 🚨 ดัก Error ถ้าระบบหลังบ้านพัง ให้ Alert ฟ้องขึ้นมาเลย
         if (!res.ok) {
-            const err = await res.text();
-            alert("❌ Database Error: " + err);
-            return; // หยุดทำงาน ไม่พากลับหน้าแรก
+            const err = await res.json(); // 👈 เปลี่ยนเป็นรับค่า JSON
+            alert("❌ Database Error: " + (err.message || "เกิดข้อผิดพลาด"));
+            return; 
         }
       }
       
       alert("❌ ชำระเงินไม่สำเร็จ! ระบบได้ยกเลิกและคืนที่นั่งเรียบร้อยแล้ว");
-      router.push("/"); // พากลับไปหน้าแรกเมื่อยกเลิกสำเร็จจริงๆ
+      router.push("/"); 
     } catch (error) {
       console.error("Cancel payment error:", error);
       alert("เกิดข้อผิดพลาดในการเชื่อมต่อระบบ");
@@ -220,7 +234,7 @@ export default function PaymentQRPage() {
                         onClick={handleSimulatePayment}
                         className="w-full py-4 bg-[#00B4D8] hover:bg-[#0096B4] text-white rounded-2xl font-black text-lg shadow-[0_0_20px_rgba(0,180,216,0.3)] transition-all transform active:scale-95 flex items-center justify-center gap-2"
                     >
-                        <CheckCircle2 size={24} /> จำลองการชำระเงินสำเร็จ
+                        <CheckCircle2 size={24} /> ชำระเงินสำเร็จ
                     </button>
 
                     {/* 🔴 ปุ่มจำลองชำระเงินไม่สำเร็จ (สีแดง) */}
@@ -228,7 +242,7 @@ export default function PaymentQRPage() {
                         onClick={handlePaymentFailed}
                         className="w-full py-4 bg-transparent border-2 border-[#E60023] text-[#E60023] rounded-2xl font-black text-lg hover:bg-[#E60023] hover:text-white transition-all transform active:scale-95 flex items-center justify-center gap-2"
                     >
-                        <XCircle size={24} /> จำลองการชำระเงินไม่สำเร็จ
+                        <XCircle size={24} /> ชำระเงินไม่สำเร็จ
                     </button>
                 </div>
             )}

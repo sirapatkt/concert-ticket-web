@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Ticket, Calendar, MapPin, CheckCircle2, Receipt, CreditCard, QrCode, XCircle } from "lucide-react";
+// ⭐️ เพิ่ม Timer เข้ามาใน import
+import { ArrowLeft, Ticket, Calendar, MapPin, CheckCircle2, Receipt, CreditCard, QrCode, XCircle, Timer } from "lucide-react";
 import Link from "next/link";
 
 export default function OrderDetailPage() {
@@ -88,18 +89,38 @@ export default function OrderDetailPage() {
             <p className="text-gray-400 font-mono tracking-widest">Order ID: <span className="text-white">{order.order_number || order.id}</span></p>
           </div>
           <div>
-            {order.status === 'success' ? (
-              <div className="inline-flex items-center gap-2 text-[#76FF03] bg-[#76FF03]/10 px-4 py-2 rounded-full border border-[#76FF03]/20 font-bold">
-                <CheckCircle2 size={18} /> ชำระเงินสำเร็จ
-              </div>
-            ) : order.status === 'completed' ? (
-              <div className="inline-flex items-center gap-2 text-gray-400 bg-gray-500/10 px-4 py-2 rounded-full border border-gray-500/20 font-bold">
-                <CheckCircle2 size={18} /> จบงานแล้ว
-              </div>
+            {/* ⭐️ แก้ไขเป็นโค้ดของคุณตรงนี้ ⭐️ */}
+            {order.status === 'pending' ? (
+                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
+                    <div className="text-yellow-500 border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2">
+                        <Timer size={18} /> รอชำระเงิน
+                    </div>
+                    
+                    {/* ปุ่มพาไปหน้า QR Code ต่อ */}
+                    <button 
+                        onClick={() => {
+    // คำนวณเวลาที่เหลือ (เวลาปัจจุบัน - เวลาที่สร้างบิล)
+    const createdTimestamp = order.created_at_timestamp * 1000; // แปลงเป็นมิลลิวินาที
+    const now = Date.now();
+    const diffSeconds = Math.floor((now - createdTimestamp) / 1000); // หาจำนวนวินาทีที่ผ่านไป
+    const remainingSeconds = Math.max(300 - diffSeconds, 0); // เอา 5 นาที (300 วิ) มาลบ ถ้าติดลบให้เป็น 0
+
+    // แนบค่า expiresIn ไปใน URL ด้วย
+    router.push(`/payment/qr?bookingId=${order.id}&amount=${order.total}&expiresIn=${remainingSeconds}`);
+}}
+                        className="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-2 rounded-full font-black text-sm shadow-[0_0_15px_rgba(234,179,8,0.3)] transition-all flex items-center gap-2 transform active:scale-95"
+                    >
+                        ไปชำระเงิน ➡️
+                    </button>
+                </div>
+            ) : order.status === 'success' ? (
+                <div className="text-[#76FF03] border border-[#76FF03]/30 bg-[#76FF03]/10 px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2">
+                    <CheckCircle2 size={18} /> ชำระเงินสำเร็จ
+                </div>
             ) : (
-              <div className="inline-flex items-center gap-2 text-[#E60023] bg-[#E60023]/10 px-4 py-2 rounded-full border border-[#E60023]/20 font-bold">
-                <XCircle size={18} /> ชำระเงินล้มเหลว
-              </div>
+                <div className="text-red-500 border border-red-500/30 bg-red-500/10 px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2">
+                    <XCircle size={18} /> ชำระเงินล้มเหลว
+                </div>
             )}
           </div>
         </div>

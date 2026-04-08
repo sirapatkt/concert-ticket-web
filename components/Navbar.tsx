@@ -29,6 +29,11 @@ export default function Navbar() {
   const [isNotiOpen, setIsNotiOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false); 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // 🌟 1. สร้าง State สำหรับเก็บข้อมูล Trending Events จาก DB
   const [trendingDbEvents, setTrendingDbEvents] = useState<any[]>([]);
@@ -71,13 +76,54 @@ export default function Navbar() {
     return () => clearInterval(authInterval);
   }, [user]);
 
+  // ==========================================
+  // 🔴 ทดสอบยิง API (เอา if (!isLoggedIn) ออกชั่วคราว)
+  // ==========================================
   useEffect(() => {
-    if (isLoggedIn) {
-      setNotifications(memberNotifications);
-    } else {
-      setNotifications(guestNotifications);
-    }
-  }, [isLoggedIn]); 
+    const fetchUserNotifications = async () => {
+
+      if (!isLoggedIn) {
+        setNotifications(guestNotifications);
+        return;
+      }
+
+
+      try {
+        const token = Cookies.get("token"); 
+
+        const res = await fetch('http://localhost:8000/api/user/notifications', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`, 
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          
+          // ⭐️ ดึงข้อมูลที่เคยอ่านแล้วออกมาเช็ค
+          const readIds = JSON.parse(localStorage.getItem('readNotis') || '[]');
+
+          const formattedNotis = data.map((noti: any) => ({
+            id: noti.id,
+            type: noti.type,         
+            title: noti.title,
+            desc: noti.description,
+            time: noti.time_ago,     
+            link: noti.link_url,
+            read: readIds.includes(noti.id) // ⭐️ ถ้า ID นี้อยู่ใน LocalStorage ให้ค่า read เป็น true เลย (กระดิ่งจะได้ไม่แดง)
+          }));
+
+          setNotifications(formattedNotis);
+        }
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+      }
+    };
+
+    fetchUserNotifications();
+  }, [isLoggedIn]); // ระวัง: ถ้ายังไม่ได้ล็อคอิน แต่ API ต้องการ Auth อาจจะติด 401 นะครับ
 
   // 🌟 2. ดึงข้อมูลจาก DB มาแสดงในกล่องค้นหา (Trending)
   useEffect(() => {
@@ -114,6 +160,7 @@ export default function Navbar() {
   const handleLogout = () => {
     Cookies.remove("isLoggedIn");
     Cookies.remove("user_role");
+    Cookies.remove("token"); // เคลียร์ Token ตอน Logout ด้วย
     setUser(null); 
     setIsLoggedIn(false);
     setIsUserMenuOpen(false);
@@ -156,7 +203,7 @@ export default function Navbar() {
     { id: "theater", nameTh: "ละครเวที & วาไรตี้", nameEn: "Theater & Variety", descEn: "at Rachadalai Theatre", icon: <Drama size={18} /> },
     { id: "classical", nameTh: "ออร์เคสตรา & คลาสสิก", nameEn: "Orchestra & Classical", descEn: "at Suriyadhep Music Sala", icon: <Music2 size={18} /> },
     { id: "all", nameTh: "งานแสดงทั้งหมด", nameEn: "All Events", descEn: "Explore All Venues", icon: <Ticket size={18} /> },
-  ];;
+  ];
 
   const currentLang = languages.find(l => l.code === lang);
 
@@ -302,18 +349,6 @@ export default function Navbar() {
             )}
           </div>
 
-          <Link 
-            href="/cart"
-            className="relative text-gray-400 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/5 group"
-          >
-            <ShoppingCart size={20} className="group-active:scale-90 transition-transform" />
-            {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-[#FF2D55] text-[10px] text-white font-bold px-1.5 py-0.5 rounded-full border border-[#0B0F14] animate-in zoom-in">
-                {cartCount}
-              </span>
-            )}
-          </Link>
-
           <div className="relative" ref={dropdownRef}>
             <button onClick={() => setIsLangOpen(!isLangOpen)} className="flex items-center gap-2 border border-white/30 px-2 py-1.5 rounded hover:bg-white/5 transition ml-2">
               <img src={currentLang?.flagUrl} alt={currentLang?.label || ""} className="w-5 h-auto rounded-sm block" />
@@ -342,7 +377,8 @@ export default function Navbar() {
                 <div className="text-right hidden md:block">
                   <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">WELCOME</p>
                   <p className="text-[13px] font-black text-[#4FACFE] group-hover:text-white transition-colors tracking-tight leading-none uppercase">
-                    BEATPASS MEMBER
+                    {/* ✅ 2. แทนที่ตรงนี้ */}
+                    {isMounted ? (user?.name || user?.email || "BEATPASS MEMBER") : "BEATPASS MEMBER"}
                   </p>
                 </div>
                 

@@ -472,7 +472,7 @@ export default function SeatPreviewModal({ isOpen, onClose, tickets, hallId, ven
     else if (["B", "C", "D", "E", "T", "S", "R", "Q", "LTL", "LTR", "UTL", "UTR"].some(n => name === n || name.startsWith(n))) matrix = [{l:2, r:2}, {l:0, r:0}];
     
     // 🏟️ 🎯 กฎสำหรับโซน LM1 หรือ ZONE 1 (ศาลาดนตรีสุริยเทพ ฝั่งซ้าย)
-    else if (["LM1", "ZONE 1", "ZONE1"].includes(name)) {
+    else if (["ZONE 1", "ZONE1"].includes(name)) {
         isFixedLayout = true;
         rowLetters = ["C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
         maxCol = 20; 
@@ -490,7 +490,7 @@ export default function SeatPreviewModal({ isOpen, onClose, tickets, hallId, ven
         ];
     }
     // 🏟️ 🎯 กฎสำหรับโซน LM2 หรือ ZONE 2 (ศาลาดนตรีสุริยเทพ โซนตรงกลาง)
-    else if (["LM2", "ZONE 2", "ZONE2"].includes(name)) {
+    else if (["ZONE 2", "ZONE2"].includes(name)) {
         isFixedLayout = true;
         rowLetters = ["C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
         maxCol = 22; 
@@ -508,7 +508,7 @@ export default function SeatPreviewModal({ isOpen, onClose, tickets, hallId, ven
         ];
     }
     // 🏟️ 🎯 กฎสำหรับโซน LM3 หรือ ZONE 3 (ศาลาดนตรีสุริยเทพ ฝั่งขวา)
-    else if (["LM3", "ZONE 3", "ZONE3"].includes(name)) {
+    else if (["ZONE 3", "ZONE3"].includes(name)) {
         isFixedLayout = true;
         rowLetters = ["C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
         maxCol = 20; 
@@ -526,7 +526,7 @@ export default function SeatPreviewModal({ isOpen, onClose, tickets, hallId, ven
         ];
     }
     // 🏟️ 🎯 กฎสำหรับโซน LM4 หรือ ZONE 4 (ศาลาดนตรีสุริยเทพ ฝั่งซ้ายแถวหลัง)
-    else if (["LM4", "ZONE 4", "ZONE4"].includes(name)) {
+    else if (["ZONE 4", "ZONE4"].includes(name)) {
         isFixedLayout = true;
         rowLetters = ["M", "N", "O", "P", "Q", "R", "S", "T", "U", "V"];
         maxCol = 16; 
@@ -544,7 +544,7 @@ export default function SeatPreviewModal({ isOpen, onClose, tickets, hallId, ven
         ];
     }
     // 🏟️ 🎯 กฎสำหรับโซน LM5 หรือ ZONE 5 (ศาลาดนตรีสุริยเทพ โซนตรงกลางแถวหลัง)
-    else if (["LM5", "ZONE 5", "ZONE5"].includes(name)) {
+    else if (["ZONE 5", "ZONE5"].includes(name)) {
         isFixedLayout = true;
         rowLetters = ["M", "N", "O", "P", "Q", "R", "S", "T"];
         maxCol = 20; 
@@ -560,7 +560,7 @@ export default function SeatPreviewModal({ isOpen, onClose, tickets, hallId, ven
         ];
     }
     // 🏟️ 🎯 กฎสำหรับโซน LM6 หรือ ZONE 6 (ศาลาดนตรีสุริยเทพ ฝั่งขวาแถวหลัง)
-    else if (["LM6", "ZONE 6", "ZONE6"].includes(name)) {
+    else if (["ZONE 6", "ZONE6"].includes(name)) {
         isFixedLayout = true;
         // เริ่มแถว M จนถึง V (ตามรูปแปลน)
         rowLetters = ["M", "N", "O", "P", "Q", "R", "S", "T", "U", "V"];
@@ -579,7 +579,7 @@ export default function SeatPreviewModal({ isOpen, onClose, tickets, hallId, ven
         ];
     }
     // 🏟️ 🎯 กฎสำหรับโซน UM1 หรือ ZONE 7 (ศาลาดนตรีสุริยเทพ ชั้น 2 ฝั่งซ้าย)
-    else if (["UM1", "ZONE 7", "ZONE7"].includes(name)) {
+    else if (["ZONE 7", "ZONE7"].includes(name)) {
         isFixedLayout = true;
         // เริ่มแถว AA ถึง HH (อักษรคู่ตามแปลน)
         rowLetters = ["AA", "BB", "CC", "DD", "EE", "FF", "GG", "HH"];
@@ -596,7 +596,7 @@ export default function SeatPreviewModal({ isOpen, onClose, tickets, hallId, ven
         ];
     }
     // 🏟️ 🎯 กฎสำหรับโซน UM2 หรือ ZONE 8 (ศาลาดนตรีสุริยเทพ ชั้น 2 โซนตรงกลาง)
-    else if (["UM2", "ZONE 8", "ZONE8"].includes(name)) {
+    else if (["ZONE 8", "ZONE8"].includes(name)) {
         isFixedLayout = true;
         // เริ่มแถว AA ถึง HH
         rowLetters = ["AA", "BB", "CC", "DD", "EE", "FF", "GG", "HH"];
@@ -613,7 +613,7 @@ export default function SeatPreviewModal({ isOpen, onClose, tickets, hallId, ven
         ];
     }
     // 🏟️ 🎯 กฎสำหรับโซน UM3 หรือ ZONE 9 (ศาลาดนตรีสุริยเทพ ชั้น 2 ฝั่งขวา)
-    else if (["UM3", "ZONE 9", "ZONE9"].includes(name)) {
+    else if (["ZONE 9", "ZONE9"].includes(name)) {
         isFixedLayout = true;
         // เริ่มแถว AA ถึง HH
         rowLetters = ["AA", "BB", "CC", "DD", "EE", "FF", "GG", "HH"];
@@ -1078,18 +1078,19 @@ export default function SeatPreviewModal({ isOpen, onClose, tickets, hallId, ven
                 <h3 className="text-3xl md:text-4xl font-black text-white mb-2">โซน {selectedPreviewZone.zoneName}</h3>
                 <p className="text-xl text-cyan-400 mb-8 font-medium">฿ {Number(selectedPreviewZone.price).toLocaleString()}</p>
 
-                {/* 🌟 จุดที่ปรับขนาดเก้าอี้ให้เล็กลงอยู่ตรงนี้ครับ 🌟 */}
-                <div className="flex flex-col gap-1 md:gap-1.5 pb-20 overflow-x-auto w-full max-w-full">
-                  <div className="min-w-max px-2 mx-auto">
+                {/* 🌟 จุดที่ปรับขนาดเก้าอี้ให้พอดีจอ (ไม่ล้น ไม่ต้องเลื่อน) 🌟 */}
+                <div className="flex flex-col gap-1 md:gap-1.5 pb-20 w-full max-w-full px-2 md:px-8">
+                  <div className="w-full mx-auto flex flex-col items-center">
                     {Array.from(new Set(previewGeneratedSeats.map(s => s.row))).map(row => (
-                      <div key={row} className="flex items-center justify-between w-full mb-1.5">
-                        {/* 🌟 ตัวอักษรฝั่งซ้ายจะโดนดันชิดขอบเสมอ 🌟 */}
-                        <span className="w-10 md:w-14 text-slate-400 font-bold text-[11px] md:text-sm text-right pr-4 md:pr-6 shrink-0">{row}</span>
+                      <div key={row} className="flex items-center justify-between w-full mb-1 sm:mb-1.5">
                         
-                        {/* 🌟 ก้อนเก้าอี้จะจัดกึ่งกลางแยกเป็นอิสระ 🌟 */}
-                        <div className="flex items-center gap-1 md:gap-1.5 justify-center flex-1">
+                        {/* 🌟 ตัวอักษรฝั่งซ้าย 🌟 */}
+                        <span className="w-6 sm:w-10 text-slate-400 font-bold text-[9px] sm:text-xs md:text-sm text-right pr-2 sm:pr-4 shrink-0">{row}</span>
+                        
+                        {/* 🌟 ก้อนเก้าอี้ (ปรับให้ยืดหยุ่น หด/ขยาย ตามหน้าจออัตโนมัติ) 🌟 */}
+                        <div className="flex items-center justify-center gap-[2px] sm:gap-1 flex-1">
                           {previewGeneratedSeats.filter(s => s.row === row).map(seat => (
-                            <div key={seat.id} className={`w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 flex items-center justify-center ${seat.isHidden ? 'opacity-0' : 'transition-transform hover:scale-110'}`}>
+                            <div key={seat.id} className={`w-full max-w-[18px] sm:max-w-[24px] md:max-w-[30px] aspect-square flex items-center justify-center shrink ${seat.isHidden ? 'opacity-0' : 'transition-transform hover:scale-110'}`}>
                               {!seat.isHidden && (
                                 <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
                                    <circle cx="50" cy="50" r="48" fill="#FFCC00" />
@@ -1100,8 +1101,9 @@ export default function SeatPreviewModal({ isOpen, onClose, tickets, hallId, ven
                           ))}
                         </div>
                         
-                        {/* 🌟 ตัวอักษรฝั่งขวาจะโดนดันชิดขอบเสมอ 🌟 */}
-                        <span className="w-10 md:w-14 text-slate-400 font-bold text-[11px] md:text-sm text-left pl-4 md:pl-6 shrink-0">{row}</span>
+                        {/* 🌟 ตัวอักษรฝั่งขวา 🌟 */}
+                        <span className="w-6 sm:w-10 text-slate-400 font-bold text-[9px] sm:text-xs md:text-sm text-left pl-2 sm:pl-4 shrink-0">{row}</span>
+                        
                       </div>
                     ))}
                   </div>

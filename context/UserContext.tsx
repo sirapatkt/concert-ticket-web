@@ -2,11 +2,12 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import Cookies from "js-cookie";
 
-// ✅ 1. สร้าง Type
+// ✅ 1. สร้าง Type (เพิ่ม [key: string]: any เพื่อให้รับค่าอื่นๆ จาก DB ได้)
 export type UserType = {
   id?: string | number;
   name?: string;
   email?: string;
+  [key: string]: any; 
 } | null;
 
 type UserContextType = {
@@ -25,30 +26,47 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // ค่าเริ่มต้นเป็น null
   const [user, setUser] = useState<UserType>(null); 
 
-  // ✅ 2. Logic กู้คืนข้อมูล (แบบ Clean)
+  // ✅ 2. Logic กู้คืนข้อมูลของจริงจาก Backend
   useEffect(() => {
-    // เช็คแค่ว่ามี Cookie ไหม (ไม่ต้องเช็ค user ใน state)
-    const isLoggedIn = Cookies.get("isLoggedIn") === "true";
-    const userRole = Cookies.get("user_role");
+    const restoreUserSession = async () => {
+      // ดึง Token จาก Cookie
+      const token = Cookies.get("token");
 
-    if (isLoggedIn) {
-        // ถ้ามี Cookie แสดงว่าเคยล็อกอิน -> กู้ข้อมูลคืนมาเลย
-        if (userRole === "organizer") {
+      if (token) {
+        try {
+          // ยิง API ไปเอาข้อมูลของคนๆ นี้จริงๆ จาก Laravel
+          const res = await fetch("http://127.0.0.1:8000/api/profile", {
+            method: "GET",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Accept": "application/json"
+            }
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            
+            // ถ้ายิงผ่าน เอาข้อมูลที่ได้จากตาราง members มายัดใส่ State
             setUser({
-                id: "org-001",
-                name: "Demo Organizer",
-                email: "org@demo.com"
+              id: data.Mem_id || data.id,
+              name: data.firstnameMB || data.name, // 👈 เอาชื่อจริงจาก DB มาโชว์ที่ Navbar
+              email: data.emailMB || data.email,
+              ...data // เก็บข้อมูลอื่นๆ เผื่อไว้ใช้
             });
-        } else {
-            setUser({
-                id: "101",
-                name: "BeatPass Member",
-                email: "user@beatpass.com"
-            });
+          } else {
+            // ถ้า Token หมดอายุ หรือไม่ถูกต้อง ให้ล้าง Cookie ทิ้งให้หมด
+            Cookies.remove("token");
+            Cookies.remove("isLoggedIn");
+            Cookies.remove("user_role");
+            setUser(null);
+          }
+        } catch (error) {
+          console.error("Failed to fetch user data:", error);
         }
-    }
-    // ✅ บรรทัดนี้สำคัญ: สั่งปิดการเช็ค Dependency บรรทัดเดียว เพื่อให้ทำงานแค่ครั้งเดียวตอนโหลด
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      }
+    };
+
+    restoreUserSession();
   }, []); 
 
   return (

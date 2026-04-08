@@ -2,39 +2,54 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 
+// ==========================================
+// 1. ฟังก์ชัน GET: สำหรับดึงข้อมูลอีเวนต์ทั้งหมดไปโชว์ในหน้า Admin
+// ==========================================
+export async function GET() {
+  try {
+    // ดึงข้อมูลทั้งหมดจากตาราง events เรียงจากใหม่ไปเก่า
+    const queryText = `SELECT * FROM events ORDER BY "eventDate" DESC`;
+    const result = await pool.query(queryText);
+    
+    return NextResponse.json(result.rows, { status: 200 });
+  } catch (error: any) {
+    console.error('Database Fetch Error:', error);
+    return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
+  }
+}
+
+// ==========================================
+// 2. ฟังก์ชัน POST: สำหรับเพิ่มอีเวนต์ใหม่
+// ==========================================
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { eventName, eventDate, location, description, tickets } = body;
 
-    const client = await pool.connect();
-
-    // ⭐ แก้ชื่อคอลัมน์ให้ตรงกับตารางเก่า + คอลัมน์ใหม่ที่เราเพิ่งเพิ่ม
+    // ⭐ ใช้ pool.query โดยตรงเลย ปลอดภัยกว่า ไม่ต้องกลัว Connection ค้าง
     const queryText = `
       INSERT INTO events (
-        "eventName",        -- ชื่อช่องเดิมใน DB (ตามรูป)
-        "eventDescription", -- ชื่อช่องเดิมใน DB
-        "Org_id",           -- ต้องใส่ (Database บังคับ)
-        "Hall_id",          -- ต้องใส่ (Database บังคับ)
-        "eventDate",        -- ช่องใหม่ที่เพิ่งเพิ่ม
-        "location",         -- ช่องใหม่ที่เพิ่งเพิ่ม
-        "tickets"           -- ช่องใหม่ที่เพิ่งเพิ่ม
+        "eventName",        
+        "eventDescription", 
+        "Org_id",           -- 📌 ข้อควรระวัง: อนาคตอย่าลืมเปลี่ยนให้รับค่าตามผู้จัดจริง
+        "Hall_id",          -- 📌 ข้อควรระวัง: อนาคตอย่าลืมเปลี่ยนให้รับค่าตามสถานที่จริง
+        "eventDate",        
+        "location",         
+        "tickets"           
       ) 
       VALUES ($1, $2, 1, 1, $3, $4, $5) 
       RETURNING *
     `;
     
-    // เรียงลำดับข้อมูลให้ตรงกับข้างบน
     const values = [
-      eventName,    // -> เข้าช่อง eventName
-      description,  // -> เข้าช่อง eventDescription
-      eventDate,    // -> เข้าช่อง eventDate
-      location,     // -> เข้าช่อง location
-      JSON.stringify(tickets) // -> เข้าช่อง tickets
+      eventName,    
+      description,  
+      eventDate,    
+      location,     
+      JSON.stringify(tickets) 
     ];
 
-    const result = await client.query(queryText, values);
-    client.release();
+    const result = await pool.query(queryText, values);
 
     return NextResponse.json({ success: true, event: result.rows[0] });
 

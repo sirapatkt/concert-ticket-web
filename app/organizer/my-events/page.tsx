@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   Search, Calendar, MoreHorizontal, 
-  Edit, Trash2, Eye, Building2, Loader2 
+  Edit, Trash2, Eye, Building2, Loader2, CreditCard, CheckCircle2
 } from "lucide-react";
 
 export default function MyEventsPage() {
@@ -38,11 +38,12 @@ export default function MyEventsPage() {
     fetchEvents();
   }, []);
 
-  type EventStatusType = "กำลังเตรียม" | "กำลังจะจัด" | "เปิดขาย" | "กำลังจัด" | "ปิดการขาย" | "บัตรขายหมด" | "เสร็จสิ้น" | "ยกเลิกงาน";
+  type EventStatusType = "กำลังเตรียม" | "รอชำระเงิน" | "กำลังจะจัด" | "เปิดขาย" | "กำลังจัด" | "ปิดการขาย" | "บัตรขายหมด" | "เสร็จสิ้น" | "ยกเลิกงาน";
 
   const getThaiStatus = (status: string): EventStatusType => {
     if (!status) return 'กำลังเตรียม';
     if (status === 'กำลังเตรียม') return 'กำลังเตรียม';
+    if (status === 'รอชำระเงิน' || status.toUpperCase() === 'APPROVED' || status.toUpperCase() === 'PENDING_PAYMENT') return 'รอชำระเงิน';
     if (status === 'กำลังจะจัด') return 'กำลังจะจัด';
     if (status === 'เปิดขาย' || status === 'เปิดขายบัตร' || status.toUpperCase() === 'ON SALE') return 'เปิดขาย'; 
     if (status === 'ปิดการขาย') return 'ปิดการขาย';
@@ -71,6 +72,8 @@ export default function MyEventsPage() {
         return "border-2 border-pink-500 bg-pink-600 text-white animate-pulse";
       case 'กำลังเตรียม':
         return "border-2 border-amber-400 bg-amber-500 text-white";
+      case 'รอชำระเงิน': 
+        return "border-2 border-yellow-500 bg-yellow-600 text-white shadow-lg shadow-yellow-500/20 animate-pulse";
       case 'กำลังจะจัด':
         return "border-2 border-blue-500 bg-blue-600 text-white";
       case 'บัตรขายหมด':
@@ -112,7 +115,6 @@ export default function MyEventsPage() {
   };
 
   return (
-    // ✅ จุดไม้ตาย: ใส่ suppressHydrationWarning ที่ div นอกสุด ครอบคลุมทั้งหน้าไปเลย!
     <div suppressHydrationWarning className="min-h-screen bg-[#020617] text-white p-6 pb-20 font-sans">
       
       {/* Header */}
@@ -136,6 +138,7 @@ export default function MyEventsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
           <input 
+            suppressHydrationWarning
             type="text" 
             placeholder="ค้นหาชื่อคอนเสิร์ต..." 
             className="w-full bg-[#0F172A] border border-slate-800 rounded-lg pl-10 pr-4 py-2.5 text-white focus:outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600"
@@ -143,8 +146,9 @@ export default function MyEventsPage() {
         </div>
 
         <div className="flex bg-[#0F172A] p-1 rounded-lg border border-slate-800 overflow-x-auto">
-          {["ทั้งหมด", "กำลังเตรียม", "กำลังจะจัด", "เปิดขาย", "ปิดการขาย", "บัตรขายหมด", "เสร็จสิ้น", "ยกเลิกงาน"].map((status) => (
+          {["ทั้งหมด", "กำลังเตรียม", "รอชำระเงิน", "กำลังจะจัด", "เปิดขาย", "ปิดการขาย", "บัตรขายหมด", "เสร็จสิ้น", "ยกเลิกงาน"].map((status) => (
             <button
+              suppressHydrationWarning
               key={status}
               onClick={() => setFilterStatus(status)}
               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap
@@ -166,7 +170,12 @@ export default function MyEventsPage() {
             <Loader2 className="animate-spin mb-2" size={32} />
             <p>กำลังโหลดข้อมูลอีเวนต์...</p>
           </div>
-        ) : filteredEvents.length > 0 ? filteredEvents.map((event: any) => (
+        ) : filteredEvents.length > 0 ? filteredEvents.map((event: any) => {
+          
+          const currentStatus = getThaiStatus(event.status);
+          const isEditableOrDeletable = currentStatus === 'กำลังเตรียม' || currentStatus === 'กำลังจะจัด' || currentStatus === 'รอชำระเงิน';
+
+          return (
           <div 
             key={event.id} 
             className="bg-[#0F172A] border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row gap-6 hover:border-slate-600 transition-all group shadow-lg"
@@ -180,7 +189,7 @@ export default function MyEventsPage() {
                />
                <div className="absolute top-2 left-2">
                   <span className={`px-2 py-1 rounded text-[10px] font-black ${getStatusStyles(event.status)}`}>
-                    {getThaiStatus(event.status)}
+                    {currentStatus}
                   </span>
                 </div>
               </div>
@@ -205,7 +214,7 @@ export default function MyEventsPage() {
                   </div>
                 </div>
                 
-                <button className="md:hidden text-slate-400 hover:text-white transition-colors">
+                <button suppressHydrationWarning className="md:hidden text-slate-400 hover:text-white transition-colors">
                   <MoreHorizontal size={20} />
                 </button>
               </div>
@@ -223,7 +232,7 @@ export default function MyEventsPage() {
                 </div>
                 <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
                   <div 
-                    className={`h-full rounded-full transition-all duration-1000 ${getThaiStatus(event.status) === 'เสร็จสิ้น' ? 'bg-slate-500' : 'bg-gradient-to-r from-blue-600 to-cyan-400'}`} 
+                    className={`h-full rounded-full transition-all duration-1000 ${currentStatus === 'เสร็จสิ้น' ? 'bg-slate-500' : 'bg-gradient-to-r from-blue-600 to-cyan-400'}`} 
                     style={{ width: `${event.capacity > 0 ? ((event.sold || 0) / event.capacity) * 100 : 0}%` }}
                   ></div>
                 </div>
@@ -232,6 +241,29 @@ export default function MyEventsPage() {
 
             {/* Action Buttons */}
             <div className="hidden md:flex flex-col justify-center gap-2 pl-6 border-l border-slate-800 min-w-[150px]">
+              
+              {currentStatus === 'รอชำระเงิน' ? (
+                <Link 
+                  href={`/organizer/payment?id=${event.id}`} 
+                  className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-gradient-to-r from-purple-600 to-orange-500 text-white hover:scale-105 transition-all text-xs font-bold shadow-md shadow-purple-500/20"
+                >
+                  <CreditCard size={14} /> ชำระเงิน
+                </Link>
+              ) : (
+                <button 
+                  suppressHydrationWarning
+                  disabled 
+                  className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-slate-800/50 text-slate-500 cursor-not-allowed text-xs font-bold border border-slate-700/50"
+                  title={currentStatus === 'กำลังเตรียม' ? "รอแอดมินอนุมัติก่อนถึงจะชำระเงินได้" : "ชำระเงินค่าเปิดระบบเรียบร้อยแล้ว"}
+                >
+                  {currentStatus === 'กำลังเตรียม' ? (
+                    <><CreditCard size={14} /> รอกดชำระเงิน</>
+                  ) : (
+                    <><CheckCircle2 size={14} className="text-emerald-500/50" /> ชำระเงินแล้ว</>
+                  )}
+                </button>
+              )}
+
              <Link 
                 href={`/organizer/detail?id=${event.id}`} 
                 className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-600 hover:text-white transition-all text-xs font-bold border border-blue-500/20"
@@ -239,7 +271,7 @@ export default function MyEventsPage() {
                 <Eye size={14} /> ดูข้อมูล
               </Link>
               
-              {(getThaiStatus(event.status) === 'กำลังเตรียม' || getThaiStatus(event.status) === 'กำลังจะจัด') ? (
+              {isEditableOrDeletable ? (
                 <Link 
                   href={`/organizer/edit-event?id=${event.id}`} 
                   className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-all text-xs font-bold border border-slate-700"
@@ -248,6 +280,7 @@ export default function MyEventsPage() {
                 </Link>
               ) : (
                 <button 
+                  suppressHydrationWarning
                   disabled 
                   className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-slate-800/50 text-slate-500 cursor-not-allowed text-xs font-bold border border-slate-700/50"
                   title="งานนี้เปิดขายบัตร หรือจัดไปแล้ว ไม่สามารถแก้ไขได้"
@@ -256,15 +289,27 @@ export default function MyEventsPage() {
                 </button>
               )}
 
-              <button 
-                onClick={() => handleDelete(event.id)} 
-                className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-red-500/5 text-red-400 hover:bg-red-500 hover:text-white transition-all text-xs font-bold border border-red-500/10"
-              >
-                <Trash2 size={14} /> ลบ
-              </button>
+              {isEditableOrDeletable ? (
+                <button 
+                  suppressHydrationWarning
+                  onClick={() => handleDelete(event.id)} 
+                  className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-red-500/5 text-red-400 hover:bg-red-500 hover:text-white transition-all text-xs font-bold border border-red-500/10"
+                >
+                  <Trash2 size={14} /> ลบ
+                </button>
+              ) : (
+                <button 
+                  suppressHydrationWarning
+                  disabled 
+                  className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-slate-800/50 text-slate-500 cursor-not-allowed text-xs font-bold border border-slate-700/50"
+                  title="งานนี้เปิดขายบัตร หรือจัดไปแล้ว ไม่สามารถลบได้"
+                >
+                  <Trash2 size={14} /> ลบไม่ได้แล้ว
+                </button>
+              )}
             </div>
           </div>
-        )) : (
+        )}) : (
           <div className="text-center py-24 bg-[#0F172A] rounded-2xl border-2 border-dashed border-slate-800">
             <div className="bg-slate-800/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
               <Calendar size={32} className="text-slate-600" />

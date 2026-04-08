@@ -58,6 +58,78 @@ function EventDetailContent() {
     }) + " น.";
   };
 
+  // ====================================================================
+  // ✅ วิธีแก้: คำนวณจากวันที่ขายบัตรจริงๆ (เลิกเชื่อ string เก่าจาก DB)
+  // ====================================================================
+  type EventStatusType = "กำลังเตรียม" | "กำลังจะจัด" | "เปิดขาย" | "กำลังจัด" | "ปิดการขาย" | "บัตรขายหมด" | "เสร็จสิ้น" | "ยกเลิกงาน";
+
+  const getThaiStatus = (eventData: any): EventStatusType => {
+    if (!eventData) return 'กำลังเตรียม';
+
+    // 1. เช็คสถานะบังคับยกเลิกก่อน
+    const rawStatus = eventData.status || eventData.eventStatus || '';
+    if (rawStatus === 'ยกเลิก' || rawStatus === 'ยกเลิกงาน') return 'ยกเลิกงาน';
+
+    // 2. คำนวณจากวันที่ขายบัตรจริง (แม่นยำ 100%)
+    if (eventData.event_date_times && eventData.event_date_times.length > 0) {
+      const now = new Date();
+      let isSelling = false;
+      let isWaiting = false;
+      let isEnded = true;
+
+      for (const round of eventData.event_date_times) {
+        const saleStart = new Date(round.Sale_startDT);
+        const saleEnd = new Date(round.Sale_endDT);
+        const eventEnd = new Date(round.endDT);
+
+        if (now < eventEnd) isEnded = false; 
+        if (now >= saleStart && now <= saleEnd) isSelling = true; // อยู่ในช่วงเปิดขาย
+        if (now < saleStart) isWaiting = true; // ยังไม่เปิดขาย
+      }
+
+      if (isEnded) return 'เสร็จสิ้น';
+      if (isSelling) return 'เปิดขาย';
+      if (isWaiting) return 'กำลังจะจัด';
+      return 'ปิดการขาย';
+    }
+
+    // 3. Fallback กรณีไม่มีรอบการแสดง
+    if (rawStatus === 'กำลังเตรียม') return 'กำลังเตรียม';
+    if (rawStatus === 'กำลังจะจัด') return 'กำลังจะจัด';
+    if (rawStatus === 'เปิดขาย' || rawStatus === 'เปิดขายบัตร' || rawStatus?.toUpperCase() === 'ON SALE') return 'เปิดขาย'; 
+    if (rawStatus === 'ปิดการขาย') return 'ปิดการขาย';
+    if (rawStatus === 'กำลังจัด') return 'กำลังจัด';
+    if (rawStatus === 'บัตรขายหมด') return 'บัตรขายหมด';
+    if (rawStatus === 'เสร็จสิ้น') return 'เสร็จสิ้น';
+    
+    return 'กำลังเตรียม'; 
+  };
+
+  const getStatusStyles = (eventData: any) => {
+    const thaiStatus = getThaiStatus(eventData);
+  
+    switch (thaiStatus) {
+      case 'เปิดขาย': 
+        return "border-2 border-emerald-500 bg-emerald-600 text-white shadow-lg";
+      case 'ปิดการขาย':
+        return "border-2 border-red-900 bg-red-800 text-white";
+      case 'กำลังจัด':
+        return "border-2 border-pink-500 bg-pink-600 text-white animate-pulse";
+      case 'กำลังเตรียม':
+        return "border-2 border-amber-400 bg-amber-500 text-white";
+      case 'กำลังจะจัด':
+        return "border-2 border-blue-500 bg-blue-600 text-white";
+      case 'บัตรขายหมด':
+        return "border-2 border-orange-500 bg-orange-600 text-white";
+      case 'เสร็จสิ้น':
+        return "border-2 border-slate-500 bg-slate-600 text-white";
+      case 'ยกเลิกงาน':
+        return "border-2 border-red-500 bg-red-600 text-white";
+      default:
+        return "border-2 border-slate-600 bg-slate-700 text-white";
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center text-blue-400">
@@ -77,53 +149,60 @@ function EventDetailContent() {
     );
   }
 
-  // ====================================================================
-  // ✅ 1. ประกาศตัวแปร formattedTickets ก่อน เพื่อไม่ให้เกิด Error เส้นแดง
-  // ====================================================================
+  // ============================================================================
+  // 🌟 บังคับจัดเรียงลำดับโซนใหม่ เพื่อให้รูปผังใน Modal สีไม่เพี้ยนและถูกตำแหน่ง
+  // ============================================================================
+  const correctZoneOrder = [
+    "A1", "A2", "A3", "A4", "A5", "A6", "A7",
+    "SB", "SC", "SD", "SE", "SF", "SG", "SH", "SI", "SJ", "SK", "SL", "SM", "SN",
+    "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T"
+  ];
+
   const formattedTickets = event.ticket_zones?.map((zone: any) => ({
     zoneName: zone.zoneName,
     price: zone.priceperTick,
     quantity: zone.totalSeat,
-  })) || [];
+  })).sort((a: any, b: any) => {
+    // เทียบชื่อโซนกับ Array ด้านบน จัดเรียงให้เข้าที่
+    const indexA = correctZoneOrder.indexOf(a.zoneName.toUpperCase().trim());
+    const indexB = correctZoneOrder.indexOf(b.zoneName.toUpperCase().trim());
+    
+    // ถ้าหาชื่อโซนไม่เจอ (เช่น โซนแปลกๆ) ให้เตะไปอยู่ท้ายสุด (999)
+    const posA = indexA === -1 ? 999 : indexA;
+    const posB = indexB === -1 ? 999 : indexB;
+    
+    return posA - posB;
+  }) || [];
 
-  // ====================================================================
-  // ✅ 2. ฟังก์ชันอัจฉริยะสำหรับประเมินขนาดสถานที่ (ใช้แค่การนับจำนวนโซน)
-  // ====================================================================
   const detectVenueSize = (hallId: string, tickets: any[]) => {
     const zoneCount = tickets.length;
 
     if (hallId === "1") { 
-      // 📍 อิมแพ็ค อารีน่า
       if (zoneCount > 20) return "Large";
       if (zoneCount > 8) return "Medium";
       return "Small";
     } 
     else if (hallId === "2") { 
-      // 📍 มหิดลสิทธาคาร
-      if (zoneCount > 26) return "Large";
-      if (zoneCount > 14) return "Medium";
-      return "Small";
+      if (zoneCount > 6) return "Large";   
+      if (zoneCount > 3) return "Medium";  
+      return "Small";                      
     } 
     else if (hallId === "3") { 
-      // 📍 เมืองไทยรัชดาลัย
-      if (zoneCount > 12) return "Large";  // มี 13-18 โซน = ผังใหญ่
-      if (zoneCount > 6) return "Medium";  // มี 7-12 โซน = ผังกลาง
-      return "Small";                      // มี 1-6 โซน = ผังเล็ก
+      if (zoneCount > 12) return "Large";  
+      if (zoneCount > 6) return "Medium";  
+      return "Small";                      
     }
     
-    return "Small"; // ค่าเริ่มต้น
+    return "Small"; 
   };
 
-  // ดึง Hall ID ปัจจุบัน
   const currentHallId = event.Hall_id?.toString() || event.hall?.Hall_id?.toString() || "3";
 
-  // ตรวจสอบค่า venueSize
   let activeVenueSize = event.venueSize || event.venue_size;
   if (!activeVenueSize) {
     activeVenueSize = detectVenueSize(currentHallId, formattedTickets);
   }
 
-  // ทำให้เป็นตัวพิมพ์ใหญ่ตัวแรกเสมอ
   const formattedVenueSize = activeVenueSize.charAt(0).toUpperCase() + activeVenueSize.slice(1).toLowerCase();
 
   return (
@@ -152,8 +231,12 @@ function EventDetailContent() {
                 alt={event.eventName} 
                 className="w-full h-full object-cover"
               />
-              <div className="absolute top-3 right-3 bg-blue-600 px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                {event.eventStatus}
+              
+              {/* ✅ ป้ายสถานะจะอิงจากการคำนวณเวลาจริงๆ แล้ว ✅ */}
+              <div className="absolute top-2 left-2">
+                <span className={`px-2 py-1 rounded text-[10px] font-black ${getStatusStyles(event)}`}>
+                  {getThaiStatus(event)}
+                </span>
               </div>
             </div>
             <h2 className="text-xl font-bold text-white mb-2">{event.eventName}</h2>

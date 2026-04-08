@@ -69,8 +69,9 @@ function LoginForm() {
 
       if (res.ok) {
         // ✅ 2. ล็อกอินผ่าน! เก็บข้อมูลลงเครื่อง
-        Cookies.set("user_role", userType, { expires: 1 });
-        Cookies.set("isLoggedIn", "true", { expires: 1 });
+        Cookies.set("token", data.token, { expires: 7, path: '/' }); 
+        Cookies.set("isLoggedIn", "true", { expires: 7, path: '/' }); 
+        Cookies.set("user_role", userType, { expires: 7, path: '/' });
         localStorage.setItem("token", data.token);
         localStorage.setItem("role", userType);
         

@@ -89,6 +89,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <button 
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-4 py-3 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all text-sm font-medium"
+            suppressHydrationWarning
           >
             <LogOut size={20} />
             ออกจากระบบ

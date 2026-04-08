@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Search, User, Ban, CheckCircle, 
   Mail, Calendar, Download, X, Phone, Ticket, 
@@ -12,6 +12,7 @@ interface OrderType {
   id: string;
   event: string;
   seat: string;
+  seatNumber?: string; // ✅ ใช้แค่ตัวนี้ตัวเดียวจบ ตามที่ Backend ส่งมา
   price: number;
   date: string;
   time: string;
@@ -34,7 +35,7 @@ interface UserType {
   orders?: OrderType[];
 }
 
-// --- ✅ Mock Data: เหลือไว้ 1 ตัวอย่าง เพื่อเป็น Template โครงสร้างข้อมูล ---
+// --- ✅ Mock Data (เป็น Template) ---
 const initialUsers: UserType[] = [
   { 
     id: 1, 
@@ -58,30 +59,46 @@ const initialUsers: UserType[] = [
          venue: "UOB Live, Emsphere", 
          status: "Paid",
          poster: "https://thestandard.co/wp-content/uploads/2024/01/Jeff-Satur-Space-Shuttle-No.8-Asia-Tour.jpg"
-       },
-       { 
-         id: "ORD-7742", 
-         event: "Big Mountain 14", 
-         seat: "VIP", 
-         price: 2000, 
-         date: "10 Dec 2025", 
-         time: "12:00", 
-         venue: "The Ocean Khao Yai", 
-         status: "Used", 
-         poster: "https://s.isanook.com/jo/0/ud/489/2446729/bmmf13.jpg"
        }
     ]
   }
 ];
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<UserType[]>(initialUsers);
+  const [users, setUsers] = useState<UserType[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<OrderType | null>(null);
 
-  const members = users.filter(acc => acc.role === "Member");
+  useEffect (() => {
+    const fetchMembers = async () => {
+      try {
+        const timestamp = new Date().getTime();
+        // 🔴 ไม่ต้องส่ง Token แล้ว เพราะเราปลดล็อกที่ Backend แล้ว
+        const res = await fetch(`http://localhost:8000/api/admin/members?t=${timestamp}`, {
+          cache: "no-store",
+          headers: { 
+            "Accept": "application/json" // ✅ ใส่ไว้แค่เพื่อให้ Laravel รู้ว่าส่ง JSON กลับมาพอ
+          }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          setUsers(data);
+        }
+      } catch (error) {
+        console.error("Error fetching members:", error);
+      }
+    };
+    fetchMembers();
+  }, []);
+
+  // ✅ 1. เติม Array ป้องกันบั๊ก (ถ้า users ไม่ใช่อาร์เรย์ ให้เป็นอาร์เรย์ว่าง)
+  const safeUsers = Array.isArray(users) ? users : [];
+
+  // ✅ 2. เปลี่ยนมาใช้ safeUsers แทน users
+  const members = safeUsers.filter(acc => acc.role === "Member");
 
   const filteredMembers = members.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -90,16 +107,31 @@ export default function UsersPage() {
     return matchesSearch && matchesFilter;
   });
 
-  const toggleStatus = (id: number) => {
+  const toggleStatus = async (id: number) => {
     if(confirm(`ยืนยันเปลี่ยนสถานะ?`)) {
-       setUsers(prev => prev.map(u => u.id === id ? { ...u, status: u.status === "Active" ? "Banned" : "Active" } : u));
-       if (selectedUser?.id === id) {
-           setSelectedUser(prev => prev ? { ...prev, status: prev.status === "Active" ? "Banned" : "Active" } : null);
+       try {
+         const res = await fetch(`http://localhost:8000/api/admin/members/${id}/status`, {
+           method: "PUT",
+           headers: {
+             "Authorization": `Bearer ${localStorage.getItem('token')}`,
+             "Content-Type": "application/json"
+           }
+         });
+
+         if (res.ok) {
+           const data = await res.json();
+           setUsers(prev => prev.map(u => u.id === id ? { ...u, status: data.status } : u));
+           if (selectedUser?.id === id) {
+               setSelectedUser(prev => prev ? { ...prev, status: data.status } : null);
+           }
+         }
+       } catch (error) {
+         console.error("Error updating status:", error);
+         alert("เกิดข้อผิดพลาดในการเปลี่ยนสถานะ");
        }
     }
   };
 
-  // ✅ ฟังก์ชันจำลองการส่งเมล
   const handleResendEmail = () => {
       alert(`✅ ระบบได้ส่ง E-Ticket ไปยังอีเมลของลูกค้าแล้ว!`);
   };
@@ -129,7 +161,8 @@ export default function UsersPage() {
           </h1>
           <p className="text-gray-400 text-sm mt-1">รายชื่อลูกค้าทั่วไปที่สมัครสมาชิกเพื่อซื้อบัตร</p>
         </div>
-        <button onClick={handleExport} className="flex items-center gap-2 bg-[#161B22] border border-white/10 px-4 py-2 rounded-lg text-sm hover:bg-white/5 transition-colors text-gray-300 hover:text-white active:scale-95">
+        
+        <button onClick={handleExport} suppressHydrationWarning className="flex items-center gap-2 bg-[#161B22] border border-white/10 px-4 py-2 rounded-lg text-sm hover:bg-white/5 transition-colors text-gray-300 hover:text-white active:scale-95">
             <Download size={16}/> Export CSV
         </button>
       </div>
@@ -154,11 +187,13 @@ export default function UsersPage() {
       <div className="bg-[#161B22] p-4 rounded-xl border border-white/5 flex flex-col md:flex-row gap-4 justify-between">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-          <input type="text" placeholder="ค้นหาลูกค้า..." className="w-full bg-[#0B0F14] border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          <input type="text" placeholder="ค้นหาลูกค้า..." className="w-full bg-[#0B0F14] border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} suppressHydrationWarning />
         </div>
         <div className="flex gap-2 bg-[#0B0F14] p-1 rounded-lg border border-white/5 w-fit">
            {['All', 'Active', 'Banned'].map((status) => (
-             <button key={status} onClick={() => setFilterStatus(status)} className={`px-4 py-1.5 rounded-md text-xs font-bold uppercase transition-all ${filterStatus === status ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}>{status}</button>
+             <button key={status} suppressHydrationWarning onClick={() => setFilterStatus(status)} className={`px-4 py-1.5 rounded-md text-xs font-bold uppercase transition-all ${filterStatus === status ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}>
+                  {status}
+              </button>
            ))}
         </div>
       </div>
@@ -193,7 +228,7 @@ export default function UsersPage() {
                     {user.status === 'Active' ? <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 text-green-500 text-xs font-bold border border-green-500/20"><span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Active</span> : <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 text-red-500 text-xs font-bold border border-red-500/20"><Ban size={12}/> Banned</span>}
                 </td>
                 <td className="p-4 text-right pr-6">
-                    <button onClick={(e) => { e.stopPropagation(); toggleStatus(user.id); }} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center gap-1 ml-auto ${user.status === 'Active' ? 'border-red-500/20 text-red-400 hover:bg-red-500/10' : 'border-green-500/20 text-green-400 hover:bg-green-500/10'}`}>
+                    <button onClick={(e) => { e.stopPropagation(); toggleStatus(user.id); }} suppressHydrationWarning className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center gap-1 ml-auto ${user.status === 'Active' ? 'border-red-500/20 text-red-400 hover:bg-red-500/10' : 'border-green-500/20 text-green-400 hover:bg-green-500/10'}`}>
                         {user.status === 'Active' ? <><Ban size={14}/> ระงับบัญชี</> : <><CheckCircle size={14}/> ปลดแบน</>}
                     </button>
                 </td>
@@ -210,7 +245,7 @@ export default function UsersPage() {
            <div className="absolute inset-0" onClick={() => setSelectedUser(null)}></div>
            <div className="relative bg-[#161B22] w-full max-w-2xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto custom-scrollbar">
                
-               {/* Header */}
+               {/* Modal Header */}
                <div className="p-6 border-b border-white/10 flex justify-between items-start bg-[#0B0F14] sticky top-0 z-10">
                    <div className="flex gap-4">
                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg shrink-0">{selectedUser.avatar}</div>
@@ -233,7 +268,7 @@ export default function UsersPage() {
                    </button>
                </div>
 
-               {/* Order History */}
+               {/* Order History Table */}
                <div className="p-6">
                    <h3 className="font-bold text-white mb-4 flex items-center gap-2"><Ticket size={18} className="text-pink-500"/> ประวัติการสั่งซื้อ (Order History)</h3>
                    <div className="bg-[#0B0F14] border border-white/5 rounded-xl overflow-hidden">
@@ -279,13 +314,11 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* ✅ E-TICKET MODAL (Admin View) - Integrated */}
+      {/* E-TICKET MODAL */}
       {selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-200">
           <div className="absolute inset-0" onClick={() => setSelectedTicket(null)}></div>
-          
           <div className="relative w-full max-w-sm bg-[#1C2128] rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-            {/* Poster Header */}
             <div className="relative h-48 bg-gray-800">
               {selectedTicket.poster ? (
                   <img src={selectedTicket.poster} alt="Poster" className="w-full h-full object-cover opacity-80" />
@@ -294,30 +327,55 @@ export default function UsersPage() {
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-[#1C2128] via-transparent to-transparent"></div>
               <button onClick={() => setSelectedTicket(null)} className="absolute top-4 right-4 bg-black/50 hover:bg-white text-white hover:text-black p-2 rounded-full backdrop-blur-md transition-all"><X size={18} /></button>
-              <div className="absolute top-4 left-4 px-3 py-1 bg-green-500 text-black text-xs font-black uppercase rounded-full shadow-lg tracking-wider">{selectedTicket.status === 'Paid' ? 'Ready to Use' : 'Used'}</div>
+              
+              <div className={`absolute top-4 left-4 px-3 py-1 text-xs font-black uppercase rounded-full shadow-lg tracking-wider ${
+                  selectedTicket.status === 'Paid' ? 'bg-green-500 text-black' : 
+                  selectedTicket.status === 'Cancelled' ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'
+              }`}>
+                  {selectedTicket.status === 'Paid' ? 'Ready to Use' : selectedTicket.status === 'Cancelled' ? 'Cancelled' : 'Used'}
+              </div>
             </div>
 
-            {/* Content */}
             <div className="px-6 py-4 -mt-12 relative z-10">
               <h2 className="text-xl font-black leading-tight text-white mb-4 drop-shadow-md">{selectedTicket.event}</h2>
+              
               <div className="space-y-3 bg-[#0B0F14] p-4 rounded-xl border border-white/5">
                 <div className="flex items-center gap-3 text-sm text-gray-300"><Calendar size={16} className="text-blue-500" /><span>{selectedTicket.date}</span></div>
                 <div className="flex items-center gap-3 text-sm text-gray-300"><Clock size={16} className="text-blue-500" /><span>{selectedTicket.time || "18:00"}</span></div>
                 <div className="flex items-center gap-3 text-sm text-gray-300"><MapPin size={16} className="text-red-500" /><span>{selectedTicket.venue || "TBA"}</span></div>
+                
+                {/* ✅ จุดแก้ไขที่ 1: นำโค้ดของคุณมาวางตรงนี้ */}
+                <div className="flex items-center gap-3 text-sm text-gray-300">
+                  <Ticket size={16} className="text-yellow-500" />
+                  <span>Seat Number: {selectedTicket.seatNumber || "-"}</span>
+                </div>
               </div>
 
               <div className="mt-4 flex justify-between items-center bg-white/5 p-4 rounded-xl border border-white/10">
-                <div><p className="text-[10px] text-gray-500 uppercase font-bold">Zone / Seat</p><p className="text-2xl font-black text-yellow-400">{selectedTicket.seat}</p></div>
-                <div className="text-right"><p className="text-[10px] text-gray-500 uppercase font-bold">Order ID</p><p className="text-sm font-mono text-gray-300">{selectedTicket.id}</p></div>
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase font-bold">Zone / Seat</p>
+                  
+                  {/* ✅ จุดแก้ไขที่ 2: นำโค้ดของคุณมาวางตรงนี้ */}
+                  <p className="text-2xl font-black text-yellow-400">
+                    {selectedTicket.seat} 
+                    {selectedTicket.seatNumber && selectedTicket.seatNumber !== "-" && (
+                      <span className="text-lg text-white/70 ml-2">
+                        ({selectedTicket.seatNumber})
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-gray-500 uppercase font-bold">Order ID</p>
+                  <p className="text-sm font-mono text-gray-300">{selectedTicket.id}</p>
+                </div>
               </div>
 
-              {/* Dashed Line */}
               <div className="relative my-6 h-px w-full bg-white/10">
                 <div className="absolute -left-8 -top-3 w-6 h-6 bg-[#0B0F14] rounded-full"></div>
                 <div className="absolute -right-8 -top-3 w-6 h-6 bg-[#0B0F14] rounded-full"></div>
               </div>
 
-              {/* QR Code */}
               <div className="text-center pb-4">
                 <div className="bg-white p-2 rounded-xl inline-block mx-auto mb-3 shadow-lg shadow-white/5">
                   <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${selectedTicket.id}`} alt="QR Code" className="w-32 h-32 opacity-90 mix-blend-multiply" />
@@ -325,16 +383,13 @@ export default function UsersPage() {
                 <p className="text-[10px] text-gray-500 uppercase tracking-widest animate-pulse">Scan to enter</p>
               </div>
 
-              {/* Footer Actions (Resend Email) */}
-              <div className="grid grid-cols-1 gap-3 mt-2">
-                <button 
-                    onClick={handleResendEmail} 
-                    className="flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 text-xs font-bold transition-colors border border-blue-600/30"
-                >
-                    <Send size={14} /> ส่งอีเมล E-Ticket ซ้ำให้ลูกค้า (Resend Email)
-                </button>
-              </div>
-
+              {selectedTicket.status !== 'Cancelled' && (
+                  <div className="grid grid-cols-1 gap-3 mt-2">
+                    <button onClick={handleResendEmail} className="flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 text-xs font-bold transition-colors border border-blue-600/30">
+                        <Send size={14} /> ส่งอีเมล E-Ticket ซ้ำให้ลูกค้า (Resend Email)
+                    </button>
+                  </div>
+              )}
             </div>
           </div>
         </div>

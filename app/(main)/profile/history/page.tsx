@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { History, CheckCircle, XCircle, ChevronRight, Loader2 } from "lucide-react";
+// ⭐️ เพิ่ม Timer เข้ามาใน import
+import { History, CheckCircle, XCircle, ChevronRight, Loader2, Timer } from "lucide-react";
 import Link from "next/link";
 
 export default function OrderHistoryPage() {
@@ -82,9 +83,11 @@ export default function OrderHistoryPage() {
                       <td className="px-6 py-4 text-white font-medium">{order.event_name || order.event}</td>
                       <td className="px-6 py-4">{order.created_at || order.date}</td>
                       <td className="px-6 py-4 text-white font-bold">{order.total_amount || order.amount} THB</td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-6 py-4 text-center flex justify-center gap-2">
                         {order.status === 'success' && <span className="inline-flex items-center gap-1.5 text-green-400 bg-green-500/10 px-2.5 py-1 rounded-full text-xs font-bold border border-green-500/20"><CheckCircle size={12}/> สำเร็จ</span>}
                         {order.status === 'failed' && <span className="inline-flex items-center gap-1.5 text-red-400 bg-red-500/10 px-2.5 py-1 rounded-full text-xs font-bold border border-red-500/20"><XCircle size={12}/> ล้มเหลว</span>}
+                        {/* ⭐️ เพิ่มสถานะ Pending ตรงนี้ */}
+                        {order.status === 'pending' && <span className="inline-flex items-center gap-1.5 text-yellow-500 bg-yellow-500/10 px-2.5 py-1 rounded-full text-xs font-bold border border-yellow-500/20"><Timer size={12}/> รอชำระเงิน</span>}
                       </td>
                       <td className="px-6 py-4 text-right">
                          <Link href={`/profile/history/${order.id}`} className="text-gray-600 group-hover:text-white transition-colors">

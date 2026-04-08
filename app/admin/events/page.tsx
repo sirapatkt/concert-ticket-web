@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   CalendarDays, MapPin, Eye, Check, X, Search, Filter, 
   User, FileText, CreditCard, DollarSign, Clock, 
@@ -8,7 +8,7 @@ import {
   PlusCircle, MinusCircle, Tag, CalendarClock, Ticket 
 } from "lucide-react";
 
-// ✅ 1. Interface
+// ✅ 1. Interface (คงเดิม)
 interface TicketType {
   id: number;
   zone: string;
@@ -42,30 +42,26 @@ export default function EventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<EventType | null>(null);
   const [editingEvent, setEditingEvent] = useState<EventType | null>(null);
 
-  // ✅ Mock Data: เหลือไว้ 1 ตัวอย่างเพื่อเป็น Template
-  const [events, setEvents] = useState<EventType[]>([
-    { 
-      id: 1, 
-      title: "The Grand Concert 2024", 
-      organizer: "GMM Grammy", 
-      date: "2024-12-12", 
-      endDate: "2024-12-12",
-      time: "18:00 - 22:00",
-      venue: "Impact Arena", 
-      image: "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=500&q=80",
-      description: "คอนเสิร์ตใหญ่ส่งท้ายปี...",
-      category: "Concert",
-      approvalStatus: "approved", 
-      paymentStatus: "paid",       
-      publishDate: "01 Dec 2024, 09:00",
-      saleStartDate: "05 Dec 2024, 10:00",
-      depositAmount: "50,000",
-      tickets: [
-        { id: 1, zone: "A1", price: 5000, totalSeats: 100 },
-        { id: 2, zone: "B1", price: 3500, totalSeats: 200 },
-      ]
-    }
-  ]);
+  // ✅ เปลี่ยน State เริ่มต้นให้ว่างเปล่า เพื่อรอรับข้อมูลจาก DB
+  const [events, setEvents] = useState<EventType[]>([]);
+
+  // ✅ ดึงข้อมูลจาก DB เมื่อโหลดหน้า (เปลี่ยนให้ชี้ไปหา Laravel Port 8000)
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/admin/events', {
+            headers: { "Accept": "application/json" }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setEvents(data);
+        }
+      } catch (error) {
+        console.error("Error fetching events:", error);
+      }
+    };
+    fetchEvents();
+  }, []);
 
   const filteredEvents = events.filter((event) => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -77,27 +73,69 @@ export default function EventsPage() {
     return matchesSearch;
   });
 
-  // Actions
-  const handleApprove = (id: number) => {
+  // ✅ Actions - ปรับปรุงให้ยิง API ไปอัปเดต DB (แก้เป็น Port 8000)
+  const handleApprove = async (id: number) => {
     if (confirm("ยืนยันการอนุมัติเนื้อหาอีเวนต์นี้?")) {
-      setEvents(events.map(e => e.id === id ? { ...e, approvalStatus: "approved" } : e));
-      setSelectedEvent(null); 
+      try {
+        const res = await fetch(`http://localhost:8000/api/events/${id}/status`, {
+          method: 'PATCH',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ approvalStatus: "approved" })
+        });
+        if (res.ok) {
+          setEvents(events.map(e => e.id === id ? { ...e, approvalStatus: "approved" } : e));
+          setSelectedEvent(null); 
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+      }
     }
   };
 
-  const handleReject = (id: number) => {
+  const handleReject = async (id: number) => {
     if (confirm("ยืนยันการปฏิเสธคำขอ (ไม่อนุมัติ)?")) {
-      setEvents(events.map(e => e.id === id ? { ...e, approvalStatus: "rejected" } : e));
-      setSelectedEvent(null); 
+      try {
+        const res = await fetch(`http://localhost:8000/api/events/${id}/status`, {
+          method: 'PATCH',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ approvalStatus: "rejected" })
+        });
+        if (res.ok) {
+          setEvents(events.map(e => e.id === id ? { ...e, approvalStatus: "rejected" } : e));
+          setSelectedEvent(null); 
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+      }
     }
   };
 
-  const handleRequestChanges = (id: number) => {
+  const handleRequestChanges = async (id: number) => {
     const reason = prompt("กรุณาระบุสิ่งที่ต้องการให้แก้ไข:");
     if (reason && reason.trim() !== "") {
-      setEvents(events.map(e => e.id === id ? { ...e, approvalStatus: "changes_requested", adminFeedback: reason } : e));
-      alert("ส่งคำขอแก้ไขเรียบร้อย ✅");
-      setSelectedEvent(null);
+      try {
+        const res = await fetch(`http://localhost:8000/api/events/${id}/status`, {
+          method: 'PATCH',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ approvalStatus: "changes_requested", adminFeedback: reason })
+        });
+        if (res.ok) {
+          setEvents(events.map(e => e.id === id ? { ...e, approvalStatus: "changes_requested", adminFeedback: reason } : e));
+          alert("ส่งคำขอแก้ไขเรียบร้อย ✅");
+          setSelectedEvent(null);
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+      }
     }
   };
 
@@ -109,27 +147,69 @@ export default function EventsPage() {
     setSelectedEvent(null);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingEvent) return;
-    setEvents(prev => prev.map(e => e.id === editingEvent.id ? editingEvent : e));
-    setEditingEvent(null);
+    try {
+      const res = await fetch(`http://localhost:8000/api/events/${editingEvent.id}`, {
+        method: 'PUT', 
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(editingEvent)
+      });
+      if (res.ok) {
+        setEvents(prev => prev.map(e => e.id === editingEvent.id ? editingEvent : e));
+        setEditingEvent(null);
+      } else {
+        alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+      }
+    } catch (error) {
+      console.error("Error saving event:", error);
+    }
   };
 
-  const handleDelete = (id: number, status: string) => {
+  const handleDelete = async (id: number, status: string) => {
     if (status === "approved" || status === "paid") {
         if(confirm("⚠️ งานนี้ได้รับการอนุมัติแล้ว! การลบอาจกระทบผู้ใช้งาน \n\nต้องการเปลี่ยนสถานะเป็น 'ยกเลิก (Cancelled)' หรือไม่?")) {
-            setEvents(events.map(e => e.id === id ? { ...e, approvalStatus: "cancelled" } : e));
-            setSelectedEvent(null);
+            try {
+              const res = await fetch(`http://localhost:8000/api/events/${id}/status`, {
+                method: 'PATCH',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json'
+                },
+                body: JSON.stringify({ approvalStatus: "cancelled" })
+              });
+              if (res.ok) {
+                setEvents(events.map(e => e.id === id ? { ...e, approvalStatus: "cancelled" } : e));
+                setSelectedEvent(null);
+              }
+            } catch (error) {
+              console.error("Error cancelling event:", error);
+            }
         }
     } else {
         if(confirm("ยืนยันการลบรายการนี้ถาวร?")) {
-            setEvents(events.filter(e => e.id !== id));
-            setSelectedEvent(null);
+            try {
+              const res = await fetch(`http://localhost:8000/api/events/${id}`, {
+                method: 'DELETE',
+                headers: {
+                  'Accept': 'application/json'
+                }
+              });
+              if (res.ok) {
+                setEvents(events.filter(e => e.id !== id));
+                setSelectedEvent(null);
+              }
+            } catch (error) {
+              console.error("Error deleting event:", error);
+            }
         }
     }
   };
 
-  // ✅ แก้ไข: ใช้ Generic <K> เพื่อลบ 'any' ออกอย่างสมบูรณ์
+  // ✅ ฟังก์ชันการจัดการ Ticket (ทำงานบน Client ก่อนเซฟ) - คงเดิม
   const updateTicket = <K extends keyof TicketType>(index: number, field: K, value: TicketType[K]) => {
     if (!editingEvent) return;
     const newTickets = [...editingEvent.tickets];
@@ -262,7 +342,7 @@ export default function EventsPage() {
         )}
       </div>
 
-      {/* 👁️ MODAL 1: รายละเอียด (View Mode) - ปรับปรุงใหม่ให้แสดงครบ */}
+      {/* 👁️ MODAL 1: รายละเอียด (View Mode) */}
       {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
            <div className="bg-[#161B22] w-full max-w-3xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -344,7 +424,7 @@ export default function EventsPage() {
                       </div>
                   </div>
 
-                  {/* 3. ✅ เพิ่ม: ข้อมูลบัตรและราคา */}
+                  {/* 3. ✅ ข้อมูลบัตรและราคา */}
                   <div>
                       <h3 className="text-sm font-bold text-gray-300 mb-2 flex items-center gap-2">
                         <Ticket size={16}/> บัตรและราคา (Tickets)
@@ -375,7 +455,7 @@ export default function EventsPage() {
                       </div>
                   </div>
 
-                  {/* Action Buttons (แสดงเฉพาะตอนสถานะ Pending เพื่อให้กดอนุมัติได้เลย) */}
+                  {/* Action Buttons */}
                   {selectedEvent.approvalStatus === 'pending' && (
                       <div className="flex gap-3 pt-4 border-t border-white/10">
                           <button 

@@ -8,8 +8,8 @@ import { Plus, Minus, RotateCcw, X, Check, Calendar, MapPin, ChevronLeft, TimerO
 type SeatStatus = "available" | "selected" | "reserved" | "sold" | "blank";
 type Seat = {
   id: string;
-  dbId?: number;   // ✅ รหัสที่นั่งจากตาราง seats (Seat_id)
-  zoneId?: number; // ✅ รหัสโซนจากตาราง ticket_zones (Zone_id)
+  dbId?: number;
+  zoneId?: number;
   row: string;
   number: string;
   status: SeatStatus;
@@ -18,29 +18,32 @@ type Seat = {
 };
 
 // ========================================================
-// 🎨 Component: ไอคอนเก้าอี้
+// 🎨 Component: ไอคอนเก้าอี้ (🌟 ปรับขนาดให้เล็กลงเพื่อให้พอดีกับ 22 คอลัมน์)
 // ========================================================
 const SeatIcon = ({ status, label, zoneColor }: { status: SeatStatus; label: string, zoneColor: string }) => {
+  // ย่อขนาดเก้าอี้ลงมาให้เท่ากับหน้า Preview
+  const baseSize = "w-[24px] h-[24px] sm:w-[28px] sm:h-[28px] md:w-[32px] md:h-[32px]";
+  
   if (status === "blank") {
-      return <div className="w-[40px] h-[40px] md:w-[50px] md:h-[50px] opacity-0 pointer-events-none"></div>;
+      return <div className={`${baseSize} opacity-0 pointer-events-none`}></div>;
   }
 
   let bgColor = "transparent";   
-  let contentOverlay = <span className="text-[12px] md:text-[16px] font-extrabold text-black">{label}</span>;
+  let contentOverlay = <span className="text-[10px] md:text-[12px] font-extrabold text-black">{label}</span>;
 
   if (status === "available") {
     bgColor = zoneColor; 
   } else if (status === "selected") {
     bgColor = "#76FF03"; 
-    contentOverlay = <Check size={28} className="text-black stroke-[4]" />;
+    contentOverlay = <Check size={18} className="text-black stroke-[4]" />;
   } else if (status === "sold") {
     bgColor = "#2A2A2A"; 
-    contentOverlay = <X size={28} className="text-[#DC2626] stroke-[4]" />;
+    contentOverlay = <X size={18} className="text-[#DC2626] stroke-[4]" />;
   }
 
   return (
-    <div className={`relative w-[40px] h-[40px] md:w-[50px] md:h-[50px] rounded-full flex items-center justify-center transition-all duration-200 
-      ${status === 'available' ? 'hover:scale-110 cursor-pointer shadow-[0_0_15px_rgba(255,255,255,0.2)] hover:shadow-[0_0_20px_rgba(255,255,255,0.6)]' : 'opacity-80'}
+    <div className={`relative ${baseSize} rounded-full flex items-center justify-center transition-all duration-200 
+      ${status === 'available' ? 'hover:scale-110 cursor-pointer shadow-[0_0_10px_rgba(255,255,255,0.2)] hover:shadow-[0_0_15px_rgba(255,255,255,0.6)]' : 'opacity-80'}
       ${status === 'sold' ? 'cursor-not-allowed opacity-50' : ''}`}
       style={{ backgroundColor: bgColor }}
     >
@@ -52,12 +55,12 @@ const SeatIcon = ({ status, label, zoneColor }: { status: SeatStatus; label: str
 // สีประจำโซน
 const getZoneColor = (zoneName: string) => {
     const z = zoneName.toUpperCase();
-    if (z.includes('1')) return "#FFCC00"; // L1, C1, R1 สีเหลือง
-    if (z.includes('2')) return "#FF9500"; // สีส้ม
-    if (z.includes('3')) return "#E91E63"; // สีชมพู
-    if (z.includes('4')) return "#00B4D8"; // สีฟ้า
-    if (z.includes('5')) return "#A855F7"; // สีม่วง
-    if (z.includes('6')) return "#76FF03"; // สีเขียวตอง
+    if (z.includes('1')) return "#FFCC00"; 
+    if (z.includes('2')) return "#FF9500"; 
+    if (z.includes('3')) return "#E91E63"; 
+    if (z.includes('4')) return "#00B4D8"; 
+    if (z.includes('5')) return "#A855F7"; 
+    if (z.includes('6')) return "#76FF03"; 
     return "#FFCC00"; 
 };
 
@@ -67,12 +70,14 @@ export default function BookingPage() {
 
   const eventId = searchParams.get("eventId");
   const roundId = searchParams.get("round");
-  const eventName = searchParams.get("name") || "KATAKK MUSIC FEST 2";
-  const eventDate = searchParams.get("date") || "Sunday, 5 Apr 2026";
-  const eventTime = searchParams.get("time") || "19:00 - 23:00";
-  const eventVenue = searchParams.get("venue") || "เมืองไทยรัชดาลัย";
   const eventZone = searchParams.get("zone") || "L1"; 
   const tierPrice = Number(searchParams.get("price")) || 0;
+
+  // 🌟 เปลียนชื่องาน สถานที่ วันที่ ให้เป็น State เพื่อรับค่าจาก API
+  const [eventName, setEventName] = useState(searchParams.get("name") || "กำลังโหลดข้อมูล...");
+  const [eventDate, setEventDate] = useState(searchParams.get("date") || "...");
+  const [eventTime, setEventTime] = useState(searchParams.get("time") || "...");
+  const [eventVenue, setEventVenue] = useState(searchParams.get("venue") || "...");
 
   const zoneColor = getZoneColor(eventZone);
 
@@ -86,30 +91,62 @@ export default function BookingPage() {
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
 
+  // 🌟 ฟังก์ชันดึงรายละเอียด Event (ชื่อ, สถานที่, เวลา) จาก API
+  useEffect(() => {
+    const fetchEventDetails = async () => {
+      if (!eventId) return;
+      // ถ้ารับค่ามาจาก URL แล้ว ไม่ต้องยิง API ซ้ำ
+      if (searchParams.get("name") && searchParams.get("venue")) return; 
+
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/api/public/events/${eventId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setEventName(data.eventName);
+          setEventVenue(data.hall?.Hall_Name || data.venue_name || "ไม่ระบุสถานที่");
+
+          if (roundId && data.event_date_times) {
+            const roundInfo = data.event_date_times.find((r: any) => r.Datetime_id.toString() === roundId);
+            if (roundInfo) {
+               const dateObj = new Date(roundInfo.startDT);
+               setEventDate(dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' }));
+               setEventTime(`${roundInfo.startDT.split(' ')[1].slice(0, 5)} - ${roundInfo.endDT.split(' ')[1].slice(0, 5)}`);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch event info");
+      }
+    };
+    fetchEventDetails();
+  }, [eventId, roundId, searchParams]);
+
+
   // ========================================================
-  // 🧠 ฟังก์ชัน: สร้างโครงสร้างผังที่นั่ง (อัปเดตครบทุกโซน)
+  // 🧠 ฟังก์ชัน: สร้างโครงสร้างผังที่นั่ง (🌟 แก้เฉพาะ ม.รังสิต)
   // ========================================================
   const generateStructuralLayout = (zoneName: string): Seat[] => {
     let maxCol = 12;
     let startNum = 1;
-    let matrix: { l: number, r: number }[] = [];
+    // รองรับ stagger, gapAfter, start สำหรับม.รังสิต
+    let matrix: { l?: number, r?: number, gapAfter?: number, start?: number, stagger?: boolean }[] = []; 
     let rowLetters: string[] = []; 
+    let isFixedLayout = false; // ต้องใส่บรรทัดนี้เพื่อไม่ให้ขึ้นขีดแดง
     
     const name = zoneName.toUpperCase().trim();
 
-    // --- LEVEL 1 ---
+    // -----------------------------------------------------------------
+    // 🏢 1. ฮอลล์อื่นๆ คงไว้เหมือนเดิม 100% ห้ามแตะต้อง
+    // -----------------------------------------------------------------
     if (name === "L1") {
         rowLetters = "BCDEFGH".split("");
         matrix = [ {l: 4, r: 0}, {l: 3, r: 0}, {l: 2, r: 0}, {l: 1, r: 0}, {l: 1, r: 0}, {l: 1, r: 0}, {l: 1, r: 0} ];
     } 
-    else if (name === "C1") { 
-        maxCol = 16; startNum = 13; rowLetters = "ABCDEFGH".split(""); matrix = [{l: 0, r: 0}]; 
-    }
+    else if (name === "C1") { maxCol = 16; startNum = 13; rowLetters = "ABCDEFGH".split(""); matrix = [{l: 0, r: 0}]; }
     else if (name === "R1") {
         maxCol = 12; startNum = 29; rowLetters = "BCDEFGH".split("");
         matrix = [ {l: 0, r: 4}, {l: 0, r: 3}, {l: 0, r: 2}, {l: 0, r: 1}, {l: 0, r: 1}, {l: 0, r: 1}, {l: 0, r: 1} ];
     }
-    // --- LEVEL 1 (ด้านหลัง) ---
     else if (name === "L2") { maxCol = 12; startNum = 1; rowLetters = "IJKLMNOP".split(""); matrix = [{l: 0, r: 0}]; }
     else if (name === "C2") { maxCol = 16; startNum = 13; rowLetters = "IJKLMNOP".split(""); matrix = [{l: 0, r: 0}]; }
     else if (name === "R2") { maxCol = 12; startNum = 29; rowLetters = "IJKLMNOP".split(""); matrix = [{l: 0, r: 0}]; }
@@ -125,7 +162,6 @@ export default function BookingPage() {
         maxCol = 12; startNum = 29; rowLetters = "UVWXYZ".split("");
         matrix = [ {l: 0, r: 0}, {l: 1, r: 0}, {l: 1, r: 0}, {l: 1, r: 0}, {l: 1, r: 0}, {l: 1, r: 0} ]; 
     }
-    // --- LEVEL 2 ---
     else if (name === "L5") { maxCol = 11; startNum = 2; rowLetters = ["AA","BB","CC","DD"]; matrix = [{l: 0, r: 0}]; }
     else if (name === "C5") { maxCol = 16; startNum = 13; rowLetters = ["AA","BB","CC","DD"]; matrix = [{l: 0, r: 0}]; }
     else if (name === "R5") {
@@ -138,29 +174,172 @@ export default function BookingPage() {
         maxCol = 12; startNum = 29; rowLetters = ["EE","FF","GG","HH","II","JJ","KK"];
         matrix = [ {l: 0, r: 0}, {l: 0, r: 1}, {l: 0, r: 0}, {l: 0, r: 1}, {l: 0, r: 0}, {l: 0, r: 1}, {l: 0, r: 1} ];
     }
-    // --- DEFAULT FAILSAFE ---
-    else {
-        rowLetters = "ABCDEF".split("");
-        matrix = [{l: 0, r: 0}];
+    // -----------------------------------------------------------------
+    // 🏫 2. ฮอลล์ ม.รังสิต (ZONE 1 - ZONE 9) แบบเป๊ะๆ ตามโค้ดที่ให้จำไว้
+    // -----------------------------------------------------------------
+    else if (["ZONE 1", "ZONE1"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = ["C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
+        maxCol = 20; 
+        matrix = [
+            { l: 2, r: 6, gapAfter: 8, stagger: true }, // C: 11 ที่นั่ง
+            { l: 1, r: 6, gapAfter: 9, stagger: true }, // D: 12 ที่นั่ง
+            { l: 2, r: 6, gapAfter: 8, stagger: true }, // E: 11 ที่นั่ง
+            { l: 3, r: 5, gapAfter: 8, stagger: true }, // F: 11 ที่นั่ง
+            { l: 4, r: 4, gapAfter: 7, stagger: true }, // G: 11 ที่นั่ง
+            { l: 5, r: 2, gapAfter: 6, stagger: true }, // H: 11 ที่นั่ง
+            { l: 5, r: 2, gapAfter: 6, stagger: true }, // I: 12 ที่นั่ง
+            { l: 12, r: 1, gapAfter: 0, stagger: true },// J: 7 ที่นั่ง (อยู่ฝั่งขวาล้วนๆ)
+            { l: 5, r: 3, stagger: true },              // K: 12 ที่นั่งติดกัน
+            { l: 5, r: 3, stagger: true }               // L: 12 ที่นั่งติดกัน
+        ];
     }
+    else if (["ZONE 2", "ZONE2"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = ["C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
+        maxCol = 22; 
+        matrix = [
+            { l: 6, r: 2, start: 12, stagger: true }, // C: 14 ที่นั่ง 
+            { l: 6, r: 1, start: 13, stagger: true }, // D: 15 ที่นั่ง 
+            { l: 6, r: 2, start: 12, stagger: true }, // E: 14 ที่นั่ง 
+            { l: 5, r: 2, start: 12, stagger: true }, // F: 15 ที่นั่ง 
+            { l: 5, r: 1, start: 12, stagger: true }, // G: 16 ที่นั่ง 
+            { l: 5, r: 2, start: 12, stagger: true }, // H: 15 ที่นั่ง 
+            { l: 6, r: 2, start: 13, stagger: true }, // I: 14 ที่นั่ง 
+            { l: 1, r: 6, start: 8,  stagger: true }, // J: 15 ที่นั่ง 
+            { l: 6, r: 0, start: 13, stagger: true }, // K: 16 ที่นั่ง 
+            { l: 6, r: 1, start: 13, stagger: true }  // L: 15 ที่นั่ง 
+        ];
+    }
+    else if (["ZONE 3", "ZONE3"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = ["C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
+        maxCol = 20; 
+        matrix = [
+            { l: 5, r: 3, gapAfter: 3, start: 26, stagger: true }, // C: 11 ที่นั่ง
+            { l: 5, r: 2, gapAfter: 3, start: 28, stagger: true }, // D: 12 ที่นั่ง
+            { l: 5, r: 3, gapAfter: 3, start: 26, stagger: true }, // E: 11 ที่นั่ง
+            { l: 4, r: 3, gapAfter: 4, start: 27, stagger: true }, // F: 12 ที่นั่ง
+            { l: 4, r: 4, gapAfter: 4, start: 28, stagger: true }, // G: 11 ที่นั่ง
+            { l: 3, r: 5, gapAfter: 5, start: 27, stagger: true }, // H: 11 ที่นั่ง
+            { l: 2, r: 5, gapAfter: 6, start: 27, stagger: true }, // I: 12 ที่นั่ง
+            { l: 1, r: 11, gapAfter: 7, start: 23, stagger: true },// J: 7 ที่นั่ง
+            { l: 2, r: 6, start: 29, stagger: true },              // K: 12 ที่นั่ง
+            { l: 3, r: 5, start: 28, stagger: true }               // L: 12 ที่นั่ง
+        ];
+    }
+    else if (["ZONE 4", "ZONE4"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = ["M", "N", "O", "P", "Q", "R", "S", "T", "U", "V"];
+        maxCol = 16; 
+        matrix = [
+            { l: 3, r: 2, stagger: true }, // M: 11 ที่นั่ง
+            { l: 2, r: 3, stagger: true }, // N: 11 ที่นั่ง
+            { l: 2, r: 2, stagger: true }, // O: 12 ที่นั่ง
+            { l: 2, r: 2, stagger: true }, // P: 12 ที่นั่ง
+            { l: 2, r: 2, stagger: true }, // Q: 12 ที่นั่ง
+            { l: 3, r: 2, stagger: true }, // R: 11 ที่นั่ง
+            { l: 4, r: 1, stagger: true }, // S: 11 ที่นั่ง
+            { l: 4, r: 1, stagger: true }, // T: 11 ที่นั่ง
+            { l: 4, r: 1, stagger: true }, // U: 11 ที่นั่ง
+            { l: 4, r: 1, stagger: true }  // V: 11 ที่นั่ง
+        ];
+    }
+    else if (["ZONE 5", "ZONE5"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = ["M", "N", "O", "P", "Q", "R", "S", "T"];
+        maxCol = 20; 
+        matrix = [
+            { l: 3, r: 3, start: 12, stagger: true }, // M: 14 ที่นั่ง
+            { l: 2, r: 3, start: 12, stagger: true }, // N: 15 ที่นั่ง
+            { l: 3, r: 1, start: 13, stagger: true }, // O: 16 ที่นั่ง
+            { l: 3, r: 2, start: 13, stagger: true }, // P: 15 ที่นั่ง
+            { l: 3, r: 1, start: 13, stagger: true }, // Q: 16 ที่นั่ง
+            { l: 2, r: 3, start: 12, stagger: true }, // R: 15 ที่นั่ง
+            { l: 3, r: 1, start: 12, stagger: true }, // S: 16 ที่นั่ง
+            { l: 2, r: 3, start: 12, stagger: true }  // T: 15 ที่นั่ง
+        ];
+    }
+    else if (["ZONE 6", "ZONE6"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = ["M", "N", "O", "P", "Q", "R", "S", "T", "U", "V"];
+        maxCol = 16; 
+        matrix = [
+            { l: 2, r: 3, start: 26, stagger: true }, // แถว M: 11 ที่นั่ง (26-36)
+            { l: 3, r: 2, start: 27, stagger: true }, // แถว N: 11 ที่นั่ง (27-37)
+            { l: 2, r: 2, start: 29, stagger: true }, // แถว O: 12 ที่นั่ง (29-40)
+            { l: 2, r: 2, start: 28, stagger: true }, // แถว P: 12 ที่นั่ง (28-39)
+            { l: 2, r: 2, start: 29, stagger: true }, // แถว Q: 12 ที่นั่ง (29-40)
+            { l: 3, r: 2, start: 27, stagger: true }, // แถว R: 11 ที่นั่ง (27-37)
+            { l: 2, r: 3, start: 28, stagger: true }, // แถว S: 11 ที่นั่ง (28-38)
+            { l: 3, r: 2, start: 27, stagger: true }, // แถว T: 11 ที่นั่ง (27-37)
+            { l: 2, r: 3, start: 26, stagger: true }, // แถว U: 11 ที่นั่ง (26-36)
+            { l: 3, r: 2, start: 27, stagger: true }  // แถว V: 11 ที่นั่ง (27-37)
+        ];
+    }
+    else if (["ZONE 7", "ZONE7"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = ["AA", "BB", "CC", "DD", "EE", "FF", "GG", "HH"];
+        maxCol = 11; 
+        matrix = [
+            { l: 0, r: 0, stagger: true }, { l: 0, r: 0, stagger: true }, { l: 0, r: 0, stagger: true }, { l: 0, r: 0, stagger: true },
+            { l: 0, r: 0, stagger: true }, { l: 0, r: 0, stagger: true }, { l: 0, r: 0, stagger: true }, { l: 0, r: 0, stagger: true }
+        ];
+    }
+    else if (["ZONE 8", "ZONE8"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = ["AA", "BB", "CC", "DD", "EE", "FF", "GG", "HH"];
+        maxCol = 16; 
+        matrix = [
+            { l: 0, r: 0, start: 12, stagger: true }, { l: 1, r: 0, start: 12, stagger: true }, 
+            { l: 0, r: 0, start: 12, stagger: true }, { l: 1, r: 0, start: 12, stagger: true }, 
+            { l: 0, r: 0, start: 12, stagger: true }, { l: 1, r: 0, start: 12, stagger: true }, 
+            { l: 0, r: 0, start: 12, stagger: true }, { l: 1, r: 0, start: 12, stagger: true }  
+        ];
+    }
+    else if (["ZONE 9", "ZONE9"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = ["AA", "BB", "CC", "DD", "EE", "FF", "GG", "HH"];
+        maxCol = 11; 
+        matrix = [
+            { l: 0, r: 0, start: 28 }, { l: 0, r: 0, start: 27 }, { l: 0, r: 0, start: 28 }, { l: 0, r: 0, start: 27 },
+            { l: 0, r: 0, start: 28 }, { l: 0, r: 0, start: 27 }, { l: 0, r: 0, start: 28 }, { l: 0, r: 0, start: 27 }  
+        ];
+    }
+    else { rowLetters = "ABCDEF".split(""); matrix = [{l: 0, r: 0}]; }
 
     const templateSeats: Seat[] = [];
     let rowIndex = 0;
     
+    // 🌟 เช็คว่าเป็นโซนของม.รังสิตหรือไม่
+    const isRangsitZone = name.includes("ZONE");
+
     while (rowIndex < rowLetters.length) {
         const rowLetter = rowLetters[rowIndex % rowLetters.length];
         const conf = matrix[rowIndex] || (matrix.length > 0 ? matrix[matrix.length - 1] : { l: 0, r: 0 });
         
+        const gapCount = conf.gapAfter ? 1 : 0;
         const lBlanks = conf.l || 0;
         const rBlanks = conf.r || 0;
-        const maxReal = maxCol - lBlanks - rBlanks;
+        const maxReal = maxCol - lBlanks - rBlanks - gapCount;
         
-        for (let i = 0; i < lBlanks; i++) {
+        // 1. ใส่ Blank ฝั่งซ้าย (ถ้าตั้ง stagger=true ให้ไม่ต้องมีกล่องใส เพื่อให้ Flexbox จัดกลางอัตโนมัติ)
+        const actualLBlanks = conf.stagger ? 0 : lBlanks;
+        for (let i = 0; i < actualLBlanks; i++) {
            templateSeats.push({ id: `BL_${rowIndex}_${i}`, row: rowLetter, number: "", status: "blank", price: 0, isHidden: true });
         }
         
+        // 2. ใส่เก้าอี้จริง
         for (let i = 0; i < maxReal; i++) {
-           const seatNum = startNum + lBlanks + i; 
+           let seatNum;
+           // 🌟 ถ้าเป็นม.รังสิตและมี start กำหนดไว้ ให้ใช้ start + i
+           if (isRangsitZone && conf.start !== undefined) {
+               seatNum = conf.start + i; 
+           } else {
+               // 🏢 ถ้าเป็นฮอลล์อื่น (Impact/รัชดาลัย) ใช้ลอจิกเดิมเป๊ะๆ ห้ามแตะ!
+               seatNum = startNum + lBlanks + i; 
+           }
+
            templateSeats.push({ 
                id: `${rowLetter}${seatNum.toString().padStart(2, '0')}`, 
                row: rowLetter, 
@@ -169,9 +348,20 @@ export default function BookingPage() {
                price: tierPrice,
                isHidden: false 
            });
+
+           // แทรกทางเดินตรงกลาง (Aisle Gap)
+           if (conf.gapAfter === i + 1) {
+               templateSeats.push({ id: `GAP_${rowIndex}_${i}`, row: rowLetter, number: "", status: "blank", price: 0, isHidden: true });
+           }
         }
         
-        for (let i = 0; i < rBlanks; i++) {
+        // 3. ใส่ Blank ฝั่งขวา + ทำสลับฟันปลา (Stagger)
+        let remainingBlanks = maxCol - lBlanks - maxReal - gapCount;
+        if (conf.stagger && rowIndex % 2 !== 0 && remainingBlanks > 0) {
+            remainingBlanks -= 1; // ลด 1 กล่องในแถวคี่เพื่อให้เยื้องเป็นฟันปลา
+        }
+        const actualRBlanks = conf.stagger ? 0 : remainingBlanks;
+        for (let i = 0; i < actualRBlanks; i++) {
            templateSeats.push({ id: `BR_${rowIndex}_${i}`, row: rowLetter, number: "", status: "blank", price: 0, isHidden: true });
         }
         rowIndex++;
@@ -190,13 +380,12 @@ export default function BookingPage() {
 
       try {
         setLoadingSeats(true);
-        // ✅ เพิ่ม 'Cache-Control' และ cache: 'no-store' ตรงนี้ครับ
         const res = await fetch(`http://127.0.0.1:8000/api/seats?eventId=${eventId}&roundId=${roundId}&zoneName=${eventZone}`, {
             headers: { 
                 'Accept': 'application/json',
                 'Cache-Control': 'no-cache'
             },
-            cache: 'no-store' // 👈 บังคับให้ดึงข้อมูลสดใหม่เสมอ ห้ามจำ!
+            cache: 'no-store'
         });
         
         if (!res.ok) throw new Error("API Error");
@@ -210,18 +399,14 @@ export default function BookingPage() {
                 
                 if (dbSeat) {
                     let reactStatus: SeatStatus = 'available';
-                    
-                    // ✅ แมปสถานะภาษาไทยจาก Database
-                    // 🟢 เปลี่ยนเงื่อนไขให้ดักจับสถานะทั้งหมดที่ไม่ใช่คำว่า "ว่าง" 
                     if (dbSeat.SeatStatus !== 'ว่าง') {
                         reactStatus = 'sold'; 
                     }
-
                     return { 
                         ...templateSeat, 
                         status: reactStatus,
-                        dbId: dbSeat.Seat_id,   // ✅ เก็บ Seat_id ไว้
-                        zoneId: dbSeat.Zone_id  // ✅ เก็บ Zone_id ไว้
+                        dbId: dbSeat.Seat_id,
+                        zoneId: dbSeat.Zone_id
                     };
                 } else {
                     return { ...templateSeat, status: "sold" as SeatStatus }; 
@@ -264,14 +449,11 @@ export default function BookingPage() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  // ✅ อัปเดตฟังก์ชัน toggleSeat เพื่อดักห้ามกดเกิน 5 ใบ
   const toggleSeat = (seatId: string, isHidden: boolean, status: string) => {
     if (isDragging || isTimeout || isHidden || status === "sold") return; 
 
-    // นับจำนวนที่นั่งที่กำลังเลือกอยู่ตอนนี้ (status === 'selected')
     const currentSelectedCount = seats.filter(s => s.status === "selected").length;
 
-    // ถ้ากำลังจะ "เลือกเพิ่ม" แต่มีอยู่แล้ว 5 ใบ ให้แจ้งเตือนและเด้งออก
     if (status === "available" && currentSelectedCount >= 5) {
         alert("คุณสามารถเลือกที่นั่งได้สูงสุด 5 ใบ ต่อ 1 การทำรายการครับ");
         return; 
@@ -305,7 +487,6 @@ export default function BookingPage() {
 
   const selectedSeats = seats.filter((s) => s.status === "selected");
   const totalPrice = selectedSeats.reduce((sum, s) => sum + s.price, 0);
-
   const rows = Array.from(new Set(seats.map(s => s.row)));
 
   return (
@@ -368,20 +549,16 @@ export default function BookingPage() {
             
             <button 
                 onClick={() => {
-                    // 1. ตรวจสอบว่าที่นั่งที่เลือก มี ID จากฐานข้อมูลจริงไหม
                     const validSeatIds = selectedSeats.map(s => s.dbId).filter(id => id !== undefined);
                     
-                    // 2. ถ้า ID ไม่ครบ แปลว่าเป็นเก้าอี้จำลอง ให้แจ้งเตือนทันที!
                     if (validSeatIds.length === 0 || validSeatIds.length !== selectedSeats.length) {
                         alert("❌ ไม่สามารถจองได้: ไม่พบ Seat_id จากฐานข้อมูล\nสาเหตุ: API ไม่ส่งข้อมูลที่นั่งของโซน " + eventZone + " กลับมา กรุณาเช็ค Laravel Backend ครับ");
-                        return; // หยุดการทำงาน ห้ามเปลี่ยนหน้า
+                        return;
                     }
 
-                   // ✅ แก้ไขใหม่ให้ดึง ID จริงเท่านั้น
                     const firstSelectedSeat = selectedSeats[0];
                     const currentZoneId = firstSelectedSeat?.zoneId;
 
-                    // เช็คว่ามี ID หรือไม่ก่อนเปลี่ยนหน้า
                     if (!currentZoneId) {
                         alert("❌ เกิดข้อผิดพลาด: ไม่พบรหัสโซน (Zone ID) จากฐานข้อมูล กรุณารีเฟรชหน้าเว็บแล้วลองใหม่อีกครั้ง");
                         return;
@@ -395,7 +572,7 @@ export default function BookingPage() {
                         zone: eventZone,
                         amount: totalPrice.toString(),
                         seats: selectedSeats.map(s => s.id).join(", "),
-                        seatIds: validSeatIds.join(","), // ส่งเฉพาะ ID ที่มีอยู่จริง
+                        seatIds: validSeatIds.join(","),
                         roundId: roundId || "44",
                         zoneId: currentZoneId.toString()
                     }).toString();
@@ -458,23 +635,29 @@ export default function BookingPage() {
                       <p>กำลังโหลดที่นั่ง...</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-2 md:gap-3 pointer-events-auto">
-                        {rows.map(rowLetter => (
-                            <div key={rowLetter} className="flex items-center gap-2 md:gap-3 justify-center">
-                                {/* ตัวอักษรฝั่งซ้าย */}
-                                <span className="w-6 text-slate-400 font-bold text-sm md:text-lg text-right pr-4">{rowLetter}</span>
-                                
-                                {/* เก้าอี้ในแถวนั้น */}
-                                {seats.filter(s => s.row === rowLetter).map(seat => (
-                                    <div key={seat.id} onClick={() => toggleSeat(seat.id, seat.isHidden, seat.status)}>
-                                        <SeatIcon status={seat.status} label={seat.number} zoneColor={zoneColor} />
+                    // 🌟 จุดเปลี่ยน: เพิ่ม w-full max-w-full overflow-x-auto เพื่อให้โซนที่กว้างมากๆ แสดงผลได้ครบ
+                    <div className="flex flex-col gap-2 md:gap-3 pointer-events-auto pb-20 w-full max-w-full overflow-x-auto">
+                        <div className="min-w-max px-4 mx-auto">
+                            {rows.map(rowLetter => (
+                                // 🌟 จุดเปลี่ยน: ใช้ justify-between เพื่อให้ตัวอักษรชิดขอบ และเก้าอี้อยู่ตรงกลาง
+                                <div key={rowLetter} className="flex items-center justify-between w-full mb-1.5">
+                                    {/* ตัวอักษรฝั่งซ้าย */}
+                                    <span className="w-8 md:w-10 text-slate-400 font-bold text-xs md:text-lg text-right pr-4 shrink-0">{rowLetter}</span>
+                                    
+                                    {/* เก้าอี้ในแถวนั้น */}
+                                    <div className="flex items-center gap-1 md:gap-1.5 justify-center flex-1">
+                                        {seats.filter(s => s.row === rowLetter).map(seat => (
+                                            <div key={seat.id} onClick={() => toggleSeat(seat.id, seat.isHidden, seat.status)}>
+                                                <SeatIcon status={seat.status} label={seat.number} zoneColor={zoneColor} />
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
 
-                                {/* ตัวอักษรฝั่งขวา */}
-                                <span className="w-6 text-slate-400 font-bold text-sm md:text-lg text-left pl-4">{rowLetter}</span>
-                            </div>
-                        ))}
+                                    {/* ตัวอักษรฝั่งขวา */}
+                                    <span className="w-8 md:w-10 text-slate-400 font-bold text-xs md:text-lg text-left pl-4 shrink-0">{rowLetter}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>
