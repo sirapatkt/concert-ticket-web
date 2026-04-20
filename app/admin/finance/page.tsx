@@ -1,63 +1,91 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   CreditCard, DollarSign, ArrowUpRight, Clock, CheckCircle, 
   Search, Calendar, Filter, FileText, XCircle, Eye 
 } from "lucide-react";
 
-// --- Mock Data: เหลือ 1 ตัวอย่าง ---
-const initialPayouts = [
-  { 
-    id: 1, 
-    organizer: "GMM Grammy", 
-    event: "Jeff Satur Concert", 
-    amount: 1500000, 
-    bank: "KBANK •••• 8829", 
-    date: "10 นาทีที่แล้ว", 
-    status: "Pending" 
-  }
-];
-
-const initialTransactions = [
-  { 
-    id: "ORD-8821", 
-    user: "สมชาย ใจดี", 
-    event: "Jeff Satur Concert", 
-    method: "บัตรเครดิต", 
-    amount: 2500, 
-    status: "Success", 
-    date: "18/01/2026 10:30" 
-  }
-];
-
 export default function FinancePage() {
+  // ✅ 1. เพิ่ม State เช็คว่าเว็บโหลดฝั่ง Client หรือยัง (แก้ปัญหา Hydration)
+  const [isMounted, setIsMounted] = useState(false);
+  
   const [activeTab, setActiveTab] = useState<"payouts" | "orders">("payouts");
-  const [payoutList, setPayoutList] = useState(initialPayouts);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // ✅ เพิ่มฟังก์ชันคำนวณตัวเลขสถิติอัตโนมัติ (Dynamic Stats)
-  // 1. คำนวณยอดขายรวม (GMV) จากรายการ Transaction ทั้งหมด
-  const totalSales = initialTransactions.reduce((sum, order) => sum + order.amount, 0);
+  const [payoutList, setPayoutList] = useState<any[]>([]);
+  const [transactionList, setTransactionList] = useState<any[]>([]);
 
-  // 2. คำนวณยอดรอโอน (Pending Payouts) จากรายการที่สถานะเป็น Pending
+  // ✅ เพิ่ม State เก็บข้อมูลสรุปรายได้และสถานะกดดูรายละเอียด
+  const [financeSummary, setFinanceSummary] = useState<any>(null);
+  const [showDetail, setShowDetail] = useState(false);
+
+  useEffect(() => {
+    // ✅ 2. สั่งให้เป็น true เมื่อโหลดบนเบราว์เซอร์เสร็จแล้ว
+    setIsMounted(true);
+
+    const fetchFinanceData = async () => {
+      try {
+        const resPayouts = await fetch('http://localhost:8000/api/admin/payouts');
+        if (resPayouts.ok) {
+          const data = await resPayouts.json();
+          if(data && data.length > 0) setPayoutList(data); 
+        }
+
+        const resOrders = await fetch('http://localhost:8000/api/admin/orders');
+        if (resOrders.ok) {
+          const data = await resOrders.json();
+          if(data && data.length > 0) setTransactionList(data);
+        }
+
+        // ✅ เพิ่มการดึงข้อมูลสรุปรายได้ (Finance Summary)
+        const resSummary = await fetch('http://localhost:8000/api/admin/finance-summary');
+        if (resSummary.ok) {
+            const data = await resSummary.json();
+            setFinanceSummary(data);
+        }
+      } catch (error) {
+        console.error("API Error:", error);
+      }
+    };
+
+    fetchFinanceData();
+  }, []);
+
+  const totalSales = transactionList.reduce((sum, order) => sum + Number(order.amount), 0);
   const totalPendingPayout = payoutList
     .filter(p => p.status === "Pending")
-    .reduce((sum, item) => sum + item.amount, 0);
-
-  // 3. คำนวณรายได้สุทธิ (Platform Revenue) สมมติว่าได้ 3% จากยอดขาย
+    .reduce((sum, item) => sum + Number(item.amount), 0);
+  
+  // (เก็บตัวแปรเดิมไว้ไม่ให้กระทบการทำงานส่วนอื่น)
   const platformRevenue = totalSales * 0.03; 
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0 }).format(amount);
   };
 
-  const handleApprove = (id: number) => {
+  const handleApprove = async (id: number) => {
     if (confirm("ยืนยันการโอนเงินให้ผู้จัดงานรายนี้?")) {
-      setPayoutList(prev => prev.map(item => 
-        item.id === id ? { ...item, status: "Completed" } : item
-      ));
-      alert("✅ ดำเนินการโอนเงินสำเร็จ!");
+      try {
+        const res = await fetch(`http://localhost:8000/api/admin/payouts/${id}/approve`, {
+          method: 'PATCH',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+
+        if (res.ok) {
+          setPayoutList(prev => prev.map(item => 
+            item.id === id ? { ...item, status: "Completed" } : item
+          ));
+          alert("✅ ดำเนินการโอนเงินสำเร็จ!");
+        } else {
+          alert("❌ เกิดข้อผิดพลาดในการโอนเงิน");
+        }
+      } catch (error) {
+         console.error("Error:", error);
+      }
     }
   };
 
@@ -76,6 +104,11 @@ export default function FinancePage() {
     }
   };
 
+  // ✅ 3. ถ้ายังไม่โหลดบน Client ให้โชว์หน้าเปล่าไปก่อนแว้บนึง (แก้ Hydration Error 100%)
+  if (!isMounted) {
+    return null; 
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-screen text-white p-4 md:p-8">
       
@@ -89,15 +122,54 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {/* Stats Cards (ใช้ตัวแปรที่คำนวณไว้แทนเลข Hardcode) */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-green-900/40 to-[#161B22] p-6 rounded-2xl border border-green-500/20 shadow-lg relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-10 text-green-500"><FileText size={64} /></div>
-          <p className="text-green-400 text-sm font-medium mb-1">รายได้สุทธิ (Platform)</p>
-          <h2 className="text-3xl font-black text-green-400">{formatCurrency(platformRevenue)}</h2>
-          <p className="text-xs text-gray-400 mt-2">ประเมินจาก 3% ของยอดขาย</p>
-        </div>
         
+        {/* ✅ การ์ดสีเขียวที่ถูกปรับแก้ให้กดดูรายละเอียดและลิสต์รายชื่อคอนเสิร์ตได้ */}
+        <div 
+          onClick={() => setShowDetail(!showDetail)} 
+          className="bg-gradient-to-br from-green-900/40 to-[#161B22] p-6 rounded-2xl border border-green-500/20 shadow-lg relative overflow-hidden cursor-pointer hover:border-green-500/50 transition-all"
+        >
+            <div className="absolute top-0 right-0 p-4 opacity-10 text-green-500"><FileText size={64} /></div>
+            <p className="text-green-400 text-sm font-medium mb-1">รายได้สุทธิ (Platform)</p>
+            <h2 className="text-3xl font-black text-green-400">
+                {formatCurrency(financeSummary?.total_net_revenue || 0)}
+            </h2>
+            
+            {/* ส่วนที่บอกว่ามาจากไหน */}
+            <div className="mt-3 space-y-1">
+                {showDetail ? (
+                    <div className="animate-in fade-in slide-in-from-top-1 duration-300">
+                        <div className="flex justify-between text-[11px] text-gray-300 border-t border-green-500/20 pt-3 mb-1">
+                            <span>ค่าธรรมเนียมตั๋ว ({financeSummary?.breakdown?.total_tickets || 0} ใบ):</span>
+                            <span className="font-bold text-white">{formatCurrency(financeSummary?.breakdown?.service_fee || 0)}</span>
+                        </div>
+                        <div className="flex justify-between text-[11px] text-gray-300 mb-2">
+                            <span>ส่วนแบ่งเป้าหมาย (GP):</span>
+                            <span className="font-bold text-white">{formatCurrency(financeSummary?.breakdown?.commission || 0)}</span>
+                        </div>
+
+                        {/* โชว์รายชื่อคอนเสิร์ตที่ได้ GP */}
+                        {financeSummary?.breakdown?.events && financeSummary.breakdown.events.length > 0 && (
+                            <div className="bg-black/30 rounded-lg p-2 mt-2">
+                                <p className="text-[10px] text-green-400 mb-1 border-b border-green-500/20 pb-1">ได้ส่วนแบ่ง GP จากงาน:</p>
+                                {financeSummary.breakdown.events.map((ev: any, idx: number) => (
+                                    <div key={idx} className="flex justify-between items-center text-[10px] text-gray-400 mt-1">
+                                        <span className="truncate w-32" title={ev.name}>• {ev.name} ({ev.percent}%)</span>
+                                        <span className="text-gray-300">{formatCurrency(ev.commission)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <p className="text-[10px] text-green-500/70 mt-3 text-center">* คลิกเพื่อพับเก็บ</p>
+                    </div>
+                ) : (
+                    <p className="text-xs text-gray-400 mt-2">คลิกเพื่อดูที่มาของรายได้</p>
+                )}
+            </div>
+        </div>
+
         <div className="bg-[#161B22] border border-white/5 p-6 rounded-2xl relative overflow-hidden">
            <div className="absolute top-0 right-0 p-4 opacity-10 text-orange-500"><Clock size={64} /></div>
           <p className="text-orange-400 text-sm font-medium mb-1">ยอดรอโอนให้ผู้จัด</p>
@@ -182,7 +254,7 @@ export default function FinancePage() {
              <tbody className="divide-y divide-white/5">
                
                {/* TAB 1: PAYOUTS */}
-               {activeTab === "payouts" && payoutList.filter(i => i.organizer.includes(searchTerm) || i.event.includes(searchTerm)).map((item) => (
+               {activeTab === "payouts" && payoutList.filter(i => (i.organizer || "").includes(searchTerm) || (i.event || "").includes(searchTerm)).map((item) => (
                  <tr key={item.id} className="hover:bg-white/5 transition-colors">
                    <td className="p-4 font-bold text-white">{item.organizer}</td>
                    <td className="p-4 text-gray-400">{item.event}</td>
@@ -206,7 +278,7 @@ export default function FinancePage() {
                ))}
 
                {/* TAB 2: ORDERS */}
-               {activeTab === "orders" && initialTransactions.filter(i => i.user.includes(searchTerm) || i.event.includes(searchTerm)).map((item) => (
+               {activeTab === "orders" && transactionList.filter(i => (i.user || "").includes(searchTerm) || (i.event || "").includes(searchTerm)).map((item) => (
                  <tr key={item.id} className="hover:bg-white/5 transition-colors">
                    <td className="p-4 font-mono text-blue-400">{item.id}</td>
                    <td className="p-4 text-white">{item.user}</td>
@@ -221,9 +293,12 @@ export default function FinancePage() {
              </tbody>
            </table>
            
-           {/* Empty State */}
+           {/* Empty States */}
            {activeTab === "payouts" && payoutList.length === 0 && (
               <div className="p-8 text-center text-gray-500">ไม่มีคำขอเบิกเงิน</div>
+           )}
+           {activeTab === "orders" && transactionList.length === 0 && (
+              <div className="p-8 text-center text-gray-500">ไม่มีรายการคำสั่งซื้อ</div>
            )}
         </div>
       </div>

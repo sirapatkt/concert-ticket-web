@@ -5,27 +5,34 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Calendar, MapPin, Ticket, SlidersHorizontal, Search, Frown, Check, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 
-// ✅ ฟังก์ชันแยกประเภทจากชื่อคอนเสิร์ต
-const getEventType = (name: string) => {
+// ✅ ฟังก์ชันแยกประเภท โดยเช็คจากทั้ง "ชื่องาน" และ "สถานที่จัดงาน (Venue)"
+const getEventType = (name: string, venueName: string = "") => {
   const text = name.toLowerCase(); 
+  const venue = venueName.toLowerCase();
   
+  // 1. เช็คหมวดหมู่ย่อยจากชื่อก่อน (พวกเทศกาลดนตรี แฟนมีตติ้ง มักจัดที่ Impact)
   if (text.includes("fest") || text.includes("festival") || text.includes("เทศกาลดนตรี")) {
     return "เทศกาลดนตรี";
   }
   if (text.includes("fan") || text.includes("meet") || text.includes("แฟนมีต")) {
     return "แฟนมีตติ้ง";
   }
-  if (text.includes("musical") || text.includes("stage") || text.includes("ละครเวที")) {
+
+  // ✅ 2. ถ้าจัดที่ "เมืองไทยรัชดาลัย" ให้เป็น "ละครเวที" ทันที
+  if (venue.includes("รัชดาลัย") || text.includes("musical") || text.includes("stage") || text.includes("ละครเวที") || text.includes("จิ๊กซอว์กรรม")) {
     return "ละครเวที";
   }
-  if (text.includes("orchestra") || text.includes("symphony") || text.includes("philharmonic") || text.includes("ออร์เคสตรา")) {
+
+  // ✅ 3. ถ้าจัดที่ "ศาลาดนตรีสุริยเทพ" ให้เป็น "ออร์เคสตรา" ทันที
+  if (venue.includes("สุริยเทพ") || text.includes("orchestra") || text.includes("symphony") || text.includes("philharmonic") || text.includes("ออร์เคสตรา")) {
     return "ออร์เคสตรา";
   }
   
+  // ✅ 4. ค่าเริ่มต้น (สำหรับ อิมแพ็ค อารีน่า หรือสถานที่อื่นๆ) ให้เป็น "คอนเสิร์ต"
   return "คอนเสิร์ต"; 
 };
 
-// ✅ เพิ่มฟังก์ชันแปลงสถานะเป็นภาษาไทย กำหนดสี และสิทธิ์การแสดงผล
+// ✅ ฟังก์ชันแปลงสถานะเป็นภาษาไทย กำหนดสี และสิทธิ์การแสดงผล
 const getThaiStatusInfo = (status: string) => {
   const s = (status || "UPCOMING").toUpperCase();
   
@@ -38,11 +45,10 @@ const getThaiStatusInfo = (status: string) => {
   if (s === "SOLD OUT") {
     return { text: "ขายหมดแล้ว", color: "bg-gray-600", isVisible: true }; 
   }
-  // ❌ เพิ่มการดักจับคำว่า PENDING, PREPARING, DRAFT หรือคำว่า "กำลังเตรียม" ตรงๆ
-  if (s === "PREPARING" || s === "PENDING" || s === "DRAFT" || s === "กำลังเตรียม" || s.includes("เตรียม")) {
+  // ❌ เพิ่มการดักจับคำว่า PENDING, PREPARING, DRAFT, กำลังเตรียม รวมถึง "เสร็จสิ้น" และ "ยกเลิกงาน"
+  if (s === "PREPARING" || s === "PENDING" || s === "DRAFT" || s === "กำลังเตรียม" || s.includes("เตรียม") || s === "เสร็จสิ้น" || s === "ยกเลิกงาน") {
     return { text: "กำลังเตรียม", color: "bg-gray-400", isVisible: false }; 
   }
-  
   
   // Default fallback
   return { text: status, color: "bg-blue-600", isVisible: true }; 
@@ -94,7 +100,7 @@ export default function ExplorePage() {
               : `http://127.0.0.1:8000/storage/${item.bannerImage}`;
           }
 
-          // ✅ 4. ดึงข้อมูลสถานะที่แปลงแล้ว
+          // 4. ดึงข้อมูลสถานะที่แปลงแล้ว
           const statusInfo = getThaiStatusInfo(item.eventStatus);
 
           return {
@@ -104,16 +110,17 @@ export default function ExplorePage() {
             venue: item.hall?.Hall_Name || "TBA",
             price: minPriceVal,
             image: imageUrl,
-            type: getEventType(item.eventName),
+            // ✅ ส่งชื่อสถานที่เข้าไปให้ฟังก์ชัน getEventType ช่วยเช็ค
+            type: getEventType(item.eventName, item.hall?.Hall_Name || ""),
             
-            // ✅ นำข้อมูลสถานะที่ได้มาใช้งาน
+            // นำข้อมูลสถานะที่ได้มาใช้งาน
             status: statusInfo.text,
             statusColor: statusInfo.color,
             isVisible: statusInfo.isVisible,
             isSoldOut: (item.eventStatus || "").toUpperCase() === "SOLD OUT"
           };
         })
-        // ✅ 5. กรองเอาเฉพาะข้อมูลที่ isVisible เป็น true เท่านั้น (ตัด "กำลังเตรียม" ทิ้งตั้งแต่ตรงนี้)
+        // 5. กรองเอาเฉพาะข้อมูลที่ isVisible เป็น true เท่านั้น
         .filter((event: any) => event.isVisible);
 
         setEvents(formattedEvents);

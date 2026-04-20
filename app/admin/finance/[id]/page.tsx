@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -53,53 +54,30 @@ export default function TransactionDetailPage() {
   const params = useParams();
   const { id } = params; 
 
-  // 2. ✅ Mock Data: เหลือไว้ 1 ตัวอย่าง และ Default สำหรับกัน Error
-  const transactions: Record<string, TransactionData> = {
-    "TX-8821": {
-      id: "TX-8821",
-      status: "success",
-      amount: "6,500.00",
-      date: "12 ก.พ. 2026",
-      time: "14:30 น.",
-      paymentMethod: "Credit Card (Visa ending 4242)",
-      customer: {
-        name: "สมชาย ใจดี",
-        email: "somchai@gmail.com",
-        phone: "081-234-5678",
-        id: "User #8821"
-      },
-      items: [
-        { name: "Jeff Satur: Space Shuttle Concert", type: "Zone A (Standing)", price: "6,000.00", qty: 1 }
-      ],
-      fees: {
-        subtotal: "6,000.00",
-        serviceFee: "300.00",
-        vat: "200.00",
-        total: "6,500.00"
-      },
-      timeline: [
-        { status: "ทำรายการสั่งซื้อ", time: "14:28 น.", completed: true },
-        { status: "ชำระเงินสำเร็จ", time: "14:30 น.", completed: true },
-        { status: "ส่ง E-Ticket ทางอีเมล", time: "14:31 น.", completed: true },
-      ]
-    },
-    // Fallback data กรณีหา ID ไม่เจอ
-    "default": {
-      id: "TX-????",
-      status: "pending",
-      amount: "0.00",
-      date: "-",
-      time: "-",
-      paymentMethod: "-",
-      customer: { name: "-", email: "-", phone: "-", id: "-" },
-      items: [],
-      fees: { subtotal: "0", serviceFee: "0", vat: "0", total: "0" },
-      timeline: []
-    }
-  };
+  // สร้าง State มารับข้อมูลจาก API
+  const [data, setData] = useState<TransactionData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // ดึงข้อมูลตาม ID หรือใช้ Default ถ้าไม่เจอ
-  const data = transactions[(id as string)] || transactions["default"];
+  // ดึงข้อมูลจาก Backend
+  useEffect(() => {
+    const fetchTransactionDetail = async () => {
+      try {
+        const res = await fetch(`http://localhost:8000/api/admin/orders/${id}`);
+        if (res.ok) {
+          const result = await res.json();
+          setData(result);
+        } else {
+          console.error("ไม่พบข้อมูล หรือ API Error");
+        }
+      } catch (error) {
+        console.error("API Fetch Error:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (id) fetchTransactionDetail();
+  }, [id]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -109,6 +87,16 @@ export default function TransactionDetailPage() {
       default: return "bg-gray-500/10 text-gray-400 border-gray-500/20";
     }
   };
+
+  // เช็คสถานะตอนกำลังโหลดดึงข้อมูล
+  if (isLoading) {
+    return <div className="min-h-screen bg-[#0B0F14] text-white p-8 flex items-center justify-center">กำลังโหลดข้อมูล...</div>;
+  }
+
+  // ถ้าดึงแล้วไม่มีข้อมูล
+  if (!data) {
+    return <div className="min-h-screen bg-[#0B0F14] text-white p-8 flex items-center justify-center">ไม่พบข้อมูลธุรกรรมรหัสนี้</div>;
+  }
 
   return (
     <div className="p-6 lg:p-8 min-h-screen bg-[#0B0F14] text-white font-sans animate-in fade-in slide-in-from-bottom-4 duration-500">

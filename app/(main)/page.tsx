@@ -69,9 +69,14 @@ export default function Home() {
         
         const data: ApiEvent[] = await res.json();
 
-        // ✅ แปลงข้อมูลและกรองเอาสถานะที่ไม่ต้องการออก
+        // ✅ แปลงข้อมูลและกรองเอาสถานะที่ไม่ต้องการออก (เพิ่มการซ่อน "เสร็จสิ้น" และ "ยกเลิกงาน")
         const formattedEvents: EventCardProps[] = data
-          .filter((item) => item.eventStatus !== "กำลังเตรียม" && item.eventStatus !== "กำลังจะเตรียม") 
+          .filter((item) => 
+            item.eventStatus !== "กำลังเตรียม" && 
+            item.eventStatus !== "กำลังจะเตรียม" &&
+            item.eventStatus !== "เสร็จสิ้น" && 
+            item.eventStatus !== "ยกเลิกงาน"
+          ) 
           .map((item) => {
             // หาบัตรราคาถูกสุด
             const minPrice = item.ticket_zones?.length 

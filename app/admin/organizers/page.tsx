@@ -1,9 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Search, Building2, Mail, Phone, MoreHorizontal, UserCheck, X, Calendar, Ticket, ChevronDown, ExternalLink } from "lucide-react";
-import Link from "next/link"; // 👈 เพิ่ม Import Link
+import Link from "next/link"; 
 
-// อัปเดต Interface ให้รองรับข้อมูล Events จาก Backend
 interface EventDetail {
   Event_id: number;
   eventName: string;
@@ -17,7 +16,7 @@ interface Organizer {
   email: string;
   phone: string;
   event_count: number;
-  events?: EventDetail[]; // 👈 รับค่า Array ของอีเวนต์
+  events?: EventDetail[]; 
   created_at: string;
   status: "Pending" | "Active" | "Suspended";
 }
@@ -30,7 +29,7 @@ export default function AdminOrganizersPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<Organizer | null>(null);
-  const [showEventList, setShowEventList] = useState(false); // State ควบคุมการกางลิสต์อีเวนต์
+  const [showEventList, setShowEventList] = useState(false); 
 
   useEffect(() => {
     const fetchOrganizers = async () => {
@@ -73,7 +72,7 @@ export default function AdminOrganizersPage() {
 
   const openModal = (org: Organizer) => {
     setSelectedOrg(org);
-    setShowEventList(false); // รีเซ็ตลิสต์ให้หุบไว้ก่อนเสมอตอนเปิด Modal
+    setShowEventList(false); 
     setIsModalOpen(true);
   };
   
@@ -83,10 +82,35 @@ export default function AdminOrganizersPage() {
     setShowEventList(false);
   };
 
-  const handleUpdateStatus = (id: number, newStatus: "Active" | "Suspended" | "Pending", actionName: string) => {
+  // ✅ เปลี่ยนจากแก้แค่หน้าจอ เป็นยิง API ไปแก้ที่ DB ด้วย (เพิ่มการแนบ Token เพื่อแก้ Error 401)
+  const handleUpdateStatus = async (id: number, newStatus: "Active" | "Suspended" | "Pending", actionName: string) => {
     if (confirm(`คุณแน่ใจหรือไม่ที่จะ ${actionName} ผู้จัดงานรายนี้?`)) {
-      setOrganizers(prev => prev.map(org => org.id === id ? { ...org, status: newStatus } : org));
-      alert(`${actionName} สำเร็จ!`);
+      try {
+        // ✅ 1. ดึง Token จาก localStorage
+        const token = localStorage.getItem('token'); 
+
+        // ยิงคำสั่งไปหา Laravel
+        const res = await fetch(`http://localhost:8000/api/admin/organizers/${id}/status`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${token}` // ✅ 2. แนบ Token กลับไปที่ Backend ด้วย
+          },
+          body: JSON.stringify({ action: newStatus }) // ส่งสถานะใหม่ไป
+        });
+
+        if (res.ok) {
+          // ถ้าเซิร์ฟเวอร์เซฟสำเร็จ ค่อยอัปเดตหน้าจอ React
+          setOrganizers(prev => prev.map(org => org.id === id ? { ...org, status: newStatus } : org));
+          alert(`${actionName} สำเร็จ! ข้อมูลถูกอัปเดตลงระบบแล้ว`);
+        } else {
+          alert('เกิดข้อผิดพลาดในการอัปเดตลงฐานข้อมูล');
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+      }
     }
   };
 
@@ -310,7 +334,6 @@ export default function AdminOrganizersPage() {
                 </button>
               </div>
 
-              {/* ลิสต์รายชื่องานที่ซ่อนอยู่ */}
               {showEventList && selectedOrg.event_count > 0 && (
                 <div className="p-3 bg-black/30 rounded-lg border border-white/5 max-h-40 overflow-y-auto custom-scrollbar animate-in slide-in-from-top-2 duration-200">
                   <h4 className="text-xs font-bold text-gray-400 mb-2 pb-2 border-b border-white/5">รายการอีเวนต์:</h4>

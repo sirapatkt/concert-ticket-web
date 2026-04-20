@@ -18,10 +18,9 @@ type Seat = {
 };
 
 // ========================================================
-// 🎨 Component: ไอคอนเก้าอี้ (🌟 ปรับขนาดให้เล็กลงเพื่อให้พอดีกับ 22 คอลัมน์)
+// 🎨 Component: ไอคอนเก้าอี้ 
 // ========================================================
 const SeatIcon = ({ status, label, zoneColor }: { status: SeatStatus; label: string, zoneColor: string }) => {
-  // ย่อขนาดเก้าอี้ลงมาให้เท่ากับหน้า Preview
   const baseSize = "w-[24px] h-[24px] sm:w-[28px] sm:h-[28px] md:w-[32px] md:h-[32px]";
   
   if (status === "blank") {
@@ -73,7 +72,6 @@ export default function BookingPage() {
   const eventZone = searchParams.get("zone") || "L1"; 
   const tierPrice = Number(searchParams.get("price")) || 0;
 
-  // 🌟 เปลียนชื่องาน สถานที่ วันที่ ให้เป็น State เพื่อรับค่าจาก API
   const [eventName, setEventName] = useState(searchParams.get("name") || "กำลังโหลดข้อมูล...");
   const [eventDate, setEventDate] = useState(searchParams.get("date") || "...");
   const [eventTime, setEventTime] = useState(searchParams.get("time") || "...");
@@ -91,11 +89,9 @@ export default function BookingPage() {
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
 
-  // 🌟 ฟังก์ชันดึงรายละเอียด Event (ชื่อ, สถานที่, เวลา) จาก API
   useEffect(() => {
     const fetchEventDetails = async () => {
       if (!eventId) return;
-      // ถ้ารับค่ามาจาก URL แล้ว ไม่ต้องยิง API ซ้ำ
       if (searchParams.get("name") && searchParams.get("venue")) return; 
 
       try {
@@ -121,77 +117,217 @@ export default function BookingPage() {
     fetchEventDetails();
   }, [eventId, roundId, searchParams]);
 
-
   // ========================================================
-  // 🧠 ฟังก์ชัน: สร้างโครงสร้างผังที่นั่ง (🌟 แก้เฉพาะ ม.รังสิต)
+  // 🧠 ฟังก์ชัน: สร้างโครงสร้างผังที่นั่ง (ปรับให้รับจำนวนจาก DB เพื่อซ่อน)
   // ========================================================
-  const generateStructuralLayout = (zoneName: string): Seat[] => {
-    let maxCol = 12;
+  const generateStructuralLayout = (zoneName: string, totalDbSeats: number): Seat[] => {
+    let maxCol = 20;
     let startNum = 1;
-    // รองรับ stagger, gapAfter, start สำหรับม.รังสิต
-    let matrix: { l?: number, r?: number, gapAfter?: number, start?: number, stagger?: boolean }[] = []; 
-    let rowLetters: string[] = []; 
-    let isFixedLayout = false; // ต้องใส่บรรทัดนี้เพื่อไม่ให้ขึ้นขีดแดง
+    let matrix: { l?: number, r?: number, gapAfter?: number, start?: number, stagger?: boolean }[] = [];
+    let rowLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+    let isFixedLayout = false; 
     
     const name = zoneName.toUpperCase().trim();
 
-    // -----------------------------------------------------------------
-    // 🏢 1. ฮอลล์อื่นๆ คงไว้เหมือนเดิม 100% ห้ามแตะต้อง
-    // -----------------------------------------------------------------
-    if (name === "L1") {
-        rowLetters = "BCDEFGH".split("");
-        matrix = [ {l: 4, r: 0}, {l: 3, r: 0}, {l: 2, r: 0}, {l: 1, r: 0}, {l: 1, r: 0}, {l: 1, r: 0}, {l: 1, r: 0} ];
-    } 
-    else if (name === "C1") { maxCol = 16; startNum = 13; rowLetters = "ABCDEFGH".split(""); matrix = [{l: 0, r: 0}]; }
-    else if (name === "R1") {
-        maxCol = 12; startNum = 29; rowLetters = "BCDEFGH".split("");
-        matrix = [ {l: 0, r: 4}, {l: 0, r: 3}, {l: 0, r: 2}, {l: 0, r: 1}, {l: 0, r: 1}, {l: 0, r: 1}, {l: 0, r: 1} ];
+    if (name.match(/^[LCR][1-6]$/)) {
+        isFixedLayout = true;
+        if (name.startsWith("L")) { maxCol = 12; startNum = 1; }
+        if (name.startsWith("C")) { maxCol = 16; startNum = 13; }
+        if (name.startsWith("R")) { maxCol = 12; startNum = 29; }
+
+        const zoneNum = name[1];
+        if (zoneNum === "1") {
+            if (name === "L1" || name === "R1") rowLetters = "BCDEFGH".split(""); 
+            else rowLetters = "ABCDEFGH".split(""); 
+        }
+        if (zoneNum === "2") rowLetters = "IJKLMNOP".split("");
+        if (zoneNum === "3") rowLetters = "QRST".split("");
+        if (zoneNum === "4") {
+            if (name === "C4") rowLetters = "UVW".split(""); 
+            else rowLetters = "UVWXYZ".split(""); 
+        }
+        if (zoneNum === "5") rowLetters = ["AA","BB","CC","DD"];
+        if (zoneNum === "6") {
+            if (name === "C6" || name === "L6" || name === "R6") rowLetters = ["EE","FF","GG","HH","II","JJ","KK"]; 
+            else rowLetters = ["EE","FF","GG","HH","II","JJ","KK","LL","MM"]; 
+        }
+        if (name === "L1") matrix = [{l:4, r:0}, {l:3, r:0}, {l:2, r:0}, {l:1, r:0}, {l:1, r:0}, {l:1, r:0}, {l:1, r:0}, {l:1, r:0}];
+        else if (name === "R1") matrix = [{l:0, r:4}, {l:0, r:3}, {l:0, r:2}, {l:0, r:1}, {l:0, r:1}, {l:0, r:1}, {l:0, r:1}]; 
+        else if (name === "L4") matrix = [{l:0, r:0}, {l:0, r:0}, {l:0, r:0}, {l:0, r:1}, {l:0, r:1}, {l:0, r:1}]; 
+        else if (name === "R4") matrix = [{l:0, r:0}, {l:0, r:0}, {l:1, r:0}, {l:1, r:0}, {l:1, r:0}, {l:1, r:0}]; 
+        else if (name === "L5") matrix = [{l:1, r:0}]; 
+        else if (name === "L6") matrix = [{l:1, r:0}, {l:1, r:0}, {l:1, r:0}, {l:1, r:0}, {l:1, r:0}, {l:1, r:0}, {l:1, r:0}, {l:1, r:0}, {l:1, r:0}]; 
+        else if (name === "R5") matrix = [{l:0, r:1}, {l:0, r:0}, {l:0, r:1}, {l:0, r:0}];
+        else if (name === "R6") matrix = [{l:0, r:0}, {l:0, r:1}, {l:0, r:0}, {l:0, r:0}, {l:0, r:0}, {l:0, r:1}, {l:0, r:1}, {l:0, r:1}, {l:5, r:1}]; 
+        else matrix = [{l:0, r:0}]; 
     }
-    else if (name === "L2") { maxCol = 12; startNum = 1; rowLetters = "IJKLMNOP".split(""); matrix = [{l: 0, r: 0}]; }
-    else if (name === "C2") { maxCol = 16; startNum = 13; rowLetters = "IJKLMNOP".split(""); matrix = [{l: 0, r: 0}]; }
-    else if (name === "R2") { maxCol = 12; startNum = 29; rowLetters = "IJKLMNOP".split(""); matrix = [{l: 0, r: 0}]; }
-    else if (name === "L3") { maxCol = 12; startNum = 1; rowLetters = "QRST".split(""); matrix = [{l: 0, r: 0}]; }
-    else if (name === "C3") { maxCol = 16; startNum = 13; rowLetters = "QRST".split(""); matrix = [{l: 0, r: 0}]; }
-    else if (name === "R3") { maxCol = 12; startNum = 29; rowLetters = "QRST".split(""); matrix = [{l: 0, r: 0}]; }
-    else if (name === "L4") {
-        maxCol = 12; startNum = 1; rowLetters = "UVWXYZ".split("");
-        matrix = [ {l: 0, r: 0}, {l: 0, r: 0}, {l: 0, r: 0}, {l: 0, r: 1}, {l: 0, r: 1}, {l: 0, r: 1} ]; 
+    else if (["A1", "A2", "A3", "A4"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = "ABCDEFGHIJKLMNOPQRST".split(""); 
+        maxCol = 25;
+        matrix = [{l:0, r:0}];
     }
-    else if (name === "C4") { maxCol = 16; startNum = 13; rowLetters = "UVW".split(""); matrix = [{l: 0, r: 0}]; }
-    else if (name === "R4") {
-        maxCol = 12; startNum = 29; rowLetters = "UVWXYZ".split("");
-        matrix = [ {l: 0, r: 0}, {l: 1, r: 0}, {l: 1, r: 0}, {l: 1, r: 0}, {l: 1, r: 0}, {l: 1, r: 0} ]; 
+    else if (name === "A5") {
+        isFixedLayout = true;
+        rowLetters = "ABCDEFGHIJKLMNOPQRST".split(""); 
+        maxCol = 25;
+        matrix = [...Array(15).fill({ l: 0, r: 0 }), { l: 2, r: 0 }, { l: 4, r: 0 }, { l: 6, r: 0 }, { l: 8, r: 0 }, { l: 10, r: 0 }];
     }
-    else if (name === "L5") { maxCol = 11; startNum = 2; rowLetters = ["AA","BB","CC","DD"]; matrix = [{l: 0, r: 0}]; }
-    else if (name === "C5") { maxCol = 16; startNum = 13; rowLetters = ["AA","BB","CC","DD"]; matrix = [{l: 0, r: 0}]; }
-    else if (name === "R5") {
-        maxCol = 12; startNum = 29; rowLetters = ["AA","BB","CC","DD"];
-        matrix = [ {l: 0, r: 1}, {l: 0, r: 0}, {l: 0, r: 1}, {l: 0, r: 0} ]; 
+    else if (name === "A6") {
+        isFixedLayout = true;
+        rowLetters = "ABCDEFGHIJKLMNOPQRST".split(""); 
+        maxCol = 25;
+        matrix = [...Array(15).fill({ l: 0, r: 0 }), { l: 0, r: 2 }, { l: 0, r: 4 }, { l: 0, r: 6 }, { l: 0, r: 8 }, { l: 0, r: 10 }];
     }
-    else if (name === "L6") { maxCol = 11; startNum = 2; rowLetters = ["EE","FF","GG","HH","II","JJ","KK"]; matrix = [{l: 0, r: 0}]; }
-    else if (name === "C6") { maxCol = 16; startNum = 13; rowLetters = ["EE","FF","GG","HH","II","JJ","KK"]; matrix = [{l: 0, r: 0}]; }
-    else if (name === "R6") {
-        maxCol = 12; startNum = 29; rowLetters = ["EE","FF","GG","HH","II","JJ","KK"];
-        matrix = [ {l: 0, r: 0}, {l: 0, r: 1}, {l: 0, r: 0}, {l: 0, r: 1}, {l: 0, r: 0}, {l: 0, r: 1}, {l: 0, r: 1} ];
+    else if (name === "A7") {
+        isFixedLayout = true;
+        rowLetters = "ABCDEFGHIJ".split(""); 
+        maxCol = 48;
+        matrix = [...Array(5).fill({ l: 0, r: 0 }), { l: 2, r: 2 }, { l: 4, r: 4 }, { l: 6, r: 6 }, { l: 8, r: 8 }, { l: 10, r: 10 }];
     }
-    // -----------------------------------------------------------------
-    // 🏫 2. ฮอลล์ ม.รังสิต (ZONE 1 - ZONE 9) แบบเป๊ะๆ ตามโค้ดที่ให้จำไว้
-    // -----------------------------------------------------------------
+    else if (["SB", "SC", "SD", "SL", "SM", "SN"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = "ABCDEFGH".split(""); 
+        maxCol = 20; 
+        matrix = [{ l: 0, r: 0 }]; 
+    }
+    else if (["SE", "SK"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = "ABCDEFGH".split(""); 
+        maxCol = 27; 
+        matrix = [{ l: 0, r: 6 }, { l: 0, r: 5 }, { l: 0, r: 4 }, { l: 0, r: 4 }, { l: 0, r: 3 }, { l: 0, r: 2 }, { l: 0, r: 1 }, { l: 0, r: 0 }];
+    }
+    else if (["SF", "SJ"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = "ABCDEFGH".split(""); 
+        maxCol = 24; 
+        matrix = [{ l: 0, r: 8 }, { l: 0, r: 7 }, { l: 0, r: 6 }, { l: 0, r: 5 }, { l: 0, r: 3 }, { l: 0, r: 2 }, { l: 0, r: 1 }, { l: 0, r: 0 }];
+    }
+    else if (["SG", "SI"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = "ABCDEFGH".split(""); 
+        maxCol = 20; 
+        matrix = [{ l: 0, r: 6 }, { l: 0, r: 5 }, { l: 0, r: 4 }, { l: 0, r: 3 }, { l: 0, r: 3 }, { l: 0, r: 2 }, { l: 0, r: 1 }, { l: 0, r: 0 }];
+    }
+    else if (name === "SH") {
+        isFixedLayout = true;
+        rowLetters = "ABCDEFGH".split(""); 
+        maxCol = 19; 
+        matrix = [{ l: 0, r: 0 }]; 
+    }
+    else if (["B", "T"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = "ABCDEFGHIJKLMNOPQR".split(""); 
+        maxCol = 10; 
+        const isT = name === "T"; 
+        matrix = [
+            { l: isT ? 0 : 5, r: isT ? 5 : 0 }, { l: isT ? 0 : 3, r: isT ? 3 : 0 }, { l: isT ? 0 : 3, r: isT ? 3 : 0 }, { l: isT ? 0 : 3, r: isT ? 3 : 0 },
+            { l: isT ? 0 : 3, r: isT ? 3 : 0 }, { l: isT ? 0 : 3, r: isT ? 3 : 0 }, { l: isT ? 0 : 4, r: isT ? 4 : 0 }, { l: isT ? 0 : 5, r: isT ? 5 : 0 },
+            { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }
+        ];
+    }
+    else if (["C", "D", "S", "R"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = ["AA", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q"];
+        maxCol = 20; 
+        matrix = [
+            { l: 4, r: 5 }, { l: 3, r: 4 }, { l: 3, r: 4 }, { l: 3, r: 4 }, { l: 3, r: 4 }, { l: 3, r: 4 }, { l: 4, r: 5 }, { l: 5, r: 5 },
+            { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }
+        ];
+    }
+    else if (["E", "Q"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = ["AA", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q"];
+        maxCol = 23; 
+        matrix = [
+            { l: 5, r: 9 }, { l: 4, r: 7 }, { l: 4, r: 6 }, { l: 4, r: 6 }, { l: 4, r: 6 }, { l: 4, r: 5 }, { l: 5, r: 4 }, { l: 5, r: 5 },
+            { l: 0, r: 5 }, { l: 0, r: 5 }, { l: 0, r: 5 }, { l: 0, r: 4 }, { l: 0, r: 3 }, { l: 0, r: 2 }, { l: 0, r: 1 }, { l: 0, r: 0 }, { l: 0, r: 0 }, { l: 0, r: 0 }
+        ];
+    }
+    else if (["F", "P"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = "ABCDEFGHIJKLMNOPQRSTU".split(""); 
+        maxCol = 19; 
+        const isP = name === "P"; 
+        matrix = [
+            { l: isP ? 3 : 12, r: isP ? 12 : 3 }, { l: isP ? 3 : 11, r: isP ? 11 : 3 }, { l: isP ? 3 : 11, r: isP ? 11 : 3 }, { l: isP ? 3 : 10, r: isP ? 10 : 3 },
+            { l: isP ? 3 : 10, r: isP ? 10 : 3 }, { l: isP ? 3 : 9,  r: isP ? 9 : 3 },  { l: isP ? 3 : 9,  r: isP ? 9 : 3 },  { l: isP ? 0 : 5,  r: isP ? 5 : 0 },
+            { l: isP ? 0 : 5,  r: isP ? 5 : 0 },  { l: isP ? 0 : 4,  r: isP ? 4 : 0 },  { l: isP ? 0 : 4,  r: isP ? 4 : 0 },  { l: isP ? 0 : 4,  r: isP ? 4 : 0 },
+            { l: isP ? 0 : 3,  r: isP ? 3 : 0 },  { l: isP ? 0 : 2,  r: isP ? 2 : 0 },  { l: isP ? 0 : 1,  r: isP ? 1 : 0 },  { l: isP ? 0 : 1,  r: isP ? 1 : 0 },
+            { l: 0, r: 0 }, { l: isP ? 0 : 1,  r: isP ? 1 : 0 }, { l: isP ? 0 : 2,  r: isP ? 2 : 0 }, { l: isP ? 0 : 3,  r: isP ? 3 : 0 }, { l: isP ? 8 : 5,  r: isP ? 5 : 8 }
+        ];
+    }
+    else if (["G", "O"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = "ABCDEFGHIJKLMNOPQRST".split(""); 
+        maxCol = 20; 
+        const isO = name === "O"; 
+        matrix = [
+            { l: isO ? 0 : 17, r: isO ? 17 : 0 }, { l: isO ? 0 : 16, r: isO ? 16 : 0 }, { l: isO ? 0 : 16, r: isO ? 16 : 0 }, { l: isO ? 0 : 15, r: isO ? 15 : 0 },
+            { l: isO ? 0 : 15, r: isO ? 15 : 0 }, { l: isO ? 0 : 15, r: isO ? 15 : 0 }, { l: isO ? 0 : 15, r: isO ? 15 : 0 }, { l: isO ? 0 : 5,  r: isO ? 5 : 0 },
+            { l: isO ? 0 : 5,  r: isO ? 5 : 0 },  { l: isO ? 0 : 4,  r: isO ? 4 : 0 },  { l: isO ? 0 : 4,  r: isO ? 4 : 0 },  { l: isO ? 0 : 4,  r: isO ? 4 : 0 },
+            { l: isO ? 0 : 3,  r: isO ? 3 : 0 },  { l: isO ? 0 : 3,  r: isO ? 3 : 0 },  { l: isO ? 0 : 2,  r: isO ? 2 : 0 },  { l: isO ? 0 : 2,  r: isO ? 2 : 0 },
+            { l: isO ? 0 : 1,  r: isO ? 1 : 0 },  { l: isO ? 0 : 1,  r: isO ? 1 : 0 },  { l: isO ? 0 : 1,  r: isO ? 1 : 0 },  { l: 0, r: 0 }
+        ];
+    }
+    else if (["H", "N"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = "ABCDEFGHIJKLMNOPQRSTU".split(""); 
+        maxCol = 19; 
+        const isN = name === "N"; 
+        matrix = [
+            { l: isN ? 16 : 0, r: isN ? 0 : 16 }, { l: isN ? 15 : 0, r: isN ? 0 : 15 }, { l: isN ? 15 : 0, r: isN ? 0 : 15 }, { l: isN ? 14 : 0, r: isN ? 0 : 14 },
+            { l: isN ? 14 : 0, r: isN ? 0 : 14 }, { l: isN ? 14 : 0, r: isN ? 0 : 14 }, { l: isN ? 14 : 0, r: isN ? 0 : 14 }, { l: isN ? 6 : 0,  r: isN ? 0 : 6 },
+            { l: isN ? 6 : 0,  r: isN ? 0 : 6 },  { l: isN ? 5 : 0,  r: isN ? 0 : 5 },  { l: isN ? 5 : 0,  r: isN ? 0 : 5 },  { l: isN ? 4 : 0,  r: isN ? 0 : 4 },
+            { l: isN ? 3 : 0,  r: isN ? 0 : 3 },  { l: isN ? 3 : 0,  r: isN ? 0 : 3 },  { l: isN ? 2 : 0,  r: isN ? 0 : 2 },  { l: isN ? 2 : 0,  r: isN ? 0 : 2 },
+            { l: isN ? 1 : 0,  r: isN ? 0 : 1 },  { l: isN ? 1 : 0,  r: isN ? 0 : 1 },  { l: isN ? 1 : 0,  r: isN ? 0 : 1 },  { l: 0, r: 0 }, { l: 0, r: 0 }
+        ];
+    }
+    else if (["I", "M"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = "ABCDEFGHIJKLMNOPQRSTU".split(""); 
+        maxCol = 20; 
+        const isM = name === "M"; 
+        matrix = [
+            { l: isM ? 0 : 17, r: isM ? 17 : 0 }, { l: isM ? 0 : 16, r: isM ? 16 : 0 }, { l: isM ? 0 : 16, r: isM ? 16 : 0 }, { l: isM ? 0 : 15, r: isM ? 15 : 0 },
+            { l: isM ? 0 : 15, r: isM ? 15 : 0 }, { l: isM ? 0 : 15, r: isM ? 15 : 0 }, { l: isM ? 0 : 15, r: isM ? 15 : 0 }, { l: isM ? 0 : 5,  r: isM ? 5 : 0 },
+            { l: isM ? 0 : 5,  r: isM ? 5 : 0 },  { l: isM ? 0 : 4,  r: isM ? 4 : 0 },  { l: isM ? 0 : 4,  r: isM ? 4 : 0 },  { l: isM ? 0 : 4,  r: isM ? 4 : 0 },
+            { l: isM ? 0 : 3,  r: isM ? 3 : 0 },  { l: isM ? 0 : 3,  r: isM ? 3 : 0 },  { l: isM ? 0 : 2,  r: isM ? 2 : 0 },  { l: isM ? 0 : 2,  r: isM ? 2 : 0 },
+            { l: isM ? 0 : 1,  r: isM ? 1 : 0 },  { l: isM ? 0 : 1,  r: isM ? 1 : 0 },  { l: isM ? 0 : 1,  r: isM ? 1 : 0 },  { l: 0, r: 0 }, { l: 0, r: 0 }
+        ];
+    }
+    else if (["J", "L"].includes(name)) {
+        isFixedLayout = true;
+        rowLetters = "ABCDEFGHIJKLMNOPQRSTUVW".split(""); 
+        maxCol = 20; 
+        const isL = name === "L"; 
+        matrix = [
+            { l: isL ? 17 : 0, r: isL ? 0 : 17 }, { l: isL ? 17 : 0, r: isL ? 0 : 17 }, { l: isL ? 16 : 0, r: isL ? 0 : 16 }, { l: isL ? 16 : 0, r: isL ? 0 : 16 },
+            { l: isL ? 16 : 0, r: isL ? 0 : 16 }, { l: isL ? 5 : 0,  r: isL ? 0 : 5 },  { l: isL ? 5 : 0,  r: isL ? 0 : 5 },  { l: isL ? 5 : 0,  r: isL ? 0 : 5 },
+            { l: isL ? 4 : 0,  r: isL ? 0 : 4 },  { l: isL ? 4 : 0,  r: isL ? 0 : 4 },  { l: isL ? 3 : 0,  r: isL ? 0 : 3 },  { l: isL ? 3 : 0,  r: isL ? 0 : 3 },
+            { l: isL ? 2 : 0,  r: isL ? 0 : 2 },  { l: isL ? 2 : 0,  r: isL ? 0 : 2 },  { l: isL ? 1 : 0,  r: isL ? 0 : 1 },  { l: isL ? 1 : 0,  r: isL ? 0 : 1 },
+            { l: isL ? 1 : 0,  r: isL ? 0 : 1 },  { l: 0, r: 0 }, { l: isL ? 11 : 0, r: isL ? 0 : 11 }, { l: isL ? 7 : 0,  r: isL ? 0 : 7 }, 
+            { l: isL ? 7 : 0,  r: isL ? 0 : 7 },  { l: isL ? 7 : 0,  r: isL ? 0 : 7 },  { l: isL ? 6 : 0,  r: isL ? 0 : 6 }
+        ];
+    }
+    else if (name === "K") {
+        isFixedLayout = true;
+        rowLetters = ["AA", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q"];
+        maxCol = 14; 
+        matrix = [
+            { l: 2, r: 2 }, { l: 1, r: 1 }, { l: 1, r: 1 }, { l: 1, r: 1 }, { l: 1, r: 1 }, { l: 1, r: 1 }, { l: 1, r: 1 }, { l: 1, r: 1 },
+            { l: 1, r: 1 }, { l: 1, r: 1 }, { l: 1, r: 1 }, { l: 1, r: 1 }, { l: 1, r: 1 }, { l: 1, r: 1 }, { l: 1, r: 1 }, { l: 1, r: 1 },
+            { l: 1, r: 1 }, { l: 0, r: 0 }
+        ];
+    }
     else if (["ZONE 1", "ZONE1"].includes(name)) {
         isFixedLayout = true;
         rowLetters = ["C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
         maxCol = 20; 
         matrix = [
-            { l: 2, r: 6, gapAfter: 8, stagger: true }, // C: 11 ที่นั่ง
-            { l: 1, r: 6, gapAfter: 9, stagger: true }, // D: 12 ที่นั่ง
-            { l: 2, r: 6, gapAfter: 8, stagger: true }, // E: 11 ที่นั่ง
-            { l: 3, r: 5, gapAfter: 8, stagger: true }, // F: 11 ที่นั่ง
-            { l: 4, r: 4, gapAfter: 7, stagger: true }, // G: 11 ที่นั่ง
-            { l: 5, r: 2, gapAfter: 6, stagger: true }, // H: 11 ที่นั่ง
-            { l: 5, r: 2, gapAfter: 6, stagger: true }, // I: 12 ที่นั่ง
-            { l: 12, r: 1, gapAfter: 0, stagger: true },// J: 7 ที่นั่ง (อยู่ฝั่งขวาล้วนๆ)
-            { l: 5, r: 3, stagger: true },              // K: 12 ที่นั่งติดกัน
-            { l: 5, r: 3, stagger: true }               // L: 12 ที่นั่งติดกัน
+            { l: 2, r: 6, gapAfter: 8, stagger: true }, { l: 1, r: 6, gapAfter: 9, stagger: true }, { l: 2, r: 6, gapAfter: 8, stagger: true },
+            { l: 3, r: 5, gapAfter: 8, stagger: true }, { l: 4, r: 4, gapAfter: 7, stagger: true }, { l: 5, r: 2, gapAfter: 6, stagger: true },
+            { l: 5, r: 2, gapAfter: 6, stagger: true }, { l: 12, r: 1, gapAfter: 0, stagger: true }, { l: 5, r: 3, stagger: true }, { l: 5, r: 3, stagger: true }
         ];
     }
     else if (["ZONE 2", "ZONE2"].includes(name)) {
@@ -199,16 +335,9 @@ export default function BookingPage() {
         rowLetters = ["C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
         maxCol = 22; 
         matrix = [
-            { l: 6, r: 2, start: 12, stagger: true }, // C: 14 ที่นั่ง 
-            { l: 6, r: 1, start: 13, stagger: true }, // D: 15 ที่นั่ง 
-            { l: 6, r: 2, start: 12, stagger: true }, // E: 14 ที่นั่ง 
-            { l: 5, r: 2, start: 12, stagger: true }, // F: 15 ที่นั่ง 
-            { l: 5, r: 1, start: 12, stagger: true }, // G: 16 ที่นั่ง 
-            { l: 5, r: 2, start: 12, stagger: true }, // H: 15 ที่นั่ง 
-            { l: 6, r: 2, start: 13, stagger: true }, // I: 14 ที่นั่ง 
-            { l: 1, r: 6, start: 8,  stagger: true }, // J: 15 ที่นั่ง 
-            { l: 6, r: 0, start: 13, stagger: true }, // K: 16 ที่นั่ง 
-            { l: 6, r: 1, start: 13, stagger: true }  // L: 15 ที่นั่ง 
+            { l: 6, r: 2, start: 12, stagger: true }, { l: 6, r: 1, start: 13, stagger: true }, { l: 6, r: 2, start: 12, stagger: true },
+            { l: 5, r: 2, start: 12, stagger: true }, { l: 5, r: 1, start: 12, stagger: true }, { l: 5, r: 2, start: 12, stagger: true },
+            { l: 6, r: 2, start: 13, stagger: true }, { l: 1, r: 6, start: 8,  stagger: true }, { l: 6, r: 0, start: 13, stagger: true }, { l: 6, r: 1, start: 13, stagger: true }
         ];
     }
     else if (["ZONE 3", "ZONE3"].includes(name)) {
@@ -216,16 +345,9 @@ export default function BookingPage() {
         rowLetters = ["C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
         maxCol = 20; 
         matrix = [
-            { l: 5, r: 3, gapAfter: 3, start: 26, stagger: true }, // C: 11 ที่นั่ง
-            { l: 5, r: 2, gapAfter: 3, start: 28, stagger: true }, // D: 12 ที่นั่ง
-            { l: 5, r: 3, gapAfter: 3, start: 26, stagger: true }, // E: 11 ที่นั่ง
-            { l: 4, r: 3, gapAfter: 4, start: 27, stagger: true }, // F: 12 ที่นั่ง
-            { l: 4, r: 4, gapAfter: 4, start: 28, stagger: true }, // G: 11 ที่นั่ง
-            { l: 3, r: 5, gapAfter: 5, start: 27, stagger: true }, // H: 11 ที่นั่ง
-            { l: 2, r: 5, gapAfter: 6, start: 27, stagger: true }, // I: 12 ที่นั่ง
-            { l: 1, r: 11, gapAfter: 7, start: 23, stagger: true },// J: 7 ที่นั่ง
-            { l: 2, r: 6, start: 29, stagger: true },              // K: 12 ที่นั่ง
-            { l: 3, r: 5, start: 28, stagger: true }               // L: 12 ที่นั่ง
+            { l: 5, r: 3, gapAfter: 3, start: 26, stagger: true }, { l: 5, r: 2, gapAfter: 3, start: 28, stagger: true }, { l: 5, r: 3, gapAfter: 3, start: 26, stagger: true },
+            { l: 4, r: 3, gapAfter: 4, start: 27, stagger: true }, { l: 4, r: 4, gapAfter: 4, start: 28, stagger: true }, { l: 3, r: 5, gapAfter: 5, start: 27, stagger: true },
+            { l: 2, r: 5, gapAfter: 6, start: 27, stagger: true }, { l: 1, r: 11, gapAfter: 7, start: 23, stagger: true }, { l: 2, r: 6, start: 29, stagger: true }, { l: 3, r: 5, start: 28, stagger: true } 
         ];
     }
     else if (["ZONE 4", "ZONE4"].includes(name)) {
@@ -233,16 +355,9 @@ export default function BookingPage() {
         rowLetters = ["M", "N", "O", "P", "Q", "R", "S", "T", "U", "V"];
         maxCol = 16; 
         matrix = [
-            { l: 3, r: 2, stagger: true }, // M: 11 ที่นั่ง
-            { l: 2, r: 3, stagger: true }, // N: 11 ที่นั่ง
-            { l: 2, r: 2, stagger: true }, // O: 12 ที่นั่ง
-            { l: 2, r: 2, stagger: true }, // P: 12 ที่นั่ง
-            { l: 2, r: 2, stagger: true }, // Q: 12 ที่นั่ง
-            { l: 3, r: 2, stagger: true }, // R: 11 ที่นั่ง
-            { l: 4, r: 1, stagger: true }, // S: 11 ที่นั่ง
-            { l: 4, r: 1, stagger: true }, // T: 11 ที่นั่ง
-            { l: 4, r: 1, stagger: true }, // U: 11 ที่นั่ง
-            { l: 4, r: 1, stagger: true }  // V: 11 ที่นั่ง
+            { l: 3, r: 2, stagger: true }, { l: 2, r: 3, stagger: true }, { l: 2, r: 2, stagger: true }, { l: 2, r: 2, stagger: true },
+            { l: 2, r: 2, stagger: true }, { l: 3, r: 2, stagger: true }, { l: 4, r: 1, stagger: true }, { l: 4, r: 1, stagger: true },
+            { l: 4, r: 1, stagger: true }, { l: 4, r: 1, stagger: true }
         ];
     }
     else if (["ZONE 5", "ZONE5"].includes(name)) {
@@ -250,14 +365,9 @@ export default function BookingPage() {
         rowLetters = ["M", "N", "O", "P", "Q", "R", "S", "T"];
         maxCol = 20; 
         matrix = [
-            { l: 3, r: 3, start: 12, stagger: true }, // M: 14 ที่นั่ง
-            { l: 2, r: 3, start: 12, stagger: true }, // N: 15 ที่นั่ง
-            { l: 3, r: 1, start: 13, stagger: true }, // O: 16 ที่นั่ง
-            { l: 3, r: 2, start: 13, stagger: true }, // P: 15 ที่นั่ง
-            { l: 3, r: 1, start: 13, stagger: true }, // Q: 16 ที่นั่ง
-            { l: 2, r: 3, start: 12, stagger: true }, // R: 15 ที่นั่ง
-            { l: 3, r: 1, start: 12, stagger: true }, // S: 16 ที่นั่ง
-            { l: 2, r: 3, start: 12, stagger: true }  // T: 15 ที่นั่ง
+            { l: 3, r: 3, start: 12, stagger: true }, { l: 2, r: 3, start: 12, stagger: true }, { l: 3, r: 1, start: 13, stagger: true },
+            { l: 3, r: 2, start: 13, stagger: true }, { l: 3, r: 1, start: 13, stagger: true }, { l: 2, r: 3, start: 12, stagger: true },
+            { l: 3, r: 1, start: 12, stagger: true }, { l: 2, r: 3, start: 12, stagger: true }
         ];
     }
     else if (["ZONE 6", "ZONE6"].includes(name)) {
@@ -265,16 +375,9 @@ export default function BookingPage() {
         rowLetters = ["M", "N", "O", "P", "Q", "R", "S", "T", "U", "V"];
         maxCol = 16; 
         matrix = [
-            { l: 2, r: 3, start: 26, stagger: true }, // แถว M: 11 ที่นั่ง (26-36)
-            { l: 3, r: 2, start: 27, stagger: true }, // แถว N: 11 ที่นั่ง (27-37)
-            { l: 2, r: 2, start: 29, stagger: true }, // แถว O: 12 ที่นั่ง (29-40)
-            { l: 2, r: 2, start: 28, stagger: true }, // แถว P: 12 ที่นั่ง (28-39)
-            { l: 2, r: 2, start: 29, stagger: true }, // แถว Q: 12 ที่นั่ง (29-40)
-            { l: 3, r: 2, start: 27, stagger: true }, // แถว R: 11 ที่นั่ง (27-37)
-            { l: 2, r: 3, start: 28, stagger: true }, // แถว S: 11 ที่นั่ง (28-38)
-            { l: 3, r: 2, start: 27, stagger: true }, // แถว T: 11 ที่นั่ง (27-37)
-            { l: 2, r: 3, start: 26, stagger: true }, // แถว U: 11 ที่นั่ง (26-36)
-            { l: 3, r: 2, start: 27, stagger: true }  // แถว V: 11 ที่นั่ง (27-37)
+            { l: 2, r: 3, start: 26, stagger: true }, { l: 3, r: 2, start: 27, stagger: true }, { l: 2, r: 2, start: 29, stagger: true },
+            { l: 2, r: 2, start: 28, stagger: true }, { l: 2, r: 2, start: 29, stagger: true }, { l: 3, r: 2, start: 27, stagger: true },
+            { l: 2, r: 3, start: 28, stagger: true }, { l: 3, r: 2, start: 27, stagger: true }, { l: 2, r: 3, start: 26, stagger: true }, { l: 3, r: 2, start: 27, stagger: true }
         ];
     }
     else if (["ZONE 7", "ZONE7"].includes(name)) {
@@ -308,37 +411,65 @@ export default function BookingPage() {
     }
     else { rowLetters = "ABCDEF".split(""); matrix = [{l: 0, r: 0}]; }
 
+    let remaining = totalDbSeats > 0 ? totalDbSeats : Infinity;
+    let targetQuantity = Infinity; 
+
+    if (isFixedLayout) {
+        let calcTotal = 0;
+        for(let i = 0; i < rowLetters.length; i++) {
+            const conf = matrix[i] || (matrix.length > 0 ? matrix[matrix.length - 1] : { l: 0, r: 0 });
+            const gapCount = conf.gapAfter ? 1 : 0;
+            calcTotal += (maxCol - (conf.l || 0) - (conf.r || 0) - gapCount);
+        }
+        remaining = calcTotal; 
+
+        if (totalDbSeats > 0 && totalDbSeats < calcTotal) {
+            targetQuantity = totalDbSeats;
+        } else {
+            targetQuantity = calcTotal;
+        }
+    }
+
     const templateSeats: Seat[] = [];
     let rowIndex = 0;
+    let seatCounter = 0; 
     
-    // 🌟 เช็คว่าเป็นโซนของม.รังสิตหรือไม่
     const isRangsitZone = name.includes("ZONE");
 
-    while (rowIndex < rowLetters.length) {
-        const rowLetter = rowLetters[rowIndex % rowLetters.length];
+    while (remaining > 0 && (!isFixedLayout || rowIndex < rowLetters.length)) {
+        const baseLetter = rowLetters[rowIndex % rowLetters.length];
+        const cycle = Math.floor(rowIndex / rowLetters.length);
+        const rowLetter = cycle > 0 ? `${baseLetter}${cycle + 1}` : baseLetter;
+
         const conf = matrix[rowIndex] || (matrix.length > 0 ? matrix[matrix.length - 1] : { l: 0, r: 0 });
         
         const gapCount = conf.gapAfter ? 1 : 0;
         const lBlanks = conf.l || 0;
         const rBlanks = conf.r || 0;
         const maxReal = maxCol - lBlanks - rBlanks - gapCount;
+        const realToPlace = Math.min(remaining, maxReal);
         
-        // 1. ใส่ Blank ฝั่งซ้าย (ถ้าตั้ง stagger=true ให้ไม่ต้องมีกล่องใส เพื่อให้ Flexbox จัดกลางอัตโนมัติ)
         const actualLBlanks = conf.stagger ? 0 : lBlanks;
         for (let i = 0; i < actualLBlanks; i++) {
            templateSeats.push({ id: `BL_${rowIndex}_${i}`, row: rowLetter, number: "", status: "blank", price: 0, isHidden: true });
         }
         
-        // 2. ใส่เก้าอี้จริง
-        for (let i = 0; i < maxReal; i++) {
+        for (let i = 0; i < realToPlace; i++) {
+           seatCounter++;
            let seatNum;
-           // 🌟 ถ้าเป็นม.รังสิตและมี start กำหนดไว้ ให้ใช้ start + i
-           if (isRangsitZone && conf.start !== undefined) {
+
+           const cleanName = name.trim();
+           const isRightSideZone = ["SK", "SL", "SM", "SN", "SJ", "SI", "J", "L", "K", "M", "N","O", "P", "Q", "R", "S", "T"].includes(cleanName);
+
+           if (isRightSideZone) {
+               seatNum = (realToPlace - i);
+           } else if (isRangsitZone && conf.start !== undefined) {
                seatNum = conf.start + i; 
            } else {
-               // 🏢 ถ้าเป็นฮอลล์อื่น (Impact/รัชดาลัย) ใช้ลอจิกเดิมเป๊ะๆ ห้ามแตะ!
                seatNum = startNum + lBlanks + i; 
            }
+
+           const shouldHide = isFixedLayout && (seatCounter > targetQuantity);
 
            templateSeats.push({ 
                id: `${rowLetter}${seatNum.toString().padStart(2, '0')}`, 
@@ -346,37 +477,35 @@ export default function BookingPage() {
                number: seatNum.toString().padStart(2, '0'), 
                status: "available", 
                price: tierPrice,
-               isHidden: false 
+               isHidden: shouldHide 
            });
 
-           // แทรกทางเดินตรงกลาง (Aisle Gap)
            if (conf.gapAfter === i + 1) {
                templateSeats.push({ id: `GAP_${rowIndex}_${i}`, row: rowLetter, number: "", status: "blank", price: 0, isHidden: true });
            }
         }
         
-        // 3. ใส่ Blank ฝั่งขวา + ทำสลับฟันปลา (Stagger)
-        let remainingBlanks = maxCol - lBlanks - maxReal - gapCount;
+        let remainingBlanks = maxCol - lBlanks - realToPlace - gapCount;
         if (conf.stagger && rowIndex % 2 !== 0 && remainingBlanks > 0) {
-            remainingBlanks -= 1; // ลด 1 กล่องในแถวคี่เพื่อให้เยื้องเป็นฟันปลา
+            remainingBlanks -= 1; 
         }
         const actualRBlanks = conf.stagger ? 0 : remainingBlanks;
         for (let i = 0; i < actualRBlanks; i++) {
            templateSeats.push({ id: `BR_${rowIndex}_${i}`, row: rowLetter, number: "", status: "blank", price: 0, isHidden: true });
         }
+        
+        remaining -= realToPlace;
         rowIndex++;
     }
     return templateSeats;
   };
 
   // ========================================================
-  // 🔌 ดึงข้อมูลจาก API แล้วประกอบร่าง
+  // 🔌 ดึงข้อมูลจาก API แล้วประกอบร่าง 
   // ========================================================
   useEffect(() => {
     const fetchSeatsAndMap = async () => {
       if (!eventId || !roundId || !eventZone) return;
-
-      const structuralLayout = generateStructuralLayout(eventZone);
 
       try {
         setLoadingSeats(true);
@@ -390,6 +519,10 @@ export default function BookingPage() {
         
         if (!res.ok) throw new Error("API Error");
         const dbData = await res.json();
+
+        // 🌟 ดึงข้อมูล DB มาก่อน แล้วส่งจำนวนไปให้ generateStructuralLayout คำนวณรอยแหว่ง
+        const totalDbSeats = (dbData && Array.isArray(dbData)) ? dbData.length : 0;
+        const structuralLayout = generateStructuralLayout(eventZone, totalDbSeats);
 
         if (dbData && dbData.length > 0) {
             const finalSeats: Seat[] = structuralLayout.map((templateSeat) => {
@@ -409,7 +542,8 @@ export default function BookingPage() {
                         zoneId: dbSeat.Zone_id
                     };
                 } else {
-                    return { ...templateSeat, status: "sold" as SeatStatus }; 
+                    // 🌟 จุดที่แก้: ถ้าหาใน DB ไม่เจอ ให้ "ซ่อน" ทิ้งไปเลย เพื่อให้ผังหดตัวตาม DB จริง
+                    return { ...templateSeat, isHidden: true }; 
                 }
             });
             setSeats(finalSeats);
@@ -419,7 +553,8 @@ export default function BookingPage() {
 
       } catch (error) {
         console.warn("⚠️ Cannot connect to Database. Showing simulated structure.");
-        setSeats(structuralLayout); 
+        const structuralLayoutFallback = generateStructuralLayout(eventZone, 0);
+        setSeats(structuralLayoutFallback); 
       } finally {
         setLoadingSeats(false);
       }
@@ -540,7 +675,7 @@ export default function BookingPage() {
             </div>
         </div>
         
-        {/* 🟢 ส่วนที่แก้ไขปุ่มชำระเงิน 🟢 */}
+        {/* 🟢 ส่วนปุ่มชำระเงิน 🟢 */}
         <div className="p-6 bg-[#050505] border-t border-white/10">
             <div className="flex justify-between items-end mb-4">
                 <span className="text-gray-400 text-sm font-bold uppercase tracking-widest">ราคารวม</span>
@@ -635,11 +770,9 @@ export default function BookingPage() {
                       <p>กำลังโหลดที่นั่ง...</p>
                     </div>
                 ) : (
-                    // 🌟 จุดเปลี่ยน: เพิ่ม w-full max-w-full overflow-x-auto เพื่อให้โซนที่กว้างมากๆ แสดงผลได้ครบ
                     <div className="flex flex-col gap-2 md:gap-3 pointer-events-auto pb-20 w-full max-w-full overflow-x-auto">
                         <div className="min-w-max px-4 mx-auto">
                             {rows.map(rowLetter => (
-                                // 🌟 จุดเปลี่ยน: ใช้ justify-between เพื่อให้ตัวอักษรชิดขอบ และเก้าอี้อยู่ตรงกลาง
                                 <div key={rowLetter} className="flex items-center justify-between w-full mb-1.5">
                                     {/* ตัวอักษรฝั่งซ้าย */}
                                     <span className="w-8 md:w-10 text-slate-400 font-bold text-xs md:text-lg text-right pr-4 shrink-0">{rowLetter}</span>

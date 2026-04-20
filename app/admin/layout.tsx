@@ -26,7 +26,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "จัดการผู้ใช้งาน", href: "/admin/users", icon: <Users size={20} /> },
     { name: "อนุมัติผู้จัดงาน", href: "/admin/organizers", icon: <Building2 size={20} /> },
     { name: "รายการอีเวนต์", href: "/admin/events", icon: <CalendarDays size={20} /> },
-    { name: "จัดการแบนเนอร์", href: "/admin/banners", icon: <ImageIcon size={20} /> },
     { name: "ธุรกรรมการเงิน", href: "/admin/finance", icon: <CreditCard size={20} /> },
     
     // ✅ เหลือแค่เมนูรับแจ้งปัญหา
