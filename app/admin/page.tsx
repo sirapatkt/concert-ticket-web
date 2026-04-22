@@ -189,7 +189,17 @@ export default function AdminDashboard() {
 
         // เซ็ตค่าข้อมูลผู้จัดงาน Top 3
         if (data.topOrganizers) {
-            setTopOrganizers(data.topOrganizers);
+            // เพิ่มการจัดเรียง: 1. จำนวนงานมากไปน้อย -> 2. ถ้าง่านเท่ากันเอายอดขายมากไปน้อย
+            const sortedOrganizers = [...data.topOrganizers]
+                .sort((a, b) => {
+                    if (b.event_count !== a.event_count) {
+                        return b.event_count - a.event_count; 
+                    }
+                    return b.revenue - a.revenue; 
+                })
+                .slice(0, 3); // บังคับตัดแค่ 3 อันดับแรก
+                
+            setTopOrganizers(sortedOrganizers);
         }
 
         // 💡 เซ็ตค่าข้อมูลงานที่จบไปแล้ว

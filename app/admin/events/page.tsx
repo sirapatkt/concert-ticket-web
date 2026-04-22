@@ -121,9 +121,10 @@ export default function EventsPage() {
     today.setHours(0, 0, 0, 0);
     const eventDate = new Date(event.endDate || event.date);
 
-    if (activeTab === "action_required") return status === "pending" || status === "changes_requested";
+    // ✅ กลับมาใช้ "pending" ในการกรองข้อมูล เพื่อให้ดึงงานจาก Database ขึ้นมาได้ถูกต้อง
+    if (activeTab === "action_required") return status === "pending";
     if (activeTab === "all") return true;
-    if (activeTab === "pending") return status === "pending" || status === "changes_requested";
+    if (activeTab === "pending") return status === "pending"; 
     
     if (activeTab === "published") {
         return status === "approved" && eventDate >= today;
@@ -330,9 +331,10 @@ export default function EventsPage() {
           }`}
         >
           งานที่ต้องจัดการ
-          {events.filter(e => e.approvalStatus === "pending" || e.approvalStatus === "changes_requested").length > 0 && (
-            <span className="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-              {events.filter(e => e.approvalStatus === "pending" || e.approvalStatus === "changes_requested").length}
+          {/* ✅ กลับมานับจำนวนงานจากสถานะ "pending" */}
+          {events.filter(e => e.approvalStatus === "pending").length > 0 && (
+             <span className="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                {events.filter(e => e.approvalStatus === "pending").length}
             </span>
           )}
         </button>
@@ -343,7 +345,7 @@ export default function EventsPage() {
         {/* ปุ่มสถานะขอบมน (Pills) */}
         {[
           { id: "all", label: "ทั้งหมด" },
-          { id: "pending", label: "รอตรวจสอบ" },
+          { id: "pending", label: "รออนุมัติ (กำลังเตรียม)" }, // ชื่อแสดงผลภาษาไทย
           { id: "published", label: "เปิดขาย/กำลังจัด" },
           { id: "ended", label: "สิ้นสุดแล้ว" },
           { id: "cancelled", label: "ยกเลิก" },
@@ -414,9 +416,10 @@ export default function EventsPage() {
                     status === 'cancelled' ? 'bg-gray-500/10 text-gray-400 border-gray-500/20' :
                     'bg-red-500/10 text-red-400 border-red-500/20'
                   }`}>
+                    {/* ✅ แก้ไขข้อความในการ์ดให้เป็นภาษาไทยตามที่คุณต้องการ */}
                     {isPublished ? 'เปิดขาย/กำลังจัด' : 
                      isEnded ? 'สิ้นสุดแล้ว' : 
-                     status === 'pending' ? 'รอตรวจสอบ' : 
+                     status === 'pending' ? 'รออนุมัติ (กำลังเตรียม)' : 
                      status === 'changes_requested' ? 'ส่งแก้ไข' : 
                      status === 'cancelled' ? 'ยกเลิก' : 
                      'ไม่อนุมัติ'}
@@ -502,7 +505,7 @@ export default function EventsPage() {
                               today.setHours(0,0,0,0);
                               if (s === 'ended' || (s === 'approved' && eventDate < today)) return "สิ้นสุดแล้ว";
                               if (s === 'approved' && eventDate >= today) return "เปิดขาย/กำลังจัด";
-                              if (s === 'pending') return "รอตรวจสอบ";
+                              if (s === 'pending') return "รออนุมัติ (กำลังเตรียม)"; 
                               return s.toUpperCase();
                             })()}
                         </div>

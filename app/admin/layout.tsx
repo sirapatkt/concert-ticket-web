@@ -20,6 +20,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const router = useRouter();
 
+  // 🔴 เช็คว่าหน้าปัจจุบันคือหน้า Login หรือไม่
+  const isLoginPage = pathname === "/admin/login";
+
   // Admin Menu Items
   const menuItems = [
     { name: "ภาพรวมระบบ", href: "/admin", icon: <LayoutDashboard size={20} /> },
@@ -27,18 +30,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "อนุมัติผู้จัดงาน", href: "/admin/organizers", icon: <Building2 size={20} /> },
     { name: "รายการอีเวนต์", href: "/admin/events", icon: <CalendarDays size={20} /> },
     { name: "ธุรกรรมการเงิน", href: "/admin/finance", icon: <CreditCard size={20} /> },
-    
-    // ✅ เหลือแค่เมนูรับแจ้งปัญหา
-    { name: "รับแจ้งปัญหา", href: "/admin/support", icon: <MessageSquareWarning size={20} /> },
-
     { name: "ตั้งค่าระบบ", href: "/admin/settings", icon: <Settings size={20} /> },
   ];
 
   const handleLogout = () => {
     Cookies.remove("user_role");
-    router.push("/login");
+    // แนะนำนิดนึงครับ: ถ้าหน้าล็อกอินของแอดมินคือ /admin/login อาจจะต้องแก้ตรงนี้จาก "/login" เป็น "/admin/login" ครับ
+    router.push("/admin/login"); 
   };
 
+  // 🔴 ถ้าเป็นหน้า Login ให้เรนเดอร์แค่เนื้อหาข้างใน (ไม่เอา Sidebar)
+  if (isLoginPage) {
+    return <div className="min-h-screen bg-[#050505] text-white font-sans">{children}</div>;
+  }
+
+  // 🟢 ถ้าเป็นหน้าอื่นใน Admin ให้เรนเดอร์ตามปกติ (มี Sidebar)
   return (
     <div className="flex min-h-screen bg-[#0B0F14] text-white font-sans">
       
@@ -88,7 +94,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <button 
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-4 py-3 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all text-sm font-medium"
-            suppressHydrationWarning
           >
             <LogOut size={20} />
             ออกจากระบบ
