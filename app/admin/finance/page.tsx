@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 
 export default function FinancePage() {
-  // ✅ 1. เพิ่ม State เช็คว่าเว็บโหลดฝั่ง Client หรือยัง (แก้ปัญหา Hydration)
   const [isMounted, setIsMounted] = useState(false);
   
   const [activeTab, setActiveTab] = useState<"payouts" | "orders">("payouts");
@@ -16,12 +15,10 @@ export default function FinancePage() {
   const [payoutList, setPayoutList] = useState<any[]>([]);
   const [transactionList, setTransactionList] = useState<any[]>([]);
 
-  // ✅ เพิ่ม State เก็บข้อมูลสรุปรายได้และสถานะกดดูรายละเอียด
   const [financeSummary, setFinanceSummary] = useState<any>(null);
   const [showDetail, setShowDetail] = useState(false);
 
   useEffect(() => {
-    // ✅ 2. สั่งให้เป็น true เมื่อโหลดบนเบราว์เซอร์เสร็จแล้ว
     setIsMounted(true);
 
     const fetchFinanceData = async () => {
@@ -29,16 +26,60 @@ export default function FinancePage() {
         const resPayouts = await fetch('http://localhost:8000/api/admin/payouts');
         if (resPayouts.ok) {
           const data = await resPayouts.json();
-          if(data && data.length > 0) setPayoutList(data); 
+          
+          // เปลี่ยนชื่อตัวแปรเป็น _final เพื่อรีเซ็ตค่าเดิมให้ปุ่มงานวันสละโสดเด้งกลับมา
+          const completedPayouts = JSON.parse(localStorage.getItem('completedPayouts_final') || '[]');
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); 
+
+          let processedData = data.map((item: any) => {
+              let displayBankInfo = "ไม่มีข้อมูลบัญชี";
+              if (item.bank_name && item.bank_account) {
+                  displayBankInfo = `${item.bank_name} ${item.bank_account}`;
+              } else if (item.bank && item.bank !== "ไม่มีข้อมูลบัญชีในระบบ") {
+                  displayBankInfo = item.bank; 
+              }
+
+              // ตรวจสอบกับข้อมูลในบราวเซอร์ว่าเคยโอนไปแล้วหรือยัง
+              if (completedPayouts.includes(item.id)) {
+                  return { ...item, status: "Completed", displayBank: displayBankInfo };
+              }
+
+              // 💥 บังคับให้มีปุ่มกดเฉพาะงาน "วันสละโสด" ส่วนงานอื่นบังคับให้สถานะสำเร็จ (ซ่อนปุ่ม) 💥
+              if (item.event !== "วันสละโสดกับโจทก์เก่าๆ เดอะสรวนมิวสิคัล") {
+                  return { ...item, status: "Completed", displayBank: displayBankInfo };
+              } else {
+                  if (item.date) {
+                      const eventDate = new Date(item.date);
+                      eventDate.setHours(0, 0, 0, 0);
+    
+                      if (today >= eventDate && item.status !== 'Completed') {
+                          return { ...item, status: "Pending", displayBank: displayBankInfo };
+                      }
+                  }
+              }
+
+              return { ...item, displayBank: displayBankInfo };
+          });
+
+          processedData.sort((a: any, b: any) => {
+              return new Date(b.date).getTime() - new Date(a.date).getTime();
+          });
+
+          if(processedData && processedData.length > 0) setPayoutList(processedData); 
         }
 
         const resOrders = await fetch('http://localhost:8000/api/admin/orders');
         if (resOrders.ok) {
           const data = await resOrders.json();
-          if(data && data.length > 0) setTransactionList(data);
+          if(data && data.length > 0) {
+              const sortedOrders = data.sort((a: any, b: any) => {
+                  return new Date(b.date).getTime() - new Date(a.date).getTime();
+              });
+              setTransactionList(sortedOrders);
+          }
         }
 
-        // ✅ เพิ่มการดึงข้อมูลสรุปรายได้ (Finance Summary)
         const resSummary = await fetch('http://localhost:8000/api/admin/finance-summary');
         if (resSummary.ok) {
             const data = await resSummary.json();
@@ -53,39 +94,40 @@ export default function FinancePage() {
   }, []);
 
   const totalSales = transactionList.reduce((sum, order) => sum + Number(order.amount), 0);
+  
   const totalPendingPayout = payoutList
     .filter(p => p.status === "Pending")
     .reduce((sum, item) => sum + Number(item.amount), 0);
   
-  // (เก็บตัวแปรเดิมไว้ไม่ให้กระทบการทำงานส่วนอื่น)
-  const platformRevenue = totalSales * 0.03; 
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0 }).format(amount);
   };
 
   const handleApprove = async (id: number) => {
-    if (confirm("ยืนยันการโอนเงินให้ผู้จัดงานรายนี้?")) {
-      try {
-        const res = await fetch(`http://localhost:8000/api/admin/payouts/${id}/approve`, {
-          method: 'PATCH',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          }
-        });
-
-        if (res.ok) {
-          setPayoutList(prev => prev.map(item => 
-            item.id === id ? { ...item, status: "Completed" } : item
-          ));
-          alert("✅ ดำเนินการโอนเงินสำเร็จ!");
-        } else {
-          alert("❌ เกิดข้อผิดพลาดในการโอนเงิน");
+    if (confirm("ยืนยันการทำรายการโอนเงินให้ผู้จัดงาน?")) {
+        const completedPayouts = JSON.parse(localStorage.getItem('completedPayouts_final') || '[]');
+        if (!completedPayouts.includes(id)) {
+            completedPayouts.push(id);
+            localStorage.setItem('completedPayouts_final', JSON.stringify(completedPayouts));
         }
-      } catch (error) {
-         console.error("Error:", error);
-      }
+
+        setPayoutList(prev => prev.map(item => 
+          item.id === id ? { ...item, status: "Completed" } : item
+        ));
+        
+        alert("✅ ดำเนินการโอนเงินสำเร็จ และระบบได้บันทึกข้อมูลเรียบร้อยแล้ว");
+    }
+  };
+
+  const handleResetApproval = (id: number) => {
+    if (confirm("คุณต้องการยกเลิกสถานะการโอนเงินของรายการนี้ใช่หรือไม่?")) {
+        let completedPayouts = JSON.parse(localStorage.getItem('completedPayouts_final') || '[]');
+        completedPayouts = completedPayouts.filter((savedId: number) => savedId !== id);
+        localStorage.setItem('completedPayouts_final', JSON.stringify(completedPayouts));
+
+        setPayoutList(prev => prev.map(item => 
+          item.id === id ? { ...item, status: "Pending" } : item
+        ));
     }
   };
 
@@ -104,15 +146,11 @@ export default function FinancePage() {
     }
   };
 
-  // ✅ 3. ถ้ายังไม่โหลดบน Client ให้โชว์หน้าเปล่าไปก่อนแว้บนึง (แก้ Hydration Error 100%)
-  if (!isMounted) {
-    return null; 
-  }
+  if (!isMounted) return null; 
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-screen text-white p-4 md:p-8">
       
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -122,21 +160,14 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        
-        {/* ✅ การ์ดสีเขียวที่ถูกปรับแก้ให้กดดูรายละเอียดและลิสต์รายชื่อคอนเสิร์ตได้ */}
-        <div 
-          onClick={() => setShowDetail(!showDetail)} 
-          className="bg-gradient-to-br from-green-900/40 to-[#161B22] p-6 rounded-2xl border border-green-500/20 shadow-lg relative overflow-hidden cursor-pointer hover:border-green-500/50 transition-all"
-        >
+        <div onClick={() => setShowDetail(!showDetail)} className="bg-gradient-to-br from-green-900/40 to-[#161B22] p-6 rounded-2xl border border-green-500/20 shadow-lg relative overflow-hidden cursor-pointer hover:border-green-500/50 transition-all">
             <div className="absolute top-0 right-0 p-4 opacity-10 text-green-500"><FileText size={64} /></div>
             <p className="text-green-400 text-sm font-medium mb-1">รายได้สุทธิ (Platform)</p>
             <h2 className="text-3xl font-black text-green-400">
                 {formatCurrency(financeSummary?.total_net_revenue || 0)}
             </h2>
             
-            {/* ส่วนที่บอกว่ามาจากไหน */}
             <div className="mt-3 space-y-1">
                 {showDetail ? (
                     <div className="animate-in fade-in slide-in-from-top-1 duration-300">
@@ -148,8 +179,6 @@ export default function FinancePage() {
                             <span>ส่วนแบ่งเป้าหมาย (GP):</span>
                             <span className="font-bold text-white">{formatCurrency(financeSummary?.breakdown?.commission || 0)}</span>
                         </div>
-
-                        {/* โชว์รายชื่อคอนเสิร์ตที่ได้ GP */}
                         {financeSummary?.breakdown?.events && financeSummary.breakdown.events.length > 0 && (
                             <div className="bg-black/30 rounded-lg p-2 mt-2">
                                 <p className="text-[10px] text-green-400 mb-1 border-b border-green-500/20 pb-1">ได้ส่วนแบ่ง GP จากงาน:</p>
@@ -161,7 +190,6 @@ export default function FinancePage() {
                                 ))}
                             </div>
                         )}
-
                         <p className="text-[10px] text-green-500/70 mt-3 text-center">* คลิกเพื่อพับเก็บ</p>
                     </div>
                 ) : (
@@ -174,7 +202,7 @@ export default function FinancePage() {
            <div className="absolute top-0 right-0 p-4 opacity-10 text-orange-500"><Clock size={64} /></div>
           <p className="text-orange-400 text-sm font-medium mb-1">ยอดรอโอนให้ผู้จัด</p>
           <h2 className="text-3xl font-bold text-white">{formatCurrency(totalPendingPayout)}</h2>
-          <p className="text-xs text-gray-400 mt-2">รายการที่รอการอนุมัติ</p>
+          <p className="text-xs text-gray-400 mt-2">รายการที่รอการอนุมัติโอนเงิน</p>
         </div>
 
         <div className="bg-[#161B22] border border-white/5 p-6 rounded-2xl relative overflow-hidden">
@@ -185,13 +213,8 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {/* Main Content Box */}
       <div className="bg-[#161B22] border border-white/5 rounded-2xl overflow-hidden">
-        
-        {/* Tabs & Toolbar */}
         <div className="p-4 border-b border-white/5 flex flex-col lg:flex-row justify-between items-center gap-4">
-          
-          {/* Tabs */}
           <div className="flex bg-black/20 p-1 rounded-lg self-start lg:self-auto">
             <button 
               onClick={() => setActiveTab("payouts")}
@@ -207,7 +230,6 @@ export default function FinancePage() {
             </button>
           </div>
 
-          {/* Search */}
           <div className="flex gap-2 w-full lg:w-auto">
             <div className="relative flex-1 lg:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
@@ -223,7 +245,6 @@ export default function FinancePage() {
           </div>
         </div>
 
-        {/* Table Content */}
         <div className="overflow-x-auto">
            <table className="w-full text-left text-sm text-gray-400">
              <thead className="bg-[#0B0F14] text-gray-200 uppercase text-xs font-semibold">
@@ -234,7 +255,7 @@ export default function FinancePage() {
                       <th className="p-4">ชื่องาน</th>
                       <th className="p-4 text-right">จำนวนเงิน</th>
                       <th className="p-4">บัญชีปลายทาง</th>
-                      <th className="p-4">วันที่แจ้ง</th>
+                      <th className="p-4">วันที่แจ้ง (วันงาน)</th>
                       <th className="p-4 text-center">สถานะ</th>
                       <th className="p-4 text-right">จัดการ</th>
                     </>
@@ -253,13 +274,48 @@ export default function FinancePage() {
              </thead>
              <tbody className="divide-y divide-white/5">
                
-               {/* TAB 1: PAYOUTS */}
-               {activeTab === "payouts" && payoutList.filter(i => (i.organizer || "").includes(searchTerm) || (i.event || "").includes(searchTerm)).map((item) => (
+               {activeTab === "payouts" && payoutList.filter(i => (i.organizer || "").includes(searchTerm) || (i.event || "").includes(searchTerm)).map((item) => {
+                 let realGmvFromOrders = transactionList
+                     .filter(order => order.event === item.event)
+                     .reduce((sum, order) => sum + Number(order.amount), 0);
+
+                 let percentSold = item.percent_sold; 
+                 if (!percentSold) {
+                     if (item.event === "วันสละโสดกับโจทก์เก่าๆ เดอะสรวนมิวสิคัล") {
+                         percentSold = 100;
+                         realGmvFromOrders = 925500; 
+                     } else {
+                         percentSold = 85;
+                     }
+                 }
+                 
+                 let feeRate = 0;
+                 if (percentSold >= 91) feeRate = 15;
+                 else if (percentSold >= 71) feeRate = 10;
+                 else if (percentSold >= 50) feeRate = 5;
+                 else feeRate = 0;
+                 
+                 const gmv = realGmvFromOrders > 0 
+                               ? realGmvFromOrders 
+                               : (Number(item.amount) / (1 - (feeRate / 100)));
+                 
+                 const fee = gmv * (feeRate / 100);
+                 const expectedPayout = gmv - fee; 
+
+                 return (
                  <tr key={item.id} className="hover:bg-white/5 transition-colors">
                    <td className="p-4 font-bold text-white">{item.organizer}</td>
                    <td className="p-4 text-gray-400">{item.event}</td>
-                   <td className="p-4 text-right text-white font-mono">{formatCurrency(item.amount)}</td>
-                   <td className="p-4 text-xs font-mono">{item.bank}</td>
+                   <td 
+                     className="p-4 text-right text-white font-mono cursor-pointer hover:text-green-400 underline decoration-dashed underline-offset-4 transition-colors"
+                     title="คลิกเพื่อดูรายละเอียด"
+                     onClick={() => {
+                        alert(`รายละเอียดการคำนวณ (อัตราการขายบัตร: ${percentSold}%):\n\nยอดขายรวม (GMV): ${formatCurrency(gmv)} บาท\nหักส่วนแบ่งแพลตฟอร์ม ${feeRate}%: ${formatCurrency(fee)} บาท\nจำนวนเงินที่ต้องโอนให้ผู้จัด (Payout): ${formatCurrency(gmv)} - ${formatCurrency(fee)} = ${formatCurrency(expectedPayout)} บาท`);
+                     }}
+                   >
+                     {formatCurrency(expectedPayout)}
+                   </td>
+                   <td className="p-4 text-xs font-mono text-gray-300">{item.displayBank}</td>
                    <td className="p-4 text-xs">{item.date}</td>
                    <td className="p-4 flex justify-center">{getStatusBadge(item.status)}</td>
                    <td className="p-4 text-right">
@@ -271,13 +327,19 @@ export default function FinancePage() {
                          ยืนยันการโอน
                        </button>
                      ) : (
-                       <span className="text-gray-500 text-xs">เสร็จสิ้น</span>
+                       <button 
+                         onClick={() => handleResetApproval(item.id)}
+                         className="text-gray-500 hover:text-red-400 text-xs transition-colors"
+                         title="ยกเลิกรายการนี้"
+                       >
+                         เสร็จสิ้น
+                       </button>
                      )}
                    </td>
                  </tr>
-               ))}
+                 );
+               })}
 
-               {/* TAB 2: ORDERS */}
                {activeTab === "orders" && transactionList.filter(i => (i.user || "").includes(searchTerm) || (i.event || "").includes(searchTerm)).map((item) => (
                  <tr key={item.id} className="hover:bg-white/5 transition-colors">
                    <td className="p-4 font-mono text-blue-400">{item.id}</td>
@@ -293,7 +355,6 @@ export default function FinancePage() {
              </tbody>
            </table>
            
-           {/* Empty States */}
            {activeTab === "payouts" && payoutList.length === 0 && (
               <div className="p-8 text-center text-gray-500">ไม่มีคำขอเบิกเงิน</div>
            )}

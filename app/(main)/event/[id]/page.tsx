@@ -48,6 +48,7 @@ interface UiEvent {
   image: string;
   description: string;
   category: string;
+  eventStatus: string;
   rounds: { 
     id: number; 
     date: string; 
@@ -114,7 +115,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     const fetchEventDetail = async () => {
       try {
-        const res = await fetch(`http://127.0.0.1:8000/api/public/events/${id}`);
+        // 🌟 ใส่ Cache-Buster (?t=...) เพื่อบังคับเบราว์เซอร์ดึงข้อมูลวันที่ใหม่ 100%
+        const res = await fetch(`http://127.0.0.1:8000/api/public/events/${id}?t=${new Date().getTime()}`, { 
+            cache: 'no-store',
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            }
+        });
+        
         if (!res.ok) throw new Error("Event not found");
 
         const data: ApiEvent = await res.json();
@@ -172,6 +181,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             image: getImageUrl(data.bannerImage), 
             description: data.eventDescription || "ไม่มีรายละเอียด",
             category: "Concert", 
+            eventStatus: data.eventStatus, // ✅ รับสถานะที่แก้มาจาก Controller 
             rounds: rounds,
             priceTiers: priceTiers,
             zones: zones
@@ -200,6 +210,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   const currentRound = event.rounds.find((r) => r.id === selectedRoundId);
+  const allowedStatuses = ['On Sale', 'Selling', 'กำลังจะจัด', 'เปิดขายบัตร', 'เปิดขาย', 'UPCOMING', 'approved', 'Approved'];
+  const isEventApproved = allowedStatuses.includes(event.eventStatus);
 
   const requireAuth = (action: () => void) => {
     if (!isLoggedIn) router.push(`/login?redirect=/event/${id}`);
@@ -212,6 +224,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         return;
     }
     if (!currentRound) return;
+    
+    // ✅ ดักจับกันเหนียวว่า ถ้าสถานะไม่ถูกอนุมัติ ห้ามเข้าเด็ดขาด
+    if (!isEventApproved) {
+        alert(`ไม่สามารถทำรายการได้เนื่องจากสถานะงานปัจจุบันคือ: ${event.eventStatus}`);
+        return;
+    }
+    
     if (currentTime < currentRound.saleStart) {
         alert(`รอบนี้ยังไม่เปิดขายบัตรครับ\nเปิดขายวันที่: ${currentRound.saleStart.toLocaleString('th-TH')}`);
         return;
@@ -232,7 +251,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   let summaryStatusClass = "bg-gray-800 text-gray-500 cursor-not-allowed";
 
   if (currentRound) {
-    if (currentTime < currentRound.saleStart) {
+    if (!isEventApproved) {
+      summaryStatusText = `สถานะงาน: ${event.eventStatus} (ยังไม่เปิดขาย)`;
+      summaryStatusClass = "bg-gray-800 text-gray-400 border border-gray-600 cursor-not-allowed";
+    } else if (currentTime < currentRound.saleStart) {
       summaryStatusText = `เปิดขาย: ${currentRound.saleStart.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}`;
       summaryStatusClass = "bg-yellow-600/20 text-yellow-500 border border-yellow-600/50";
     } else if (currentTime > currentRound.saleEnd) {

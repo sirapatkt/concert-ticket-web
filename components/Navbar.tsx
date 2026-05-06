@@ -77,53 +77,38 @@ export default function Navbar() {
   }, [user]);
 
   // ==========================================
-  // 🔴 ทดสอบยิง API (เอา if (!isLoggedIn) ออกชั่วคราว)
+  // 🟢 ดึงแจ้งเตือนจาก LocalStorage 
   // ==========================================
   useEffect(() => {
-    const fetchUserNotifications = async () => {
-
+    const loadNotisFromStorage = () => {
+      // ดึงข้อมูลที่ PaymentQRPage ยัดไว้มาโชว์
+      const storedNotis = JSON.parse(localStorage.getItem("beatpass_notis") || "[]");
+      
       if (!isLoggedIn) {
         setNotifications(guestNotifications);
-        return;
-      }
+      } else {
+        // ผสมของใหม่กับของเก่าที่มีอยู่แล้ว (ของเดิมคุณมี memberNotifications อยู่)
+        const allNotis = [...storedNotis, ...memberNotifications];
+        
+        const readIds = JSON.parse(localStorage.getItem('readNotis') || '[]');
+        const formattedNotis = allNotis.map((noti: any) => ({
+          ...noti,
+          read: readIds.includes(noti.id) || noti.read
+        }));
 
-
-      try {
-        const token = Cookies.get("token"); 
-
-        const res = await fetch('http://localhost:8000/api/user/notifications', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`, 
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          
-          // ⭐️ ดึงข้อมูลที่เคยอ่านแล้วออกมาเช็ค
-          const readIds = JSON.parse(localStorage.getItem('readNotis') || '[]');
-
-          const formattedNotis = data.map((noti: any) => ({
-            id: noti.id,
-            type: noti.type,         
-            title: noti.title,
-            desc: noti.description,
-            time: noti.time_ago,     
-            link: noti.link_url,
-            read: readIds.includes(noti.id) // ⭐️ ถ้า ID นี้อยู่ใน LocalStorage ให้ค่า read เป็น true เลย (กระดิ่งจะได้ไม่แดง)
-          }));
-
-          setNotifications(formattedNotis);
-        }
-      } catch (error) {
-        console.error("Error fetching notifications:", error);
+        setNotifications(formattedNotis);
       }
     };
 
-    fetchUserNotifications();
-  }, [isLoggedIn]); // ระวัง: ถ้ายังไม่ได้ล็อคอิน แต่ API ต้องการ Auth อาจจะติด 401 นะครับ
+    loadNotisFromStorage();
+
+    // ฟังเสียงเรียกจากตอนกดปุ่มจ่ายเงิน (จะได้กระพริบทันทีไม่ต้องรีเฟรชหน้า)
+    window.addEventListener("storage_change", loadNotisFromStorage);
+
+    return () => {
+      window.removeEventListener("storage_change", loadNotisFromStorage);
+    };
+  }, [isLoggedIn]);
 
   // 🌟 2. ดึงข้อมูลจาก DB มาแสดงในกล่องค้นหา (Trending)
   useEffect(() => {
@@ -199,7 +184,7 @@ export default function Navbar() {
 
   const eventCategories = [
     { id: "concert-fanmeet", nameTh: "คอนเสิร์ต & แฟนมีต", nameEn: "Concerts & Fan Meet", descEn: "at Impact Arena", icon: <Mic2 size={18} /> },
-    { id: "festival", nameTh: "เทศกาลดนตรี", nameEn: "Music Festival", icon: <Music size={18} /> }, // ✅ เพิ่มบรรทัดนี้เข้ามา
+    { id: "festival", nameTh: "เทศกาลดนตรี", nameEn: "Music Festival", icon: <Music size={18} /> }, 
     { id: "theater", nameTh: "ละครเวที & วาไรตี้", nameEn: "Theater & Variety", descEn: "at Rachadalai Theatre", icon: <Drama size={18} /> },
     { id: "classical", nameTh: "ออร์เคสตรา & คลาสสิก", nameEn: "Orchestra & Classical", descEn: "at Suriyadhep Music Sala", icon: <Music2 size={18} /> },
     { id: "all", nameTh: "งานแสดงทั้งหมด", nameEn: "All Events", descEn: "Explore All Venues", icon: <Ticket size={18} /> },

@@ -38,30 +38,45 @@ export default function MyEventsPage() {
     fetchEvents();
   }, []);
 
-  type EventStatusType = "กำลังเตรียม" | "รอชำระเงิน" | "กำลังจะจัด" | "เปิดขาย" | "กำลังจัด" | "ปิดการขาย" | "บัตรขายหมด" | "เสร็จสิ้น" | "ยกเลิกงาน";
+  // 🌟 เพิ่ม "รอแก้ไข" เข้าไปใน Type
+  type EventStatusType = "กำลังเตรียม" | "รอแก้ไข" | "รอชำระเงิน" | "กำลังจะจัด" | "เปิดขาย" | "กำลังจัด" | "ปิดการขาย" | "บัตรขายหมด" | "เสร็จสิ้น" | "ยกเลิกงาน";
 
-  const getThaiStatus = (status: string): EventStatusType => {
-    if (!status) return 'กำลังเตรียม';
-    if (status === 'กำลังเตรียม') return 'กำลังเตรียม';
-    if (status === 'รอชำระเงิน' || status.toUpperCase() === 'APPROVED' || status.toUpperCase() === 'PENDING_PAYMENT') return 'รอชำระเงิน';
-    if (status === 'กำลังจะจัด') return 'กำลังจะจัด';
-    if (status === 'เปิดขาย' || status === 'เปิดขายบัตร' || status.toUpperCase() === 'ON SALE') return 'เปิดขาย'; 
-    if (status === 'ปิดการขาย') return 'ปิดการขาย';
-    if (status === 'กำลังจัด') return 'กำลังจัด';
-    if (status === 'บัตรขายหมด') return 'บัตรขายหมด';
-    if (status === 'เสร็จสิ้น') return 'เสร็จสิ้น';
-    if (status === 'ยกเลิกงาน') return 'ยกเลิกงาน';
+  const getThaiStatus = (status: string, rawEvent?: any): EventStatusType => {
+    // 🌟 ดักจับอย่างเข้มงวด: เช็คจาก Property ทั้งหมดที่อาจจะเป็นไปได้จาก Backend
+    const dbStatus = rawEvent?.eventStatus || rawEvent?.event_status || rawEvent?.EventStatus;
     
-    return 'กำลังเตรียม'; 
+    // ถ้าในฐานข้อมูลสั่งว่า "รอแก้ไข" หรือ "กำลังเตรียม" ให้เชื่อฐานข้อมูล 100% เลย ไม่ต้องไปสนใจการคำนวณวันเปิดขาย
+    if (dbStatus) {
+      const cleanDbStatus = String(dbStatus).trim();
+      if (cleanDbStatus === 'รอแก้ไข') return 'รอแก้ไข';
+      if (cleanDbStatus === 'กำลังเตรียม') return 'กำลังเตรียม';
+    }
+
+    if (!status) return 'กำลังเตรียม';
+    const s = String(status).trim(); // 🌟 ป้องกันปัญหาเคาะเว้นวรรคมาจาก Database
+    if (s === 'กำลังเตรียม') return 'กำลังเตรียม';
+    if (s === 'รอแก้ไข') return 'รอแก้ไข';
+    if (s === 'รอชำระเงิน' || s.toUpperCase() === 'APPROVED' || s.toUpperCase() === 'PENDING_PAYMENT') return 'รอชำระเงิน';
+    if (s === 'กำลังจะจัด') return 'กำลังจะจัด';
+    if (s === 'เปิดขาย' || s === 'เปิดขายบัตร' || s.toUpperCase() === 'ON SALE') return 'เปิดขาย'; 
+    if (s === 'ปิดการขาย') return 'ปิดการขาย';
+    if (s === 'กำลังจัด') return 'กำลังจัด';
+    if (s === 'บัตรขายหมด') return 'บัตรขายหมด';
+    if (s === 'เสร็จสิ้น') return 'เสร็จสิ้น';
+    if (s === 'ยกเลิกงาน') return 'ยกเลิกงาน';
+    
+    return s as EventStatusType; 
   };
 
   const filteredEvents = events.filter((ev: any) => {
     if (filterStatus === "ทั้งหมด") return true;
-    return getThaiStatus(ev.status) === filterStatus;
+    // 🌟 ดึงค่าเผื่อชื่อ Key ส่งมาหลายแบบ
+    const rawStatus = ev.eventStatus || ev.event_status || ev.EventStatus || ev.status;
+    return getThaiStatus(rawStatus, ev) === filterStatus;
   });
 
-  const getStatusStyles = (status: string) => {
-    const thaiStatus = getThaiStatus(status);
+  const getStatusStyles = (status: string, eventObj?: any) => {
+    const thaiStatus = getThaiStatus(status, eventObj);
   
     switch (thaiStatus) {
       case 'เปิดขาย': 
@@ -72,6 +87,8 @@ export default function MyEventsPage() {
         return "border-2 border-pink-500 bg-pink-600 text-white animate-pulse";
       case 'กำลังเตรียม':
         return "border-2 border-amber-400 bg-amber-500 text-white";
+      case 'รอแก้ไข':
+        return "border-2 border-red-500 bg-red-600 text-white shadow-lg shadow-red-500/20 animate-pulse";
       case 'รอชำระเงิน': 
         return "border-2 border-yellow-500 bg-yellow-600 text-white shadow-lg shadow-yellow-500/20 animate-pulse";
       case 'กำลังจะจัด':
@@ -146,7 +163,7 @@ export default function MyEventsPage() {
         </div>
 
         <div className="flex bg-[#0F172A] p-1 rounded-lg border border-slate-800 overflow-x-auto">
-          {["ทั้งหมด", "กำลังเตรียม", "รอชำระเงิน", "กำลังจะจัด", "เปิดขาย", "ปิดการขาย", "บัตรขายหมด", "เสร็จสิ้น", "ยกเลิกงาน"].map((status) => (
+          {["ทั้งหมด", "กำลังเตรียม", "รอแก้ไข", "รอชำระเงิน", "กำลังจะจัด", "เปิดขาย", "ปิดการขาย", "บัตรขายหมด", "เสร็จสิ้น", "ยกเลิกงาน"].map((status) => (
             <button
               suppressHydrationWarning
               key={status}
@@ -172,8 +189,12 @@ export default function MyEventsPage() {
           </div>
         ) : filteredEvents.length > 0 ? filteredEvents.map((event: any) => {
           
-          const currentStatus = getThaiStatus(event.status);
-          const isEditableOrDeletable = currentStatus === 'กำลังเตรียม' || currentStatus === 'กำลังจะจัด' || currentStatus === 'รอชำระเงิน';
+          // 🌟 ดึงค่าเผื่อชื่อ Key ส่งมาหลายแบบ
+          const rawStatus = event.eventStatus || event.event_status || event.EventStatus || event.status;
+          const currentStatus = getThaiStatus(rawStatus, event);
+          
+          // 🌟 ให้สถานะ "รอแก้ไข" สามารถกดปุ่มแก้ไขและลบได้
+          const isEditableOrDeletable = currentStatus === 'กำลังเตรียม' || currentStatus === 'กำลังจะจัด' || currentStatus === 'รอชำระเงิน' || currentStatus === 'รอแก้ไข';
 
           return (
           <div 
@@ -188,7 +209,7 @@ export default function MyEventsPage() {
                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                />
                <div className="absolute top-2 left-2">
-                  <span className={`px-2 py-1 rounded text-[10px] font-black ${getStatusStyles(event.status)}`}>
+                  <span className={`px-2 py-1 rounded text-[10px] font-black ${getStatusStyles(rawStatus, event)}`}>
                     {currentStatus}
                   </span>
                 </div>
@@ -254,9 +275,9 @@ export default function MyEventsPage() {
                   suppressHydrationWarning
                   disabled 
                   className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-slate-800/50 text-slate-500 cursor-not-allowed text-xs font-bold border border-slate-700/50"
-                  title={currentStatus === 'กำลังเตรียม' ? "รอแอดมินอนุมัติก่อนถึงจะชำระเงินได้" : "ชำระเงินค่าเปิดระบบเรียบร้อยแล้ว"}
+                  title={currentStatus === 'กำลังเตรียม' || currentStatus === 'รอแก้ไข' ? "รอแอดมินอนุมัติก่อนถึงจะชำระเงินได้" : "ชำระเงินค่าเปิดระบบเรียบร้อยแล้ว"}
                 >
-                  {currentStatus === 'กำลังเตรียม' ? (
+                  {currentStatus === 'กำลังเตรียม' || currentStatus === 'รอแก้ไข' ? (
                     <><CreditCard size={14} /> รอกดชำระเงิน</>
                   ) : (
                     <><CheckCircle2 size={14} className="text-emerald-500/50" /> ชำระเงินแล้ว</>

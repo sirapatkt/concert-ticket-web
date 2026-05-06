@@ -8,7 +8,7 @@ import {
   PlusCircle, MinusCircle, Tag, CalendarClock, Ticket 
 } from "lucide-react";
 
-// ✅ 1. Interface
+// ✅ 1. Interface (เพิ่มฟิลด์เผื่อ Backend ส่งชื่อกลับมาไม่ตรงกัน)
 interface TicketType {
   id: number;
   zone: string;
@@ -28,18 +28,37 @@ interface EventType {
   description: string;
   category: string;
   approvalStatus: "pending" | "approved" | "rejected" | "changes_requested" | "cancelled" | "ended"; 
+  eventStatus?: string; 
   adminFeedback?: string; 
   paymentStatus: "paid" | "unpaid"; 
   publishDate: string;
+  
   saleStartDate?: string;
+  Sale_startDT?: string;
+  sale_start_date?: string;
+
+  saleEndDate?: string;
+  Sale_endDT?: string; 
+  sale_end_date?: string;
+
   depositAmount: string;
   tickets: TicketType[];
   sold_tickets?: number;
   total_tickets?: number;
 }
 
+// ✅ ฟังก์ชันช่วยแปลงวันที่ให้อยู่ในฟอร์แมต YYYY-MM-DD
+const formatDateToYMD = (dateString?: string) => {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return dateString;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export default function EventsPage() {
-  // ✅ เพิ่มตัวแปร isMounted เพื่อแก้ Hydration Error
   const [isMounted, setIsMounted] = useState(false);
 
   const [activeTab, setActiveTab] = useState<string>("action_required");
@@ -49,28 +68,44 @@ export default function EventsPage() {
   const [editingEvent, setEditingEvent] = useState<EventType | null>(null);
 
   const [events, setEvents] = useState<EventType[]>([]);
-  
   const [selectedEventSales, setSelectedEventSales] = useState<any>(null);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0 }).format(amount);
   };
 
+  const getEventStatus = (event: EventType) => {
+    const status = event.eventStatus?.toLowerCase() || "";
+
+    // ดักคำแปลกๆ จาก Database ให้กลับเป็น Standard
+    if (status === 'cancelled' || status === 'ยกเลิก') return 'cancelled';
+    if (status === 'approved' || status === 'เปิดขาย' || status === 'กำลังจะจัด') return 'approved';
+    if (status === 'รอแก้ไข') return 'changes_requested';
+    if (status === 'กำลังเตรียม' || status === 'pending') return 'pending';
+    return event.approvalStatus ? event.approvalStatus.toLowerCase() : "";
+  };
+
   useEffect(() => {
-    // ✅ บอก Next.js ว่าโหลดฝั่ง Client เสร็จแล้ว
     setIsMounted(true);
 
     const fetchEvents = async () => {
       try {
         const res = await fetch('http://localhost:8000/api/admin/events', {
-            headers: { "Accept": "application/json" }
+            headers: { 
+              "Accept": "application/json",
+              "Cache-Control": "no-cache" 
+            },
+            cache: "no-store" 
         });
         
         if (res.ok) {
           let data = await res.json();
 
           try {
-              const salesRes = await fetch('http://localhost:8000/api/admin/events-list');
+              const salesRes = await fetch('http://localhost:8000/api/admin/events-list', {
+                headers: { "Cache-Control": "no-cache" },
+                cache: "no-store" 
+              });
               if (salesRes.ok) {
                   const salesData = await salesRes.json();
                   data = data.map((event: any) => {
@@ -96,10 +131,15 @@ export default function EventsPage() {
   }, []);
 
   const handleViewDetails = async (event: EventType) => {
-    setSelectedEvent(event);
+    // ✅ ดึงเวลาออกมาแสดงในหน้า View Details
+    const displayTime = event.time || (event.date && event.date.includes(' ') ? event.date.split(' ')[1].slice(0, 5) : "--:--");
+    setSelectedEvent({ ...event, time: displayTime });
     setSelectedEventSales(null); 
     try {
-        const res = await fetch(`http://localhost:8000/api/admin/events/${event.id}/sales`);
+        const res = await fetch(`http://localhost:8000/api/admin/events/${event.id}/sales`, {
+          headers: { "Cache-Control": "no-cache" },
+          cache: "no-store" 
+        });
         if (res.ok) {
             const data = await res.json();
             setSelectedEventSales(data);
@@ -115,13 +155,12 @@ export default function EventsPage() {
     
     if (!matchesSearch) return false;
 
-    const status = event.approvalStatus ? event.approvalStatus.toLowerCase() : "";
+    const status = getEventStatus(event); 
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const eventDate = new Date(event.endDate || event.date);
 
-    // ✅ กลับมาใช้ "pending" ในการกรองข้อมูล เพื่อให้ดึงงานจาก Database ขึ้นมาได้ถูกต้อง
     if (activeTab === "action_required") return status === "pending";
     if (activeTab === "all") return true;
     if (activeTab === "pending") return status === "pending"; 
@@ -205,8 +244,20 @@ export default function EventsPage() {
   };
 
   const handleEdit = (event: EventType) => {
+    // ✅ ดึงเวลาออกมาให้ฟอร์มแก้ไข ไม่งั้นช่องเวลาจะว่าง
+    const editTime = event.time || (event.date && event.date.includes(' ') ? event.date.split(' ')[1].slice(0, 5) : "");
+    
+    // ✅ ดึงค่า Sale Start / End โดยรองรับชื่อ Field แบบ Database
+    const startSale = event.saleStartDate || event.Sale_startDT || event.sale_start_date || "";
+    const endSale = event.saleEndDate || event.Sale_endDT || event.sale_end_date || "";
+
     setEditingEvent({ 
       ...event, 
+      date: formatDateToYMD(event.date), 
+      endDate: formatDateToYMD(event.endDate), 
+      time: editTime,
+      saleStartDate: startSale,
+      saleEndDate: endSale,
       tickets: event.tickets ? event.tickets.map(t => ({...t})) : [] 
     });
     setSelectedEvent(null);
@@ -215,19 +266,34 @@ export default function EventsPage() {
   const handleSaveEdit = async () => {
     if (!editingEvent) return;
     try {
+      // 🌟 แก้ปัญหาจากต้นทางตามที่คุณเสนอ!
+      // แยกร่าง Payload และลบข้อมูล Status ทิ้งทั้งหมด เพื่อให้ส่งไปเฉพาะข้อมูลที่มีการพิมพ์แก้ใหม่
+      // Backend จะได้ไม่เอาค่า Status ฝั่งหน้าบ้านไปทับใน Database ครับ
+      const payload: any = { ...editingEvent };
+      delete payload.approvalStatus; 
+      delete payload.eventStatus;
+      delete payload.paymentStatus;
+
       const res = await fetch(`http://localhost:8000/api/events/${editingEvent.id}`, {
         method: 'PUT', 
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify(editingEvent)
+        body: JSON.stringify(payload)
       });
+
       if (res.ok) {
-        setEvents(prev => prev.map(e => e.id === editingEvent.id ? editingEvent : e));
+        // ✅ ประกอบร่างวันที่กับเวลากลับเข้าไปใหม่ จะได้โชว์ได้ทันทีหลังกดเซฟ
+        const updatedEvent = {
+            ...editingEvent,
+            date: `${editingEvent.date} ${editingEvent.time ? editingEvent.time + ':00' : '00:00:00'}`
+        };
+        setEvents(prev => prev.map(e => e.id === editingEvent.id ? updatedEvent : e));
         setEditingEvent(null);
+        alert("บันทึกข้อมูลเรียบร้อย ✅");
       } else {
-        alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+        alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล ลองตรวจสอบ Console ใน Browser เพิ่มเติม");
       }
     } catch (error) {
       console.error("Error saving event:", error);
@@ -295,7 +361,6 @@ export default function EventsPage() {
     setEditingEvent({ ...editingEvent, tickets: newTickets });
   };
 
-  // ✅ ป้องกัน Hydration Error โดยรอให้ Component Mount ก่อน
   if (!isMounted) {
     return null; 
   }
@@ -331,21 +396,18 @@ export default function EventsPage() {
           }`}
         >
           งานที่ต้องจัดการ
-          {/* ✅ กลับมานับจำนวนงานจากสถานะ "pending" */}
-          {events.filter(e => e.approvalStatus === "pending").length > 0 && (
+          {events.filter(e => getEventStatus(e) === "pending").length > 0 && (
              <span className="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                {events.filter(e => e.approvalStatus === "pending").length}
+                {events.filter(e => getEventStatus(e) === "pending").length}
             </span>
           )}
         </button>
 
-        {/* เส้นคั่นบางๆ (Divider) */}
         <div className="w-px h-5 bg-white/10 mx-1"></div>
 
-        {/* ปุ่มสถานะขอบมน (Pills) */}
         {[
           { id: "all", label: "ทั้งหมด" },
-          { id: "pending", label: "รออนุมัติ (กำลังเตรียม)" }, // ชื่อแสดงผลภาษาไทย
+          { id: "pending", label: "รออนุมัติ (กำลังเตรียม)" },
           { id: "published", label: "เปิดขาย/กำลังจัด" },
           { id: "ended", label: "สิ้นสุดแล้ว" },
           { id: "cancelled", label: "ยกเลิก" },
@@ -368,7 +430,7 @@ export default function EventsPage() {
       <div className="grid gap-4">
         {filteredEvents.length > 0 ? (
           filteredEvents.map((event) => {
-            const status = event.approvalStatus ? event.approvalStatus.toLowerCase() : "";
+            const status = getEventStatus(event); 
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const eventDate = new Date(event.endDate || event.date);
@@ -387,13 +449,12 @@ export default function EventsPage() {
                         <p className="flex items-center gap-2 text-xs mt-1">
                           <span className="flex items-center gap-1 text-blue-400"><Tag size={12}/> {event.category}</span>
                           <span className="text-gray-600">|</span>
-                          <span className="flex items-center gap-1 text-gray-400"><Clock size={12}/> Publish: {event.publishDate}</span>
+                          <span className="flex items-center gap-1 text-pink-400"><CalendarDays size={12}/> {formatDateToYMD(event.date)}</span>
                         </p>
                     </div>
                   </div>
                 </div>
 
-                {/* แถบ Progress ยอดขายในหน้าตาราง */}
                 <div className="hidden lg:flex flex-col w-48 shrink-0 mr-4 bg-[#0B0F14] p-2 rounded-lg border border-white/5">
                     <div className="flex justify-between text-xs mb-1.5">
                         <span className="text-gray-400">ขายได้ <strong className="text-white">{event.sold_tickets || 0}</strong> / {event.total_tickets || 0}</span>
@@ -416,7 +477,6 @@ export default function EventsPage() {
                     status === 'cancelled' ? 'bg-gray-500/10 text-gray-400 border-gray-500/20' :
                     'bg-red-500/10 text-red-400 border-red-500/20'
                   }`}>
-                    {/* ✅ แก้ไขข้อความในการ์ดให้เป็นภาษาไทยตามที่คุณต้องการ */}
                     {isPublished ? 'เปิดขาย/กำลังจัด' : 
                      isEnded ? 'สิ้นสุดแล้ว' : 
                      status === 'pending' ? 'รออนุมัติ (กำลังเตรียม)' : 
@@ -485,7 +545,7 @@ export default function EventsPage() {
                         </div>
                         <div className={`px-4 py-1.5 rounded-full text-sm font-bold border shadow-lg ${
                             (() => {
-                              const s = selectedEvent.approvalStatus?.toLowerCase();
+                              const s = getEventStatus(selectedEvent); 
                               const eventDate = new Date(selectedEvent.endDate || selectedEvent.date);
                               const today = new Date();
                               today.setHours(0,0,0,0);
@@ -499,7 +559,7 @@ export default function EventsPage() {
                             })()
                         }`}>
                             {(() => {
-                              const s = selectedEvent.approvalStatus?.toLowerCase();
+                              const s = getEventStatus(selectedEvent); 
                               const eventDate = new Date(selectedEvent.endDate || selectedEvent.date);
                               const today = new Date();
                               today.setHours(0,0,0,0);
@@ -515,18 +575,19 @@ export default function EventsPage() {
 
               <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* ✅ ส่วนข้อมูลวันและเวลา - ขยาย Grid ให้รองรับกล่องเพิ่มได้ */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div className="bg-[#0B0F14] p-4 rounded-xl border border-white/5 flex items-start gap-3">
                           <User className="text-blue-500 mt-1" size={18} />
                           <div>
-                             <p className="text-xs text-gray-500 font-bold uppercase">ผู้จัดงาน (Organizer)</p>
+                             <p className="text-xs text-gray-500 font-bold uppercase">ผู้จัดงาน</p>
                              <p className="text-white font-medium">{selectedEvent.organizer}</p>
                           </div>
                       </div>
                       <div className="bg-[#0B0F14] p-4 rounded-xl border border-white/5 flex items-start gap-3">
                           <MapPin className="text-red-500 mt-1" size={18} />
                           <div>
-                             <p className="text-xs text-gray-500 font-bold uppercase">สถานที่ (Venue)</p>
+                             <p className="text-xs text-gray-500 font-bold uppercase">สถานที่</p>
                              <p className="text-white font-medium">{selectedEvent.venue}</p>
                           </div>
                       </div>
@@ -534,7 +595,7 @@ export default function EventsPage() {
                           <CalendarDays className="text-purple-500 mt-1" size={18} />
                           <div>
                              <p className="text-xs text-gray-500 font-bold uppercase">วันแสดง</p>
-                             <p className="text-white font-medium">{selectedEvent.date} {selectedEvent.endDate ? `- ${selectedEvent.endDate}` : ''}</p>
+                             <p className="text-white font-medium">{formatDateToYMD(selectedEvent.date)} {selectedEvent.endDate ? `- ${formatDateToYMD(selectedEvent.endDate)}` : ''}</p>
                           </div>
                       </div>
                       <div className="bg-[#0B0F14] p-4 rounded-xl border border-white/5 flex items-start gap-3">
@@ -542,6 +603,21 @@ export default function EventsPage() {
                           <div>
                              <p className="text-xs text-gray-500 font-bold uppercase">เวลา</p>
                              <p className="text-white font-medium">{selectedEvent.time}</p>
+                          </div>
+                      </div>
+                      {/* ✅ เพิ่มกล่องวันเปิดขายและปิดขาย */}
+                      <div className="bg-[#0B0F14] p-4 rounded-xl border border-white/5 flex items-start gap-3">
+                          <CalendarClock className="text-green-500 mt-1" size={18} />
+                          <div>
+                             <p className="text-xs text-gray-500 font-bold uppercase">เปิดขายบัตร</p>
+                             <p className="text-white font-medium">{selectedEvent.saleStartDate || selectedEvent.Sale_startDT || selectedEvent.sale_start_date || "-"}</p>
+                          </div>
+                      </div>
+                      <div className="bg-[#0B0F14] p-4 rounded-xl border border-white/5 flex items-start gap-3">
+                          <CalendarClock className="text-pink-500 mt-1" size={18} />
+                          <div>
+                             <p className="text-xs text-gray-500 font-bold uppercase">ปิดขายบัตร</p>
+                             <p className="text-white font-medium">{selectedEvent.saleEndDate || selectedEvent.Sale_endDT || selectedEvent.sale_end_date || "-"}</p>
                           </div>
                       </div>
                   </div>
@@ -611,7 +687,7 @@ export default function EventsPage() {
                       </div>
                   )}
 
-                  {selectedEvent.approvalStatus === 'pending' && (
+                  {getEventStatus(selectedEvent) === 'pending' && (
                       <div className="flex gap-3 pt-4 border-t border-white/10">
                           <button 
                             onClick={() => handleApprove(selectedEvent.id)} 
@@ -639,7 +715,7 @@ export default function EventsPage() {
       {/* ✅ MODAL 2: แก้ไขข้อมูล (Edit Mode) */}
       {editingEvent && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-[#161B22] border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="bg-[#161B22] border border-white/10 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
                 
                 <div className="px-6 py-4 border-b border-white/10 flex justify-between items-center bg-[#0B0F14]">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -744,34 +820,46 @@ export default function EventsPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* ✅ ส่วนการขายและสถานะ - เปลี่ยน Layout เป็น 3 คอลัมน์ให้ใส่ Sale End Date ได้พอดี */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                          <div>
-                            <label className="text-xs text-blue-400 font-bold uppercase block mb-1">วันเปิดขายบัตร (Sale Start)</label>
+                            <label className="text-xs text-green-400 font-bold uppercase block mb-1">เปิดขายบัตร (Sale Start)</label>
                             <div className="relative">
-                                <CalendarClock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400"/>
+                                <CalendarClock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-green-400"/>
                                 <input 
                                     type="text" 
                                     placeholder="เช่น 05 Dec 2024, 10:00"
                                     value={editingEvent.saleStartDate || ''} 
                                     onChange={(e) => setEditingEvent({...editingEvent, saleStartDate: e.target.value})} 
-                                    className="w-full bg-[#0B0F14] border border-blue-500/30 rounded pl-9 pr-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+                                    className="w-full bg-[#0B0F14] border border-green-500/30 rounded pl-9 pr-3 py-2 text-sm text-white focus:border-green-500 focus:outline-none"
                                 />
                             </div>
                         </div>
+                        {/* ✅ เพิ่มช่อง วันปิดขายบัตร */}
+                        <div>
+                            <label className="text-xs text-pink-400 font-bold uppercase block mb-1">ปิดขายบัตร (Sale End)</label>
+                            <div className="relative">
+                                <CalendarClock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-pink-400"/>
+                                <input 
+                                    type="text" 
+                                    placeholder="เช่น 10 Dec 2024, 23:59"
+                                    value={editingEvent.saleEndDate || ''} 
+                                    onChange={(e) => setEditingEvent({...editingEvent, saleEndDate: e.target.value})} 
+                                    className="w-full bg-[#0B0F14] border border-pink-500/30 rounded pl-9 pr-3 py-2 text-sm text-white focus:border-pink-500 focus:outline-none"
+                                />
+                            </div>
+                        </div>
+                        
+                        {/* 🌟 เปลี่ยนจาก Dropdown ให้เป็น Input ทึบไว้แทน ป้องกันการเผลอไปกดเปลี่ยน */}
                         <div>
                             <label className="text-xs text-gray-400 font-bold uppercase block mb-1">สถานะ</label>
-                            <select 
-                                value={editingEvent.approvalStatus} 
-                                onChange={(e) => setEditingEvent({...editingEvent, approvalStatus: e.target.value as EventType["approvalStatus"]})}
-                                className="w-full bg-[#0B0F14] border border-white/10 rounded px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
-                            >
-                                <option value="pending">Pending</option>
-                                <option value="approved">Approved</option>
-                                <option value="rejected">Rejected</option>
-                                <option value="changes_requested">Changes Requested</option>
-                                <option value="cancelled">Cancelled</option>
-                                <option value="ended">Ended</option>
-                            </select>
+                            <input 
+                                type="text"
+                                disabled
+                                value={editingEvent.approvalStatus.toUpperCase()}
+                                className="w-full bg-[#161B22]/50 border border-white/5 rounded px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
+                                title="กรุณาใช้ปุ่มเปลี่ยนสถานะ (อนุมัติ/ส่งแก้/ยกเลิก) ที่อยู่ด้านนอกแทน"
+                            />
                         </div>
                     </div>
                 </div>

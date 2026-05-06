@@ -4,6 +4,44 @@ import React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Timer, Download, Share2, ScanLine, CheckCircle2, Loader2, XCircle } from "lucide-react";
 
+// ==========================================
+// 1. ฟังก์ชันส่ง Telegram (เข้ากลุ่ม)
+// ==========================================
+const sendTelegramNotification = async (message: string) => {
+  const TELEGRAM_TOKEN = '8611755582:AAGlPvysvTtJO0YWMO05UppL0oe0WXRjchE'; 
+  const CHAT_ID = '-5113956934'; // 👈 ID กลุ่มของคุณ
+  
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}`;
+
+  try {
+    await fetch(url);
+  } catch (err) {
+    console.error("Telegram Error:", err);
+  }
+};
+
+// ==========================================
+// 2. ฟังก์ชันยัดการแจ้งเตือนลง LocalStorage (ให้กระดิ่งบนเว็บเห็น)
+// ==========================================
+const saveNotificationToStorage = (title: string, desc: string, type: string) => {
+  const existingNotis = JSON.parse(localStorage.getItem("beatpass_notis") || "[]");
+  
+  const newNoti = {
+    id: Date.now(), 
+    type: type,
+    title: title,
+    desc: desc,
+    time: "เมื่อสักครู่",
+    link: "/profile/history",
+    read: false
+  };
+
+  const updatedNotis = [newNoti, ...existingNotis];
+  localStorage.setItem("beatpass_notis", JSON.stringify(updatedNotis));
+  
+  // ยิง event ไปบอก Navbar ว่ามีข้อมูลใหม่
+  window.dispatchEvent(new Event("storage_change"));
+};
 
 export default function PaymentQRPage() {
   const router = useRouter();
@@ -20,13 +58,11 @@ export default function PaymentQRPage() {
   };
 
   const expiresInParam = searchParams.get("expiresIn");
-const initialTime = expiresInParam !== null ? parseInt(expiresInParam) : 300;
+  const initialTime = expiresInParam !== null ? parseInt(expiresInParam) : 300;
 
-const [timeLeft, setTimeLeft] = React.useState(initialTime); 
+  const [timeLeft, setTimeLeft] = React.useState(initialTime); 
   const [isChecking, setIsChecking] = React.useState(false);
   const [refNo, setRefNo] = React.useState("");
-  
-  // ⭐️ 1. ดึง ID บิลจาก URL เตรียมไว้ส่งให้ API
   const bookingId = searchParams.get("bookingId"); 
 
   React.useEffect(() => {
@@ -36,18 +72,14 @@ const [timeLeft, setTimeLeft] = React.useState(initialTime);
       setTimeLeft((prev) => {
         if (prev <= 1) { 
             clearInterval(timer); 
-            
-            // ⭐️ เพิ่มการทำงานตรงนี้ เมื่อเวลาหมด
             if (bookingId) {
                 fetch(`http://localhost:8000/api/payment/cancel/${bookingId}`, { 
                     method: "POST",
-                    headers: {
-                        "Accept": "application/json" // 👈 บังคับให้ Laravel ไม่พ่นหน้า HTML แดงๆ กลับมา
-                    }
+                    headers: { "Accept": "application/json" }
                 })
                 .then(() => {
                     alert("⏱️ หมดเวลาชำระเงิน! ระบบได้คืนที่นั่งเรียบร้อยแล้ว");
-                    router.push("/"); // พากลับไปหน้าแรก
+                    router.push("/"); 
                 })
                 .catch(err => console.error("Auto cancel error:", err));
             }
@@ -58,7 +90,7 @@ const [timeLeft, setTimeLeft] = React.useState(initialTime);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [bookingId, router]); // ✅ อย่าลืมเพิ่ม dependencies ตรงนี้
+  }, [bookingId, router]); 
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -66,25 +98,20 @@ const [timeLeft, setTimeLeft] = React.useState(initialTime);
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
- // ⭐️ 2. ฟังก์ชันปุ่มสำเร็จ ให้ยิง API พร้อมส่งยอดเงินไปให้ Backend บันทึก
+  // ⭐️ 3. ปุ่มชำระเงินสำเร็จ
   const handleSimulatePayment = async () => {
     setIsChecking(true);
     try {
       if (bookingId) {
-        // ✅ เปลี่ยน 127.0.0.1 เป็น localhost ให้เหมือนปุ่มยกเลิก
         const res = await fetch(`http://localhost:8000/api/payment/success/${bookingId}`, { 
           method: "POST",
           headers: {
             "Content-Type": "application/json", 
-            "Accept": "application/json" // ✅ เผื่อเหนียวไว้ ป้องกัน HTML แดงๆ
+            "Accept": "application/json"
           },
-          body: JSON.stringify({
-            amount: params.amount 
-          })
+          body: JSON.stringify({ amount: params.amount })
         });
-
         if (!res.ok) {
-            // ✅ เปลี่ยนเป็น .json() ให้เหมือนปุ่มยกเลิก จะได้อ่าน Error ง่ายๆ
             const err = await res.json(); 
             alert("❌ API Error: " + (err.message || "เกิดข้อผิดพลาด"));
             setIsChecking(false);
@@ -92,43 +119,53 @@ const [timeLeft, setTimeLeft] = React.useState(initialTime);
         }
       }
       
+      const title = "จองบัตรสำเร็จ! ✅";
+      const desc = `คุณชำระเงิน ${params.amount} บาท สำหรับ ${params.name} สำเร็จแล้ว`;
+      
+      // ✅ สั่งบันทึกลงกระดิ่ง และ ส่ง Telegram
+      saveNotificationToStorage(title, desc, "booking");
+      await sendTelegramNotification(`🟢 แจ้งเตือน BEATPASS\n${title}\n${desc}`);
+
+      alert(title); 
+
       setTimeout(() => {
         router.push(`/ticket?bookingId=${bookingId}`); 
       }, 1000);
       
     } catch (error) {
-      console.error("Payment confirm error:", error);
       setIsChecking(false);
       alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อเครือข่าย");
     }
   };
 
-  // ⭐️ 3. ฟังก์ชันปุ่มยกเลิก ให้ยิง API คืนที่นั่ง
+  // ⭐️ 4. ปุ่มชำระเงินไม่สำเร็จ
   const handlePaymentFailed = async () => {
     const confirmCancel = window.confirm("คุณต้องการจำลองการชำระเงินไม่สำเร็จ และยกเลิกรายการนี้ใช่หรือไม่?");
     if (!confirmCancel) return;
 
     try {
       if (bookingId) {
-        // ⭐️ แก้ไขตรงคำสั่ง fetch ตอนกดยกเลิก
         const res = await fetch(`http://localhost:8000/api/payment/cancel/${bookingId}`, { 
             method: "POST",
-            headers: {
-                "Accept": "application/json" // 👈 เพิ่ม Header ป้องกัน Error HTML
-            }
+            headers: { "Accept": "application/json" }
         });
-        
         if (!res.ok) {
-            const err = await res.json(); // 👈 เปลี่ยนเป็นรับค่า JSON
+            const err = await res.json(); 
             alert("❌ Database Error: " + (err.message || "เกิดข้อผิดพลาด"));
             return; 
         }
       }
       
-      alert("❌ ชำระเงินไม่สำเร็จ! ระบบได้ยกเลิกและคืนที่นั่งเรียบร้อยแล้ว");
+      const title = "ชำระเงินไม่สำเร็จ ❌";
+      const desc = `รายการจอง ${params.name} ของคุณถูกยกเลิกแล้ว`;
+
+      // ❌ สั่งบันทึกลงกระดิ่ง และ ส่ง Telegram
+      saveNotificationToStorage(title, desc, "alert");
+      await sendTelegramNotification(`🔴 แจ้งเตือน BEATPASS\n${title}\n${desc}`);
+
+      alert(title);
       router.push("/"); 
     } catch (error) {
-      console.error("Cancel payment error:", error);
       alert("เกิดข้อผิดพลาดในการเชื่อมต่อระบบ");
     }
   };
@@ -138,35 +175,22 @@ const [timeLeft, setTimeLeft] = React.useState(initialTime);
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(mockSlipUrl)}`;
 
   return (
-    // ✅ เพิ่ม style={{ paddingTop: '80px' }} เพื่อดันเนื้อหาลงมาแน่นอน 100%
-    <div 
-      className="min-h-screen bg-[#0B0F14] text-white font-sans pb-20 relative overflow-hidden flex flex-col items-center"
-      style={{ paddingTop: '80px' }}
-    >
-      
-      {/* Background Glow */}
+    <div className="min-h-screen bg-[#0B0F14] text-white font-sans pb-20 relative overflow-hidden flex flex-col items-center" style={{ paddingTop: '80px' }}>
       <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#00B4D8]/10 rounded-full blur-[120px] pointer-events-none" />
 
-      {/* ✅ ปุ่มย้อนกลับ */}
       <div className="w-full flex items-center px-8 mb-6 z-50">
-        <button 
-            onClick={() => router.back()} 
-            className="flex items-center gap-2 text-gray-400 hover:text-white transition-all text-sm font-bold bg-[#161B22]/80 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md shadow-lg hover:bg-[#252b36]"
-        >
+        <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-400 hover:text-white transition-all text-sm font-bold bg-[#161B22]/80 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md shadow-lg hover:bg-[#252b36]">
           <ChevronLeft size={20} /> ย้อนกลับ
         </button>
       </div>
 
       <div className="max-w-sm w-full px-6 relative z-10 flex flex-col items-center">
-        
-        {/* Timer Badge */}
         <div className="bg-[#161B22] border border-[#E60023]/30 px-6 py-2 rounded-full mb-8 flex items-center gap-3 shadow-lg shadow-red-900/10 animate-pulse">
           <Timer size={18} className="text-[#E60023]" />
           <span className="text-[#E60023] font-bold font-mono text-lg">{formatTime(timeLeft)}</span>
           <span className="text-xs text-gray-400">กรุณาชำระเงินภายในเวลา</span>
         </div>
 
-        {/* QR Card */}
         <div className="w-full bg-white text-black rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,180,216,0.15)] relative">
             <div className="bg-[#003D6B] p-5 flex items-center gap-4">
                 <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center p-1 shrink-0">
@@ -185,11 +209,7 @@ const [timeLeft, setTimeLeft] = React.useState(initialTime);
                 <div className="relative group">
                     <div className="w-64 h-64 border-4 border-black p-2 rounded-xl bg-white flex flex-wrap content-center justify-center gap-1 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
                        <ScanLine size={180} className="text-gray-800 opacity-10 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
-                       <img 
-                         src={qrCodeUrl} 
-                         alt="Payment QR Code" 
-                         className="w-full h-full object-contain mix-blend-multiply"
-                       />
+                       <img src={qrCodeUrl} alt="Payment QR Code" className="w-full h-full object-contain mix-blend-multiply" />
                     </div>
                     <p className="absolute -bottom-6 w-full text-center text-[10px] text-gray-400 font-mono tracking-wider">Ref: {refNo}</p>
                 </div>
@@ -221,7 +241,6 @@ const [timeLeft, setTimeLeft] = React.useState(initialTime);
             </div>
         </div>
 
-        {/* Payment Simulation Button */}
         <div className="mt-8 w-full space-y-4 pb-10">
             {isChecking ? (
                 <button disabled className="w-full py-4 bg-gray-800 text-gray-400 rounded-2xl font-bold flex items-center justify-center gap-3 cursor-wait">
@@ -229,29 +248,18 @@ const [timeLeft, setTimeLeft] = React.useState(initialTime);
                 </button>
             ) : (
                 <div className="space-y-3">
-                    {/* ปุ่มจำลองชำระเงินสำเร็จ (สีฟ้า) */}
-                    <button 
-                        onClick={handleSimulatePayment}
-                        className="w-full py-4 bg-[#00B4D8] hover:bg-[#0096B4] text-white rounded-2xl font-black text-lg shadow-[0_0_20px_rgba(0,180,216,0.3)] transition-all transform active:scale-95 flex items-center justify-center gap-2"
-                    >
+                    <button onClick={handleSimulatePayment} className="w-full py-4 bg-[#00B4D8] hover:bg-[#0096B4] text-white rounded-2xl font-black text-lg shadow-[0_0_20px_rgba(0,180,216,0.3)] transition-all transform active:scale-95 flex items-center justify-center gap-2">
                         <CheckCircle2 size={24} /> ชำระเงินสำเร็จ
                     </button>
-
-                    {/* 🔴 ปุ่มจำลองชำระเงินไม่สำเร็จ (สีแดง) */}
-                    <button 
-                        onClick={handlePaymentFailed}
-                        className="w-full py-4 bg-transparent border-2 border-[#E60023] text-[#E60023] rounded-2xl font-black text-lg hover:bg-[#E60023] hover:text-white transition-all transform active:scale-95 flex items-center justify-center gap-2"
-                    >
+                    <button onClick={handlePaymentFailed} className="w-full py-4 bg-transparent border-2 border-[#E60023] text-[#E60023] rounded-2xl font-black text-lg hover:bg-[#E60023] hover:text-white transition-all transform active:scale-95 flex items-center justify-center gap-2">
                         <XCircle size={24} /> ชำระเงินไม่สำเร็จ
                     </button>
                 </div>
             )}
-            
             <p className="text-center text-xs text-gray-500">
                 ระบบจะตรวจสอบยอดเงินอัตโนมัติ <br/>หากมีปัญหาติดต่อ <span className="text-[#00B4D8] underline cursor-pointer">Support</span>
             </p>
         </div>
-
       </div>
     </div>
   );

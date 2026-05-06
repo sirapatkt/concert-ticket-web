@@ -73,6 +73,7 @@ export default function UserDropdown() {
   return (
     <div className="relative" ref={dropdownRef}>
       <button 
+        suppressHydrationWarning
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-700 bg-[#1E293B] hover:bg-slate-800 text-slate-200 transition-all text-sm"
       >

@@ -42,6 +42,8 @@ const mapStatusToEnglish = (thaiStatus: string): "Available" | "Sold Out" | "Sel
     'On Sale': 'Available',
     'เปิดขายบัตร': 'Available',
     'Available': 'Available',
+    'approved': 'Available', // ✅ เพิ่มสถานะ approved
+    'Approved': 'Available', // ✅ เพิ่มเผื่อตัวพิมพ์ใหญ่
     
     'Selling': 'Selling Fast',
     'กำลังจัดแสดง': 'Selling Fast',
@@ -64,6 +66,7 @@ export default function Home() {
     const fetchEvents = async () => {
       try {
         const res = await fetch("http://127.0.0.1:8000/api/public/events");
+            cache: 'no-store' 
         
         if (!res.ok) throw new Error("Failed to fetch");
         

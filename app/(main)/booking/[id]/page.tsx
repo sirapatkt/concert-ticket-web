@@ -75,7 +75,7 @@ export default function BookingPage() {
   const [eventName, setEventName] = useState(searchParams.get("name") || "กำลังโหลดข้อมูล...");
   const [eventDate, setEventDate] = useState(searchParams.get("date") || "...");
   const [eventTime, setEventTime] = useState(searchParams.get("time") || "...");
-  const [eventVenue, setEventVenue] = useState(searchParams.get("venue") || "...");
+  const [eventVenue, setEventVenue] = useState(searchParams.get("venue") || "ไม่ระบุสถานที่");
 
   const zoneColor = getZoneColor(eventZone);
 
@@ -86,8 +86,11 @@ export default function BookingPage() {
   const [timeLeft, setTimeLeft] = useState(300);
   const [isTimeout, setIsTimeout] = useState(false); 
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStart = useRef({ x: 0, y: 0 });
+  
+  // 🌟 ใช้ Ref จัดการการลากเพื่อประสิทธิภาพที่ดีกว่าและไม่ตีกับ Click
+  const isDragging = useRef(false);
+  const dragStartPos = useRef({ x: 0, y: 0 });
+  const hasDragged = useRef(false); // ตัวแปรเช็คว่ามีการลากเกิดขึ้นจริงไหม
 
   useEffect(() => {
     const fetchEventDetails = async () => {
@@ -118,7 +121,7 @@ export default function BookingPage() {
   }, [eventId, roundId, searchParams]);
 
   // ========================================================
-  // 🧠 ฟังก์ชัน: สร้างโครงสร้างผังที่นั่ง (ปรับให้รับจำนวนจาก DB เพื่อซ่อน)
+  // 🧠 ฟังก์ชัน: สร้างโครงสร้างผังที่นั่ง
   // ========================================================
   const generateStructuralLayout = (zoneName: string, totalDbSeats: number): Seat[] => {
     let maxCol = 20;
@@ -509,7 +512,14 @@ export default function BookingPage() {
 
       try {
         setLoadingSeats(true);
-        const res = await fetch(`http://127.0.0.1:8000/api/seats?eventId=${eventId}&roundId=${roundId}&zoneName=${eventZone}`, {
+        // 🌟 แก้ไขตรงนี้ให้ปลอดภัยขึ้นในการส่งพารามิเตอร์ที่มีช่องว่าง เช่น "ZONE 2"
+        const queryParams = new URLSearchParams({
+            eventId: eventId || '',
+            roundId: roundId || '',
+            zoneName: eventZone || ''
+        });
+
+        const res = await fetch(`http://127.0.0.1:8000/api/seats?${queryParams.toString()}`, {
             headers: { 
                 'Accept': 'application/json',
                 'Cache-Control': 'no-cache'
@@ -520,7 +530,6 @@ export default function BookingPage() {
         if (!res.ok) throw new Error("API Error");
         const dbData = await res.json();
 
-        // 🌟 ดึงข้อมูล DB มาก่อน แล้วส่งจำนวนไปให้ generateStructuralLayout คำนวณรอยแหว่ง
         const totalDbSeats = (dbData && Array.isArray(dbData)) ? dbData.length : 0;
         const structuralLayout = generateStructuralLayout(eventZone, totalDbSeats);
 
@@ -542,7 +551,6 @@ export default function BookingPage() {
                         zoneId: dbSeat.Zone_id
                     };
                 } else {
-                    // 🌟 จุดที่แก้: ถ้าหาใน DB ไม่เจอ ให้ "ซ่อน" ทิ้งไปเลย เพื่อให้ผังหดตัวตาม DB จริง
                     return { ...templateSeat, isHidden: true }; 
                 }
             });
@@ -584,36 +592,57 @@ export default function BookingPage() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  const toggleSeat = (seatId: string, isHidden: boolean, status: string) => {
-    if (isDragging || isTimeout || isHidden || status === "sold") return; 
+  // 🌟 ฟังก์ชันจัดการการคลิกเก้าอี้
+const toggleSeat = (seatId: string, isHidden: boolean, status: string) => {
+  console.log('คลิกที่นั่ง', seatId);
 
-    const currentSelectedCount = seats.filter(s => s.status === "selected").length;
+  // 🌟 เอาเงื่อนไข isHidden ออกจากบรรทัดนี้ เพื่อให้กดเก้าอี้ได้แม้ข้อมูลจะไม่ตรงกับ Database
+  if (isTimeout || status === "sold" || status === "blank") return; 
 
-    if (status === "available" && currentSelectedCount >= 5) {
-        alert("คุณสามารถเลือกที่นั่งได้สูงสุด 5 ใบ ต่อ 1 การทำรายการครับ");
-        return; 
-    }
+  const currentSelectedCount = seats.filter(s => s.status === "selected").length;
 
-    setSeats((prev) =>
-      prev.map((seat) => {
-        if (seat.id !== seatId) return seat;
-        return { ...seat, status: seat.status === "available" ? "selected" : "available" };
-      })
-    );
-  };
+  if (status === "available" && currentSelectedCount >= 5) {
+    alert("คุณสามารถเลือกที่นั่งได้สูงสุด 5 ใบ ต่อ 1 การทำรายการครับ");
+    return; 
+  }
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y };
-  };
+  setSeats((prev) =>
+    prev.map((seat) => {
+      if (seat.id !== seatId) return seat;
+      return { ...seat, status: seat.status === "available" ? "selected" : "available" };
+    })
+  );
+};
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    setPosition({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y });
-  };
+// 🌟 ฟังก์ชันจัดการลากเมาส์
+const handleMouseDown = (e: React.MouseEvent) => {
+  isDragging.current = true;
+  hasDragged.current = false;
+  dragStartPos.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+};
 
-  const handleMouseUp = () => setIsDragging(false);
+const handleMouseMove = (e: React.MouseEvent) => {
+  if (!isDragging.current) return;
+  const dx = Math.abs(e.clientX - (dragStartPos.current.x + position.x));
+  const dy = Math.abs(e.clientY - (dragStartPos.current.y + position.y));
+  // ถือว่าลากจริงเมื่อขยับเกิน 5px
+  if (dx > 5 || dy > 5) {
+    hasDragged.current = true;
+  }
+  if (hasDragged.current) {
+    setPosition({ 
+      x: e.clientX - dragStartPos.current.x, 
+      y: e.clientY - dragStartPos.current.y 
+    });
+  }
+};
+
+const handleMouseUp = () => {
+  isDragging.current = false;
+  setTimeout(() => {
+    hasDragged.current = false;
+  }, 50);
+};
 
   const handleWheel = (e: React.WheelEvent) => {
     const newScale = scale - e.deltaY * 0.001;
@@ -758,7 +787,7 @@ export default function BookingPage() {
              onMouseLeave={handleMouseUp}
              onWheel={handleWheel}>
              
-             <div className={`flex flex-col items-center ${isDragging ? 'duration-0' : 'duration-300'} transition-transform`} 
+             <div className="flex flex-col items-center transition-transform duration-75" 
                   style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})` }}>
                 
                 <h3 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-widest drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">โซน {eventZone}</h3>
@@ -780,8 +809,17 @@ export default function BookingPage() {
                                     {/* เก้าอี้ในแถวนั้น */}
                                     <div className="flex items-center gap-1 md:gap-1.5 justify-center flex-1">
                                         {seats.filter(s => s.row === rowLetter).map(seat => (
-                                            <div key={seat.id} onClick={() => toggleSeat(seat.id, seat.isHidden, seat.status)}>
-                                                <SeatIcon status={seat.status} label={seat.number} zoneColor={zoneColor} />
+                                            <div 
+                                              key={seat.id} 
+                                              className="seat-element" 
+                                              onClick={(e) => {
+                                                if (hasDragged.current) return;
+                                                toggleSeat(seat.id, seat.isHidden, seat.status);
+                                              }}
+                                              onMouseDown={(e) => e.stopPropagation()} 
+                                            >
+                                              {/* 🌟 ยกเลิกการซ่อนใน JSX เปลี่ยนกลับมาแสดงผลปกติ */}
+                                              <SeatIcon status={seat.status} label={seat.number} zoneColor={zoneColor} />
                                             </div>
                                         ))}
                                     </div>

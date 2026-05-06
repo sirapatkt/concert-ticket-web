@@ -109,11 +109,12 @@ export default function AdminDashboard() {
   // 💡 7. ข้อมูลงานที่เพิ่งจัดจบไป
   const [completedEventsList, setCompletedEventsList] = useState<TopEvent[]>([]);
 
-  // 🟢 ดึงข้อมูลจาก API Laravel
+  // 🟢 ดึงข้อมูลจาก API Laravel (💡 ผูกกับ dateRange)
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/admin/dashboard-stats");
+        // 💡 แนบ query parameter ส่งไปให้ Backend ด้วย (ห้ามแก้ส่วนอื่น)
+        const res = await fetch(`http://localhost:8000/api/admin/dashboard-stats?filter=${encodeURIComponent(dateRange)}`);
         if (!res.ok) throw new Error("Failed to fetch");
         
         const data = await res.json();
@@ -158,17 +159,29 @@ export default function AdminDashboard() {
         }));
         setTransactions(formattedTx);
 
-        // ✅ ลอจิกแยก Top 3 (ยอดเยี่ยม) และ Bottom 3 (ปรับปรุง) จากเปอร์เซ็นต์ยอดขาย
+        // ✅ ลอจิกแยก Top 3 (ยอดเยี่ยม) และ Bottom 3 (ปรับปรุง) จากเปอร์เซ็นต์ยอดขายที่แก้ไขแล้ว
         const rawEvents = data.topEvents || []; 
         
-        // คำนวณเปอร์เซ็นต์แต่ละงาน
-        const processedEvents = rawEvents.map((evt: any) => ({
-            ...evt,
-            percent: evt.total > 0 ? Math.round((evt.sold / evt.total) * 100) : 0
-        }));
+        // คำนวณเปอร์เซ็นต์แต่ละงาน และแปลงค่าเป็นตัวเลขให้ชัวร์
+        const processedEvents = rawEvents.map((evt: any) => {
+            const sold = Number(evt.sold) || 0;
+            const total = Number(evt.total) || 0;
+            return {
+                ...evt,
+                sold,
+                total,
+                percent: total > 0 ? Math.round((sold / total) * 100) : 0
+            };
+        });
 
         // 1. จัดอันดับจากมากไปน้อย (Top 3)
-        const best = [...processedEvents].sort((a, b) => b.percent - a.percent).slice(0, 3);
+        const best = [...processedEvents].sort((a, b) => {
+            // เรียงตามเปอร์เซ็นต์ก่อน
+            if (b.percent !== a.percent) return b.percent - a.percent;
+            // ถ้าเปอร์เซ็นต์เท่ากัน ให้เรียงตามจำนวนบัตรที่ขายได้
+            return b.sold - a.sold;
+        }).slice(0, 3);
+        
         setBestEvents(best);
 
         // 2. ดึง ID ของงานที่ติด Top 3 ไปแล้วเก็บไว้ เพื่อไม่ให้ไปโชว์ซ้ำฝั่งแย่
@@ -177,7 +190,12 @@ export default function AdminDashboard() {
         // 3. จัดอันดับจากน้อยไปมาก (Bottom 3)
         const worst = [...processedEvents]
             .filter(e => !bestIds.includes(e.id)) // กรองเอาเฉพาะตัวที่ไม่ติด Top 3
-            .sort((a, b) => a.percent - b.percent)
+            .sort((a, b) => {
+                // เรียงตามเปอร์เซ็นต์น้อยไปมาก
+                if (a.percent !== b.percent) return a.percent - b.percent;
+                // ถ้าเปอร์เซ็นต์เท่ากัน ให้เรียงตามจำนวนบัตรที่ขายได้น้อยไปมาก
+                return a.sold - b.sold;
+            })
             .slice(0, 3);
             
         setWorstEvents(worst);
@@ -189,13 +207,13 @@ export default function AdminDashboard() {
 
         // เซ็ตค่าข้อมูลผู้จัดงาน Top 3
         if (data.topOrganizers) {
-            // เพิ่มการจัดเรียง: 1. จำนวนงานมากไปน้อย -> 2. ถ้าง่านเท่ากันเอายอดขายมากไปน้อย
+            // แก้การจัดเรียง: 1. เอายอดขายมากไปน้อยก่อน -> 2. ถ้ายอดขายเท่ากัน ค่อยเอาจำนวนงานมาวัด
             const sortedOrganizers = [...data.topOrganizers]
                 .sort((a, b) => {
-                    if (b.event_count !== a.event_count) {
-                        return b.event_count - a.event_count; 
+                    if (b.revenue !== a.revenue) {
+                        return b.revenue - a.revenue; 
                     }
-                    return b.revenue - a.revenue; 
+                    return b.event_count - a.event_count; 
                 })
                 .slice(0, 3); // บังคับตัดแค่ 3 อันดับแรก
                 
@@ -213,7 +231,7 @@ export default function AdminDashboard() {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [dateRange]); // 💡 ใส่ dateRange เป็น dependency เพื่อให้โหลดใหม่ทุกครั้งที่ค่าเปลี่ยน
 
   const handleUpdateStatus = (id: number, newStatus: string) => {
     console.log(`Update org ${id} to ${newStatus}`);

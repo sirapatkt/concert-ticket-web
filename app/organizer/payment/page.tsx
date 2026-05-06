@@ -70,7 +70,7 @@ function OrganizerPaymentContent() {
 
   const [timeLeft, setTimeLeft] = useState(259200); 
   const [isPaid, setIsPaid] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false); // ✅ เพิ่ม State ตอนกดยืนยัน
+  const [isProcessing, setIsProcessing] = useState(false);
   const [loadingQr, setLoadingQr] = useState(true);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -237,16 +237,20 @@ function OrganizerPaymentContent() {
   }));
 
   // ============================================================================
-  // ✅ เชื่อมต่อปุ่มกับ API อัปเดตสถานะ Database ของจริง!
+  // ✅ เชื่อมต่อปุ่มสีเขียว กับ API บันทึกลง Database
   // ============================================================================
   const handleSimulatePaymentSuccess = async () => {
     if (!eventId) return;
+    
+    if (!confirm("ยืนยันการชำระเงิน? ระบบจะบันทึกข้อมูลการชำระเงินลงฐานข้อมูล")) return;
+
     setIsProcessing(true);
     setError('');
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:8000/api/organizer/events/${eventId}/publish-payment`, {
+      // ✅ เปลี่ยน URL มาเรียก API ที่เซฟลงตาราง event_payments
+      const response = await fetch(`http://localhost:8000/api/organizer/events/${eventId}/simulate-pay`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -256,8 +260,8 @@ function OrganizerPaymentContent() {
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
-        // อัปเดตสถานะสำเร็จ
+      if (response.ok) {
+        // อัปเดตสถานะสำเร็จ และแสดงแอนิเมชันติ๊กถูก
         setIsPaid(true);
         // ลบเวลาใน storage ทิ้งได้เลยเพราะชำระแล้ว
         localStorage.removeItem(`payment_timer_event_${eventId}`);
@@ -356,7 +360,7 @@ function OrganizerPaymentContent() {
                     <p className="text-slate-500 text-sm font-bold">ยอดชำระสุทธิ ({derivedVenueSize} Size)</p>
                     <p className="text-5xl font-black text-purple-950 mt-1 tracking-tighter">฿{feeAmount.toLocaleString()}</p>
                     
-                    {/* ✅ ปุ่มจำลองการชำระเงิน */}
+                    {/* ✅ ส่วนของปุ่มถูกปรับให้เหลือแค่สีเขียว กับสีเทา */}
                     {!isPaid && !loadingQr && timeLeft > 0 && (
                       <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center w-full">
                         <button 
@@ -366,6 +370,7 @@ function OrganizerPaymentContent() {
                         >
                           <CheckCircle2 size={18} /> ชำระเงินสำเร็จ
                         </button>
+
                         <button 
                           onClick={handleSimulatePaymentFail}
                           disabled={isProcessing}

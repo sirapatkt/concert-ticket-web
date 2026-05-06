@@ -7,6 +7,19 @@ import {
 } from "lucide-react";
 
 export default function SettingsPage() {
+  // ✅ 1. เพิ่ม State เช็คว่าเว็บโหลดฝั่ง Client หรือยัง (แก้ปัญหา Hydration)
+  const [isMounted, setIsMounted] = useState(false);
+  
+  const [activeTab, setActiveTab] = useState<"payouts" | "orders">("payouts");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const [payoutList, setPayoutList] = useState<any[]>([]);
+  const [transactionList, setTransactionList] = useState<any[]>([]);
+
+  // ✅ เพิ่ม State เก็บข้อมูลสรุปรายได้และสถานะกดดูรายละเอียด
+  const [financeSummary, setFinanceSummary] = useState<any>(null);
+  const [showDetail, setShowDetail] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
@@ -36,6 +49,9 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
+    // ✅ 2. สั่งให้เป็น true เมื่อโหลดบนเบราว์เซอร์เสร็จแล้ว
+    setIsMounted(true);
+
     const fetchProfile = async () => {
       const token = localStorage.getItem("token");
       if (!token) return;
@@ -55,6 +71,9 @@ export default function SettingsPage() {
             telOG: data.telOG || "",
             emailOG: data.emailOG || "",
             bio: data.bio || "",
+            // ✅ ดึงข้อมูลธนาคารจาก DB มาแสดง
+            bankName: data.bank_name || "KBANK", 
+            accountNumber: data.bank_account || "",
           }));
         }
       } catch (err) {
@@ -84,6 +103,9 @@ export default function SettingsPage() {
           lastnameOG: profile.lastnameOG,
           telOG: profile.telOG,
           bio: profile.bio,
+          // ✅ ส่งข้อมูลธนาคารไปให้ Backend
+          bank_name: profile.bankName,
+          bank_account: profile.accountNumber
         })
       });
 
@@ -107,6 +129,11 @@ export default function SettingsPage() {
             <Loader2 className="animate-spin mr-2" /> กำลังโหลดข้อมูล...
         </div>
     );
+  }
+
+  // ✅ ถ้ายังไม่โหลดบน Client ให้โชว์หน้าเปล่าไปก่อนแว้บนึง (แก้ Hydration Error 100%)
+  if (!isMounted) {
+    return null; 
   }
 
   return (
