@@ -74,7 +74,6 @@ function EditEventContent() {
           const pureDesc = data.eventDescription ? data.eventDescription.split('||GRID_DATA||')[0] : "";
           setDescription(pureDesc);
           
-          // ✅ แปลงสถานะที่ได้จาก DB ให้เป็นภาษาไทยมาตรฐาน
           setStatus(getThaiStatus(data.eventStatus));
           
           if (data.bannerImage) {
@@ -127,7 +126,6 @@ function EditEventContent() {
     }
   };
 
-  // ฟังก์ชันจัดการรอบการแสดง
   const addRound = () => setShowRounds([...showRounds, { roundNumber: showRounds.length + 1, startDT: "", endDT: "", saleStart: "", saleEnd: "" }]);
   const removeRound = (index: number) => showRounds.length > 1 ? setShowRounds(showRounds.filter((_, i) => i !== index).map((r, i) => ({ ...r, roundNumber: i + 1 }))) : alert("ต้องมีอย่างน้อย 1 รอบ");
   const updateRound = (index: number, field: keyof ShowRound, value: string) => {
@@ -136,7 +134,6 @@ function EditEventContent() {
     setShowRounds(newRounds);
   };
 
-  // ฟังก์ชันจัดการโซนบัตร
   const addTicket = () => setTickets([...tickets, { zoneName: "", price: 0, quantity: 0 }]);
   const removeTicket = (index: number) => tickets.length > 1 ? setTickets(tickets.filter((_, i) => i !== index)) : alert("ต้องมีอย่างน้อย 1 โซน");
   const updateTicket = (index: number, field: keyof TicketZone, value: string | number) => {
@@ -147,6 +144,16 @@ function EditEventContent() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 🌟 1. ดักจับกันเหนียว: ถ้าผู้ใช้ลืมกรอกวันที่ช่องไหน ให้เด้งเตือนและหยุดการ Save ป้องกัน Error Database
+    for (let i = 0; i < showRounds.length; i++) {
+      const r = showRounds[i];
+      if (!r.startDT || !r.endDT || !r.saleStart || !r.saleEnd) {
+        alert(`กรุณากรอกวันเวลาในรอบการแสดงที่ ${i + 1} ให้ครบทุกช่องครับ`);
+        return;
+      }
+    }
+
     setSaving(true);
 
     try {
@@ -163,13 +170,22 @@ function EditEventContent() {
       }
 
       const token = localStorage.getItem("token");
+
+      // 🌟 2. แปลงชื่อตัวแปรกลับให้ตรงกับที่ Laravel ต้องการก่อนส่ง (แก้บัค Not null violation)
+      const formattedShowRounds = showRounds.map((r) => ({
+        roundNumber: r.roundNumber,
+        startDT: r.startDT,
+        endDT: r.endDT,
+        Sale_startDT: r.saleStart, // เปลี่ยนกลับเป็นตัวแปรที่หลังบ้านต้องการ
+        Sale_endDT: r.saleEnd      // เปลี่ยนกลับเป็นตัวแปรที่หลังบ้านต้องการ
+      }));
+
       const payload = {
         eventName,
         eventDescription: description,
         posterImage: cloudinaryUrl,
-        show_rounds: showRounds, 
+        show_rounds: formattedShowRounds, // ส่งตัวที่แปลงชื่อแล้วไป
         tickets: tickets,
-        // ✅ ส่งสถานะ "PENDING" กลับไปให้หลังบ้าน เพื่อให้เด้งกลับไปรอแอดมินอนุมัติ
         eventStatus: "PENDING" 
       };
 
@@ -195,7 +211,6 @@ function EditEventContent() {
 
   if (loading) return <div className="min-h-screen bg-[#020617] flex justify-center items-center"><Loader2 className="animate-spin text-blue-400" size={40}/></div>;
 
-  // ✅ ตัวแปรเช็คว่าต้อง "ล็อกโซนที่นั่ง" หรือไม่ (ถ้าเป็น "กำลังจะจัด" จะล็อก)
   const isZoneLocked = status === "กำลังจะจัด";
 
   return (
@@ -264,7 +279,6 @@ function EditEventContent() {
         <div className="bg-[#0F172A] p-6 rounded-2xl border border-slate-800 shadow-xl">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold flex items-center gap-2 text-green-400"><Ticket size={20} /> โซนและราคาบัตร</h2>
-            {/* ✅ ถ้าล็อกโซน จะซ่อนปุ่มเพิ่มโซน */}
             {!isZoneLocked && (
               <button onClick={addTicket} type="button" className="text-sm bg-green-500/10 text-green-400 px-3 py-1.5 rounded-lg flex items-center gap-1">
                 <Plus size={16} /> เพิ่มโซน
@@ -277,23 +291,19 @@ function EditEventContent() {
                 
                 <div className="flex-1">
                   <label className="text-xs text-slate-500 block mb-1">ชื่อโซน {isZoneLocked && "🔒"}</label>
-                  {/* ✅ ถ้าสถานะกำลังจะจัด จะล็อกชื่อโซน (disabled) */}
                   <input type="text" value={t.zoneName} disabled={isZoneLocked} onChange={(e) => updateTicket(index, 'zoneName', e.target.value)} className="w-full bg-[#0F172A] border border-slate-600 rounded px-3 py-2 text-sm text-white outline-none disabled:opacity-50 disabled:cursor-not-allowed" placeholder="เช่น VIP, Zone A" />
                 </div>
                 
                 <div className="w-32">
                   <label className="text-xs text-slate-500 block mb-1">ราคา (บาท)</label>
-                  {/* ✅ ราคา ไม่โดนล็อก แก้ได้เสมอ */}
                   <input type="number" value={t.price} onChange={(e) => updateTicket(index, 'price', Number(e.target.value))} className="w-full bg-[#0F172A] border border-slate-600 rounded px-3 py-2 text-sm text-yellow-400 font-bold outline-none" min="0" />
                 </div>
                 
                 <div className="w-32">
                   <label className="text-xs text-slate-500 block mb-1">จำนวนที่นั่ง {isZoneLocked && "🔒"}</label>
-                  {/* ✅ ถ้าสถานะกำลังจะจัด จะล็อกจำนวนที่นั่ง (disabled) */}
                   <input type="number" value={t.quantity} disabled={isZoneLocked} onChange={(e) => updateTicket(index, 'quantity', Number(e.target.value))} className="w-full bg-[#0F172A] border border-slate-600 rounded px-3 py-2 text-sm text-white outline-none disabled:opacity-50 disabled:cursor-not-allowed" min="1" />
                 </div>
                 
-                {/* ✅ ถ้าล็อกโซน จะซ่อนปุ่มลบโซน */}
                 {!isZoneLocked && (
                   <button onClick={() => removeTicket(index)} className="mt-5 p-2 text-slate-500 hover:text-red-400 transition-colors">
                     <Trash2 size={18} />
